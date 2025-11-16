@@ -37,10 +37,13 @@ class _EnhancedCampusMapState extends State<EnhancedCampusMap> with TickerProvid
   double _currentZoom = 16.5; // Match initial zoom for 3D view
   String _transportMode = 'foot'; // foot, bicycle, car, bus
   bool _is3DView = true; // Start with 3D view for modern look
-  double _mapTilt = 45.0; // Default tilt for 3D view
   List<List<LatLng>> _footpaths = [];
   List<CampusBuilding> _osmBuildings = [];
   bool _loadingOSMData = true;
+  
+  double _mapTilt = 0.0;
+  double _mapBearing = 0.0; // Rotation angle (0° = North up)
+  double _mapZoom = 15.0;   // Zoom level
   
   @override
   void initState() {
@@ -83,7 +86,7 @@ class _EnhancedCampusMapState extends State<EnhancedCampusMap> with TickerProvid
   Future<void> _loadOSMFootpaths() async {
     try {
       // Fetch footpath data from Overpass API for campus area
-      final bbox = '${_campusCenter.latitude - 0.01},${_campusCenter.longitude - 0.01},'
+      final bbox = '${_campusCenter.latitude - 0.01},${_campusCenter.longitude - 0.01}'
                    '${_campusCenter.latitude + 0.01},${_campusCenter.longitude + 0.01}';
       
       final query = '''
@@ -152,9 +155,10 @@ out geom;
           distanceFilter: 5,
         ),
       );
+      
       final userLocation = LatLng(position.latitude, position.longitude);
       
-      // Check if user is within campus boundaries
+      // Check if user is within campus bounds
       if (!_isWithinCampusBounds(userLocation)) {
         if (mounted) {
           _showOutOfCampusError();
@@ -484,9 +488,10 @@ out skel qt;
                 route.add(nodes[nodeId]!);
               }
             }
-            // End at the nearest footpath node, not the building
+            // End at the nearest footpath node, not the building 
             print('Pedestrian route: ${route.length} points, ending at footpath');
             return route;
+
           }
         }
       }
