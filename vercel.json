@@ -1,7 +1,8 @@
 {
-  "buildCommand": "flutter build web --release --web-renderer canvaskit",
+  "buildCommand": null,
   "outputDirectory": "build/web",
   "framework": null,
+  "installCommand": null,
   "rewrites": [
     {
       "source": "/(.*)",
