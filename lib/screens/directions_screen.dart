@@ -56,7 +56,7 @@ class _DirectionsScreenState extends State<DirectionsScreen> {
           color: isSelected ? AppColors.primary : AppColors.white,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: isSelected ? AppColors.primary : AppColors.grey.withOpacity(0.3),
+            color: isSelected ? AppColors.primary : AppColors.grey.withValues(alpha: 0.3),
             width: 2,
           ),
         ),
@@ -217,7 +217,7 @@ class _DirectionsScreenState extends State<DirectionsScreen> {
               color: AppColors.white,
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
+                  color: Colors.black.withValues(alpha: 0.1),
                   blurRadius: 10,
                   offset: const Offset(0, -2),
                 ),
@@ -281,7 +281,7 @@ class _DirectionsScreenState extends State<DirectionsScreen> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
+                  color: color.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(icon, color: color, size: 24),
@@ -538,13 +538,13 @@ class _LocationSelectionSheetState extends State<_LocationSelectionSheet> {
                     
                     return Card(
                       elevation: isSelected ? 4 : 1,
-                      color: isSelected ? AppColors.primary.withOpacity(0.1) : null,
+                      color: isSelected ? AppColors.primary.withValues(alpha: 0.1) : null,
                       margin: const EdgeInsets.only(bottom: 8),
                       child: ListTile(
                         leading: Container(
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
-                            color: _getCategoryColor(building.category).withOpacity(0.1),
+                            color: _getCategoryColor(building.category).withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
@@ -592,7 +592,7 @@ class _LocationSelectionSheetState extends State<_LocationSelectionSheet> {
           });
         },
         backgroundColor: AppColors.ash,
-        selectedColor: AppColors.primary.withOpacity(0.2),
+  selectedColor: AppColors.primary.withValues(alpha: 0.2),
         checkmarkColor: AppColors.primary,
         labelStyle: TextStyle(
           color: isSelected ? AppColors.primary : AppColors.darkGrey,

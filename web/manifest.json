@@ -1,11 +1,11 @@
 {
-    "name": "campus_navigation",
-    "short_name": "campus_navigation",
+    "name": "CampusNav",
+    "short_name": "CampusNav",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "CampusNav – Igbinedion University Okada campus navigation.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

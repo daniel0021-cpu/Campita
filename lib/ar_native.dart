@@ -287,7 +287,7 @@ class _ARNativeScreenState extends State<ARNativeScreen> with WidgetsBindingObse
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
-        backgroundColor: Colors.black.withOpacity(0.7),
+  backgroundColor: Colors.black.withValues(alpha: 0.7),
         title: const Text('AR Navigation'),
         actions: [
           // Status indicators
@@ -356,7 +356,7 @@ class _ARNativeScreenState extends State<ARNativeScreen> with WidgetsBindingObse
               child: Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.orange.withOpacity(0.9),
+                  color: Colors.orange.withValues(alpha: 0.9),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
@@ -381,8 +381,8 @@ class _ARNativeScreenState extends State<ARNativeScreen> with WidgetsBindingObse
                   begin: Alignment.bottomCenter,
                   end: Alignment.topCenter,
                   colors: [
-                    Colors.black.withOpacity(0.9),
-                    Colors.black.withOpacity(0.5),
+                    Colors.black.withValues(alpha: 0.9),
+                    Colors.black.withValues(alpha: 0.5),
                     Colors.transparent,
                   ],
                 ),
@@ -408,7 +408,7 @@ class _ARNativeScreenState extends State<ARNativeScreen> with WidgetsBindingObse
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                         decoration: BoxDecoration(
-                          color: Colors.cyan.withOpacity(0.3),
+                          color: Colors.cyan.withValues(alpha: 0.3),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
@@ -420,7 +420,7 @@ class _ARNativeScreenState extends State<ARNativeScreen> with WidgetsBindingObse
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                         decoration: BoxDecoration(
-                          color: Colors.orange.withOpacity(0.3),
+                          color: Colors.orange.withValues(alpha: 0.3),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
@@ -434,12 +434,12 @@ class _ARNativeScreenState extends State<ARNativeScreen> with WidgetsBindingObse
                   // Render status
                   Text(
                     'Cam: ${_isCameraInitialized ? "✓" : "✗"} | GPS: ${_userPosition != null ? "✓" : "✗"} | Heading: ${_userHeading.toStringAsFixed(0)}°',
-                    style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 11),
+                    style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 11),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     'AR dots render on CAMERA view (not on map)',
-                    style: TextStyle(color: Colors.yellow.withOpacity(0.8), fontSize: 10, fontStyle: FontStyle.italic),
+                    style: TextStyle(color: Colors.yellow.withValues(alpha: 0.8), fontSize: 10, fontStyle: FontStyle.italic),
                   ),
                 ],
               ),
@@ -506,7 +506,7 @@ class AROverlayPainter extends CustomPainter {
     
     // Debug: Draw border to confirm CustomPaint is rendering
     final debugBorder = Paint()
-      ..color = Colors.green.withOpacity(0.3)
+  ..color = Colors.green.withValues(alpha: 0.3)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 4.0;
     canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), debugBorder);
@@ -545,19 +545,19 @@ class AROverlayPainter extends CustomPainter {
         
         // Outer glow
         final glowPaint = Paint()
-          ..color = Colors.cyan.withOpacity(opacity * 0.4)
+          ..color = Colors.cyan.withValues(alpha: opacity * 0.4)
           ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8.0);
         canvas.drawCircle(screenPos, glowRadius, glowPaint);
         
         // Main dot
         final dotPaint = Paint()
-          ..color = Colors.cyan.withOpacity(opacity)
+          ..color = Colors.cyan.withValues(alpha: opacity)
           ..style = PaintingStyle.fill;
         canvas.drawCircle(screenPos, dotRadius, dotPaint);
         
         // White center highlight
         final highlightPaint = Paint()
-          ..color = Colors.white.withOpacity(opacity * 0.7);
+          ..color = Colors.white.withValues(alpha: opacity * 0.7);
         canvas.drawCircle(screenPos, highlightRadius, highlightPaint);
       }
     }
@@ -580,7 +580,7 @@ class AROverlayPainter extends CustomPainter {
         // Arrow color: right turn = orange, left turn = blue
         final color = arrow.isTurnRight ? Colors.orange : Colors.blue;
         final paint = Paint()
-          ..color = color.withOpacity(0.85)
+          ..color = color.withValues(alpha: 0.85)
           ..style = PaintingStyle.fill;
 
         // Relative bearing between user heading and arrow bearing
@@ -605,7 +605,7 @@ class AROverlayPainter extends CustomPainter {
         final rotated = _rotatePath(path, screenPos, radians);
         canvas.drawPath(rotated, paint);
         canvas.drawPath(rotated, Paint()
-          ..color = Colors.white.withOpacity(0.9)
+          ..color = Colors.white.withValues(alpha: 0.9)
           ..style = PaintingStyle.stroke
           ..strokeWidth = 2);
       }

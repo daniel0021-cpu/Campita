@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'screens/enhanced_campus_map.dart';
 import 'theme/app_theme.dart';
 
@@ -13,12 +14,13 @@ void main() {
 }
 
 class CampusNavigationApp extends StatelessWidget {
-  const CampusNavigationApp({super.key});
+  final bool testMode;
+  const CampusNavigationApp({super.key, this.testMode = false});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Igbinedion University Campus Navigation',
+      title: 'CampusNav',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
@@ -34,7 +36,20 @@ class CampusNavigationApp extends StatelessWidget {
           centerTitle: true,
         ),
       ),
-      home: const SplashScreen(),
+      // In test mode, avoid loading the full map / network stack; provide a lightweight home.
+      home: testMode ? const _TestHome() : const SplashScreen(),
+    );
+  }
+}
+
+class _TestHome extends StatelessWidget {
+  const _TestHome();
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(
+      body: Center(
+        child: Text('CampusNav'),
+      ),
     );
   }
 }
@@ -86,23 +101,23 @@ class _SplashScreenState extends State<SplashScreen>
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(
-                Icons.location_on,
-                size: 100,
-                color: AppColors.white,
+              SvgPicture.asset(
+                'assets/logo/modern_logo.svg',
+                width: 150,
+                height: 150,
               ),
               const SizedBox(height: 24),
               Text(
-                'Igbinedion University',
+                'CampusNav',
                 style: AppTextStyles.heading1.copyWith(
                   color: AppColors.white,
                 ),
               ),
               const SizedBox(height: 8),
               Text(
-                'Campus Navigation',
+                'Igbinedion University Okada',
                 style: AppTextStyles.heading3.copyWith(
-                  color: AppColors.white.withOpacity(0.9),
+                  color: AppColors.white.withAlpha(30),
                 ),
               ),
             ],

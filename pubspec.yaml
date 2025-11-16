@@ -32,6 +32,8 @@ dependencies:
   camera: ^0.10.5+5
   sensors_plus: ^4.0.2
   flutter_compass: ^0.8.0
+  flutter_svg: ^2.0.9
+  cupertino_icons: ^1.0.6
 
 dev_dependencies:
   flutter_test:
@@ -46,5 +48,6 @@ flutter:
   assets:
     - assets/buildings/
     - assets/videos/
+    - assets/logo/
 
     

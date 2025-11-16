@@ -1,0 +1,69 @@
+name: Deploy Web
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ master ]
+
+jobs:
+  build-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.0'
+          channel: 'stable'
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build web release
+        run: flutter build web --release --no-wasm-dry-run
+
+      - name: Archive build output
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-build
+          path: build/web
+
+      - name: Install Node (for Vercel CLI)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Vercel CLI
+        run: npm install -g vercel
+
+      - name: Deploy to Vercel
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          if [ -z "$VERCEL_TOKEN" ] || [ -z "$VERCEL_ORG_ID" ] || [ -z "$VERCEL_PROJECT_ID" ]; then
+            echo "Missing Vercel secrets: VERCEL_TOKEN, VERCEL_ORG_ID, or VERCEL_PROJECT_ID" >&2
+            exit 1
+          fi
+          vercel pull --yes --environment=production --token $VERCEL_TOKEN
+          vercel deploy build/web --prod --confirm --token $VERCEL_TOKEN > deploy_url.txt
+          echo "Deployment URL:"; cat deploy_url.txt
+      - name: Alias production (campita.vercel.app)
+        if: success()
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          if [ -z "$VERCEL_TOKEN" ]; then
+            echo "Skipping alias: missing VERCEL_TOKEN"; exit 0; fi
+          DEPLOY_URL=$(cat deploy_url.txt | head -n1 | tr -d ' \r')
+          if [ -z "$DEPLOY_URL" ]; then echo "No deployment URL found" >&2; exit 1; fi
+          echo "Setting alias campita.vercel.app -> $DEPLOY_URL";
+          vercel alias set "$DEPLOY_URL" campita.vercel.app --token $VERCEL_TOKEN || echo "Alias step failed (domain may already point or need manual verification)."
+
+      - name: Output deployment URL
+        run: |
+          echo "Deployment URL from file:";
+          cat deploy_url.txt
