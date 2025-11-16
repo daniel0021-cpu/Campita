@@ -1344,7 +1344,7 @@ out skel qt;
                     _mapController.move(_mapController.camera.center, newZoom);
                     setState(() => _currentZoom = newZoom);
                   },
-                  child: Container(
+                  child: SizedBox(
                     width: 48,
                     height: 48,
                     child: Icon(Icons.add, color: AppColors.primary),
@@ -1357,7 +1357,7 @@ out skel qt;
                     _mapController.move(_mapController.camera.center, newZoom);
                     setState(() => _currentZoom = newZoom);
                   },
-                  child: Container(
+                  child: SizedBox(
                     width: 48,
                     height: 48,
                     child: Icon(Icons.remove, color: AppColors.primary),
@@ -1394,7 +1394,7 @@ out skel qt;
               }
             });
           },
-          child: Container(
+          child: SizedBox(
             width: 48,
             height: 48,
             child: Column(
@@ -1434,7 +1434,7 @@ out skel qt;
         color: Colors.white,
         child: InkWell(
           onTap: _loadingOSMData ? null : _loadOSMBuildings,
-          child: Container(
+          child: SizedBox(
             width: 48,
             height: 48,
             child: _loadingOSMData
