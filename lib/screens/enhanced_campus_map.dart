@@ -1,8 +1,10 @@
 // Enhanced Campus Map with Google Maps-style features
+import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import 'settings_screen.dart';
 import 'package:flutter_compass/flutter_compass.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
@@ -14,8 +16,23 @@ import '../models/campus_building.dart';
 import '../theme/app_theme.dart';
 import '../utils/osm_data_fetcher.dart';
 import 'directions_screen.dart';
+import 'route_preview_screen.dart';
+import 'live_navigation_screen.dart';
+ import '../utils/preferences_service.dart';
+ import '../utils/favorites_service.dart';
+ import '../utils/app_settings.dart';
+ import 'search_screen.dart';
+ import 'subscription_screen.dart';
+ import 'profile_screen.dart';
+ import 'favorites_screen.dart';
+ import '../utils/app_routes.dart';
+ enum MapStyle { standard, satellite, topo }
 
-enum MapStyle { standard, satellite, topo }
+class _Tuple {
+  final double item1; // distanceMeters
+  final double item2; // durationSeconds
+  const _Tuple(this.item1, this.item2);
+}
 
 class EnhancedCampusMap extends StatefulWidget {
   const EnhancedCampusMap({super.key});
@@ -51,19 +68,46 @@ class _EnhancedCampusMapState extends State<EnhancedCampusMap> with TickerProvid
   MapStyle _mapStyle = MapStyle.standard;
   int _selectedNavIndex = 0;
   final List<CampusBuilding> _favorites = [];
+  final PreferencesService _prefs = PreferencesService();
+  final FavoritesService _favService = FavoritesService();
   late AnimationController _pulseController;
+  StreamSubscription<Position>? _posSub;
+  bool _locationEnabled = true;
   late Animation<double> _pulseAnimation;
   double _locBtnScale = 1.0;
   double _viewToggleScale = 1.0;
   bool _outsideOkadaWarned = false;
+  // Route draw animation
+  late AnimationController _routeDrawController;
+  late Animation<double> _routeDrawProgress;
+  // Precomputed ETAs/distances per mode for bottom sheet
+  Map<String, double>? _etaSecsByMode; // key: foot/bicycle/car/bus
+  Map<String, double>? _distByMode;
 
   @override
   void initState() {
     super.initState();
     _searchController.addListener(_onSearchChanged);
-    _getCurrentLocation();
     _loadOSMFootpaths();
     _loadOSMBuildings();
+    _loadUserPreferences();
+    // listen for live settings updates
+    AppSettings.mapStyle.addListener(() {
+      final s = AppSettings.mapStyle.value.toLowerCase();
+      setState(() {
+        _mapStyle = s == 'satellite'
+            ? MapStyle.satellite
+            : (s == 'terrain' ? MapStyle.topo : MapStyle.standard);
+      });
+    });
+    AppSettings.locationServices.addListener(() {
+      final enabled = AppSettings.locationServices.value;
+      if (enabled) {
+        _startLocation();
+      } else {
+        _stopLocation();
+      }
+    });
     _pulseController = AnimationController(
       duration: const Duration(milliseconds: 1500),
       vsync: this,
@@ -71,12 +115,54 @@ class _EnhancedCampusMapState extends State<EnhancedCampusMap> with TickerProvid
     _pulseAnimation = Tween<double>(begin: 1.0, end: 1.4).animate(
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
+    _routeDrawController = AnimationController(
+      duration: const Duration(milliseconds: 900),
+      vsync: this,
+    );
+    _routeDrawProgress = CurvedAnimation(parent: _routeDrawController, curve: Curves.easeOut);
     FlutterCompass.events?.listen((event) {
       final h = event.heading;
       if (h != null && mounted) {
         setState(() => _userHeading = h);
       }
     });
+  }
+
+  Future<void> _loadUserPreferences() async {
+    final mapStyle = await _prefs.getString(PreferencesKeys.mapStyle);
+    final nav = await _prefs.getString(PreferencesKeys.navigationMode);
+    final lastMode = await _prefs.getString(PreferencesKeys.lastTransportMode);
+    final loc = await _prefs.getBool(PreferencesKeys.locationServices);
+    if (!mounted) return;
+    setState(() {
+      switch ((mapStyle ?? '').toLowerCase()) {
+        case 'satellite':
+          _mapStyle = MapStyle.satellite;
+          break;
+        case 'terrain':
+          _mapStyle = MapStyle.topo;
+          break;
+        default:
+          _mapStyle = MapStyle.standard;
+      }
+      if (nav != null) {
+        final lower = nav.toLowerCase();
+        if (lower == 'driving') {
+          _transportMode = 'car';
+        } else if (lower == 'transit') {
+          _transportMode = 'bus';
+        } else {
+          _transportMode = 'foot';
+        }
+      }
+      if (lastMode != null && lastMode.isNotEmpty) {
+        _transportMode = lastMode; // override with persisted last choice
+      }
+      _locationEnabled = loc ?? true;
+    });
+    if (_locationEnabled) {
+      _startLocation();
+    }
   }
 
   Future<void> _loadOSMBuildings() async {
@@ -88,12 +174,14 @@ class _EnhancedCampusMapState extends State<EnhancedCampusMap> with TickerProvid
           _osmBuildings = buildings;
           _loadingOSMData = false;
         });
+        _loadFavoritesFromPrefs();
         debugPrint('Loaded ${buildings.length} buildings from OSM');
       } else {
         setState(() {
           _osmBuildings = campusBuildings;
           _loadingOSMData = false;
         });
+        _loadFavoritesFromPrefs();
         debugPrint('Using static building data (${campusBuildings.length})');
       }
     } catch (e) {
@@ -102,7 +190,19 @@ class _EnhancedCampusMapState extends State<EnhancedCampusMap> with TickerProvid
         _osmBuildings = campusBuildings;
         _loadingOSMData = false;
       });
+      _loadFavoritesFromPrefs();
     }
+  }
+
+  Future<void> _loadFavoritesFromPrefs() async {
+    final source = _osmBuildings.isNotEmpty ? _osmBuildings : campusBuildings;
+    final favs = await _favService.loadFavorites(source);
+    if (!mounted) return;
+    setState(() {
+      _favorites
+        ..clear()
+        ..addAll(favs);
+    });
   }
 
   Future<void> _loadOSMFootpaths() async {
@@ -159,7 +259,7 @@ out geom;
     });
   }
 
-  Future<void> _getCurrentLocation() async {
+  Future<void> _startLocation() async {
     try {
       final position = await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(
@@ -174,7 +274,8 @@ out geom;
         }
       }
       setState(() => _currentLocation = userLocation);
-      Geolocator.getPositionStream(
+      _posSub?.cancel();
+      _posSub = Geolocator.getPositionStream(
         locationSettings: const LocationSettings(
           accuracy: LocationAccuracy.best,
           distanceFilter: 5,
@@ -195,6 +296,11 @@ out geom;
     } catch (e) {
       debugPrint('Location error: $e');
     }
+  }
+
+  void _stopLocation() {
+    _posSub?.cancel();
+    _posSub = null;
   }
 
   bool _isWithinOkadaBounds(LatLng location) {
@@ -263,7 +369,7 @@ out geom;
           TextButton(
             onPressed: () {
               Navigator.of(context).pop();
-              _getCurrentLocation();
+              _startLocation();
             },
             style: TextButton.styleFrom(foregroundColor: AppColors.primary),
             child: Text('RETRY', style: AppTextStyles.button),
@@ -337,7 +443,19 @@ out geom;
           print('No road route found, trying OSRM fallback');
           
           // Fallback to OSRM for car/bus if OSM road routing fails
-          String routingProfile = _transportMode == 'bus' ? 'car' : _transportMode;
+          String routingProfile;
+          switch (_transportMode) {
+            case 'bus':
+            case 'car':
+              routingProfile = 'driving';
+              break;
+            case 'bicycle':
+              routingProfile = 'cycling';
+              break;
+            case 'foot':
+            default:
+              routingProfile = 'walking';
+          }
           
           final url = 'https://router.project-osrm.org/route/v1/$routingProfile/'
               '${start.longitude},${start.latitude};'
@@ -369,9 +487,22 @@ out geom;
           _routeDuration = duration;
           _selectedBuilding = destination;
           _destinationEntrance = routePoints.isNotEmpty ? routePoints.last : null;
-          _isNavigating = true; // Enter focused navigation mode
+          _isNavigating = false; // use preview screen instead
         });
-        
+        _routeDrawController.forward(from: 0);
+        // Navigate to preview screen
+        if (mounted) {
+          await Navigator.of(context).push(MaterialPageRoute(
+            builder: (_) => RoutePreviewScreen(
+              routePoints: routePoints,
+              start: _currentLocation ?? _campusCenter,
+              end: destination.coordinates,
+              distanceMeters: distance,
+              durationSeconds: duration,
+              transportMode: _transportMode,
+            ),
+          ));
+        }
         _fitRouteBounds();
       } else {
         // No route found - show helpful message
@@ -466,10 +597,14 @@ out skel qt;
         
         print('Pedestrian network: ${nodes.length} nodes, ${wayNodes.length} ways');
         
-        // Find nearest nodes to start and end
-        // For end node, require at least 15m from building to stay on footpath
-        int? startNode = _findNearestNodeId(start, nodes);
-        int? endNode = _findNearestNodeId(end, nodes, minDistanceFromTarget: 15.0);
+    // Prefer routing to a mapped entrance node, if available
+    LatLng? entrance = await _fetchNearestEntrance(end);
+    // Find nearest nodes to start and end
+    // For end node, if entrance is available, snap to it; otherwise require at least 15m from building to stay on footpath
+    int? startNode = _findNearestNodeId(start, nodes);
+    int? endNode = entrance != null
+      ? _findNearestNodeId(entrance, nodes)
+      : _findNearestNodeId(end, nodes, minDistanceFromTarget: 15.0);
         
         if (startNode != null && endNode != null) {
           // Use A* pathfinding through the pedestrian graph
@@ -492,7 +627,11 @@ out skel qt;
               }
             }
             // End at the nearest footpath node, not the building 
-            print('Pedestrian route: ${route.length} points, ending at footpath');
+            // If we found an entrance, remember it for UI display; end stays on the nearest footpath node
+            if (entrance != null) {
+              _destinationEntrance = entrance;
+            }
+            print('Pedestrian route: ${route.length} points, ending at ${entrance != null ? 'building entrance' : 'footpath'}');
             if (route.length >= 2) {
               final newBearing = _computeBearing(route[0], route[1]);
               setState(() => _mapBearing = newBearing);
@@ -508,6 +647,55 @@ out skel qt;
     }
     
     return [];
+  }
+
+  // Query the nearest OSM entrance node (entrance=*) around a target location
+  Future<LatLng?> _fetchNearestEntrance(LatLng target) async {
+    try {
+      final double radiusMeters = 60; // search within ~60m around the destination
+      final query = '''
+[out:json];
+node(around:${radiusMeters},${target.latitude},${target.longitude})["entrance"];
+out body;''';
+      final response = await http.post(
+        Uri.parse('https://overpass-api.de/api/interpreter'),
+        body: query,
+      );
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final elements = (data['elements'] as List?) ?? [];
+        if (elements.isEmpty) return null;
+        // Prefer entrance=main if present; otherwise the closest node
+        LatLng? best;
+        double bestDist = double.infinity;
+        for (final el in elements) {
+          if (el['type'] != 'node') continue;
+          final lat = (el['lat'] as num).toDouble();
+          final lon = (el['lon'] as num).toDouble();
+          final node = LatLng(lat, lon);
+          final tags = (el['tags'] as Map?) ?? {};
+          final isMain = (tags['entrance']?.toString().toLowerCase() == 'main');
+          final d = const Distance().distance(target, node);
+          if (isMain) {
+            // pick first main or closer main
+            if (d < bestDist) {
+              best = node;
+              bestDist = d;
+            }
+          } else if (best == null) {
+            // track the closest if no main found yet
+            if (d < bestDist) {
+              best = node;
+              bestDist = d;
+            }
+          }
+        }
+        return best;
+      }
+    } catch (e) {
+      debugPrint('Entrance lookup failed: $e');
+    }
+    return null;
   }
 
   // ignore: unused_element
@@ -985,6 +1173,8 @@ out skel qt;
         _recentSearches.removeRange(10, _recentSearches.length);
       }
     });
+    // Persist recent search names
+    _prefs.saveRecentSearches(_recentSearches.map((b) => b.name).toList());
   }
 
   void _clearRoute() {
@@ -1190,6 +1380,7 @@ out skel qt;
   void dispose() {
     _searchController.dispose();
     _pulseController.dispose();
+    _routeDrawController.dispose();
     super.dispose();
   }
 
@@ -1260,7 +1451,7 @@ out skel qt;
                 PolylineLayer(
                   polylines: [
                     Polyline(
-                      points: _routePolyline,
+                      points: _animatedRoutePoints(),
                       color: AppColors.routeColor,
                       strokeWidth: 6.0,
                       borderColor: Colors.white,
@@ -1275,13 +1466,13 @@ out skel qt;
           
           if (!_isNavigating) _buildSearchBar(),
           if (!_isNavigating) _buildCategoryFilter(),
-          if (!_isNavigating) _buildZoomControls(),
           if (!_isNavigating) _buildCompassButton(),
           if (!_isNavigating) _build2D3DToggle(),
           _buildMyLocationButton(), // Keep location button always
           if (!_isNavigating) _buildRefreshButton(),
-          if (!_isNavigating) _buildLayersButton(),
-          if (!_isNavigating && _selectedNavIndex == 1) _buildFavoritesPanel(),
+          // Layers button removed per new UI spec
+          // Favorites overlay removed: dedicated screen now handles favorites
+          // if (!_isNavigating && _selectedNavIndex == 1) _buildFavoritesPanel(),
           if (!_isNavigating && _selectedNavIndex == 3) _buildSettingsPanel(),
           if (_isNavigating) _buildNavigationHUD(),
           
@@ -1318,6 +1509,13 @@ out skel qt;
       ),
       bottomNavigationBar: _isNavigating ? null : _buildBottomNavBar(),
     );
+  }
+
+  List<LatLng> _animatedRoutePoints() {
+    if (_routePolyline.isEmpty) return _routePolyline;
+    final t = _routeDrawProgress.value.clamp(0.0, 1.0);
+    final count = (t * _routePolyline.length).clamp(2, _routePolyline.length.toDouble()).toInt();
+    return _routePolyline.take(count).toList();
   }
 
   // Focused navigation HUD (Google Maps style): start/destination + ETA + actions
@@ -1392,19 +1590,20 @@ out skel qt;
   }
 
   Widget _buildSearchBar() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Positioned(
       top: MediaQuery.of(context).padding.top + 16,
       left: 16,
-      right: 16,
+      right: 80, // Give more space for buttons on right
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppColors.cardBackground(context),
           borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.1),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
+              color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.1),
+              blurRadius: 10,
+              offset: const Offset(0, 3),
             ),
           ],
         ),
@@ -1425,7 +1624,22 @@ out skel qt;
                       });
                     },
                   )
-                : null,
+                : IconButton(
+                    icon: const Icon(Icons.tune, color: AppColors.primary),
+                    tooltip: 'Open full search',
+                    onPressed: () async {
+                      final result = await Navigator.push<CampusBuilding>(
+                        context,
+                        AppRoutes.fadeRoute(const SearchScreen()),
+                      );
+                      if (result != null) {
+                        setState(() {
+                          _selectedBuilding = result;
+                        });
+                        _mapController.move(result.coordinates, 18);
+                      }
+                    },
+                  ),
             border: InputBorder.none,
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 16,
@@ -1480,7 +1694,8 @@ out skel qt;
       trailing: selected ? const Icon(Icons.check, color: AppColors.primary) : null,
       onTap: () => Navigator.of(context).pop(style),
     );
-  }
+  } 
+  
 
   String _tileTemplateFor(MapStyle style) {
     switch (style) {
@@ -1497,6 +1712,7 @@ out skel qt;
 
   Widget _buildCategoryChip(String label, BuildingCategory? category) {
     final isSelected = _selectedCategory == category;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     
     return FilterChip(
       label: Text(label),
@@ -1506,10 +1722,10 @@ out skel qt;
           _selectedCategory = selected ? category : null;
         });
       },
-      backgroundColor: AppColors.ash,
+      backgroundColor: isDark ? AppColors.darkCard : AppColors.ash,
       selectedColor: AppColors.primary,
       labelStyle: GoogleFonts.notoSans(
-        color: isSelected ? Colors.white : AppColors.darkGrey,
+        color: isSelected ? Colors.white : AppColors.textPrimaryAdaptive(context),
         fontWeight: FontWeight.w500,
       ),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -1517,6 +1733,7 @@ out skel qt;
   }
 
   Widget _buildMyLocationButton() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Positioned(
       bottom: 240,
       right: 16,
@@ -1524,25 +1741,34 @@ out skel qt;
         scale: _locBtnScale,
         duration: const Duration(milliseconds: 140),
         curve: Curves.easeOut,
-        child: FloatingActionButton(
-          heroTag: 'myLocation',
-          backgroundColor: Colors.white,
-          onPressed: () {
-            if (_currentLocation != null) {
-              // Animate to current location
-              _mapController.move(_currentLocation!, 18.0);
-              setState(() {
-                _mapRotation = 0.0;
+        child: Material(
+          elevation: 8,
+          shape: const CircleBorder(),
+          color: AppColors.cardBackground(context),
+          shadowColor: Colors.black.withOpacity(isDark ? 0.5 : 0.15),
+          child: InkWell(
+            customBorder: const CircleBorder(),
+            onTap: () {
+              if (_currentLocation != null) {
+                _mapController.move(_currentLocation!, 18.0);
+                setState(() => _mapRotation = 0.0);
+                _mapController.rotate(0.0);
+              }
+              setState(() => _locBtnScale = 0.88);
+              Future.delayed(const Duration(milliseconds: 160), () {
+                if (mounted) setState(() => _locBtnScale = 1.0);
               });
-              _mapController.rotate(0.0);
-            }
-            // Tap feedback
-            setState(() => _locBtnScale = 0.85);
-            Future.delayed(const Duration(milliseconds: 160), () {
-              if (mounted) setState(() => _locBtnScale = 1.0);
-            });
-          },
-          child: const Icon(Icons.my_location, color: AppColors.primary),
+            },
+            child: Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: AppColors.borderAdaptive(context).withOpacity(0.5)),
+              ),
+              child: const Icon(Icons.my_location_rounded, color: AppColors.primary, size: 26),
+            ),
+          ),
         ),
       ),
     );
@@ -1560,7 +1786,7 @@ out skel qt;
         child: Material(
           elevation: isRotated ? 6 : 4,
           shape: const CircleBorder(),
-          color: Colors.white,
+          color: AppColors.cardBackground(context),
           child: InkWell(
             customBorder: const CircleBorder(),
             onTap: () {
@@ -1674,7 +1900,7 @@ out skel qt;
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(8),
           ),
-          color: _is3DView ? AppColors.primary : Colors.white,
+          color: _is3DView ? AppColors.primary : AppColors.cardBackground(context),
           child: InkWell(
             onTap: () {
               setState(() {
@@ -1733,14 +1959,14 @@ out skel qt;
 
   Widget _buildRefreshButton() {
     return Positioned(
-      bottom: 240,
+      bottom: 320,
       right: 16,
       child: Material(
         elevation: 4,
         borderRadius: BorderRadius.circular(12),
         clipBehavior: Clip.antiAlias,
-  shadowColor: Colors.black.withValues(alpha: 0.3),
-        color: Colors.white,
+        shadowColor: Colors.black.withValues(alpha: 0.3),
+        color: AppColors.cardBackground(context),
         child: InkWell(
           onTap: _loadingOSMData ? null : _loadOSMBuildings,
           child: SizedBox(
@@ -1825,6 +2051,7 @@ out skel qt;
   Widget _buildSearchResults() {
     final bool showingRecents = _searchController.text.isEmpty;
     final List<CampusBuilding> list = showingRecents ? _recentSearches : _filteredBuildings;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     if (list.isEmpty) return const SizedBox.shrink();
 
     return Positioned(
@@ -1836,11 +2063,11 @@ out skel qt;
           maxHeight: MediaQuery.of(context).size.height * 0.35,
         ),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppColors.cardBackground(context),
           borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.1),
+              color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.1),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -1956,6 +2183,7 @@ out skel qt;
   Widget _buildBuildingInfo() {
     if (_selectedBuilding == null) return const SizedBox.shrink();
     final b = _selectedBuilding!;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final distance = _currentLocation != null
         ? const Distance().distance(_currentLocation!, b.coordinates)
         : null;
@@ -1965,11 +2193,11 @@ out skel qt;
       right: 0,
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppColors.cardBackground(context),
           borderRadius: const BorderRadius.vertical(top: Radius.circular(AppSizes.radiusXLarge)),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.12),
+              color: Colors.black.withValues(alpha: isDark ? 0.4 : 0.12),
               blurRadius: 16,
               offset: const Offset(0, -4),
             ),
@@ -2102,29 +2330,41 @@ out skel qt;
     }
   }
 
-  // Bottom navigation bar
+  // Bottom navigation bar — floating pill with rounded background and highlight
   Widget _buildBottomNavBar() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
-            blurRadius: 12,
-            offset: const Offset(0, -2),
-          ),
-        ],
-      ),
+      color: Colors.transparent,
+      padding: const EdgeInsets.only(bottom: 12),
       child: SafeArea(
         top: false,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            _navItem(Icons.home, 'Home', 0),
-            _navItem(Icons.star, 'Favorites', 1),
-            _navItem(Icons.layers, 'Layers', 2),
-            _navItem(Icons.person, 'Profile', 3),
-          ],
+        child: Center(
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: AppColors.cardBackground(context),
+              borderRadius: BorderRadius.circular(28),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: isDark ? 0.4 : 0.12),
+                  blurRadius: 16,
+                  offset: const Offset(0, 6),
+                ),
+              ],
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _navItem(Icons.home, 'Home', 0),
+                const SizedBox(width: 6),
+                _navItem(Icons.star, 'Favorites', 1),
+                const SizedBox(width: 6),
+                _navItem(Icons.workspace_premium, 'Subscription', 2),
+                const SizedBox(width: 6),
+                _navItem(Icons.person, 'Profile', 3),
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -2133,11 +2373,43 @@ out skel qt;
   Widget _navItem(IconData icon, String label, int index) {
     final selected = _selectedNavIndex == index;
     return InkWell(
-      onTap: () => setState(() => _selectedNavIndex = index),
+      onTap: () {
+        if (index == 1) {
+          // Dedicated Favorites screen
+          Navigator.push(
+            context,
+            AppRoutes.slideRoute(const FavoritesScreen()),
+          ).then((result) {
+            if (result is CampusBuilding) {
+              setState(() => _selectedBuilding = result);
+              _mapController.move(result.coordinates, 18);
+            }
+          });
+        } else if (index == 2) {
+          // Subscription screen replaces Layers
+          Navigator.push(
+            context,
+            AppRoutes.scaleRoute(const SubscriptionScreen()),
+          );
+        } else if (index == 3) {
+          // Profile screen
+          Navigator.push(
+            context,
+            AppRoutes.slideRoute(const ProfileScreen()),
+          ).then((result) {
+            if (result is CampusBuilding) {
+              setState(() => _selectedBuilding = result);
+              _mapController.move(result.coordinates, 18);
+            }
+          });
+        } else {
+          setState(() => _selectedNavIndex = index);
+        }
+      },
       borderRadius: BorderRadius.circular(40),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
           color: selected ? AppColors.primary.withValues(alpha: 0.12) : Colors.transparent,
           borderRadius: BorderRadius.circular(40),
@@ -2145,12 +2417,12 @@ out skel qt;
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, color: selected ? AppColors.primary : AppColors.grey, size: 24),
-            const SizedBox(height: 2),
+            Icon(icon, color: selected ? AppColors.primary : AppColors.grey, size: 22),
+            const SizedBox(height: 1),
             Text(
               label,
               style: GoogleFonts.notoSans(
-                fontSize: 11,
+                fontSize: 10,
                 fontWeight: FontWeight.w600,
                 color: selected ? AppColors.primary : AppColors.grey,
               ),
@@ -2161,67 +2433,11 @@ out skel qt;
     );
   }
 
-  // Layers button
-  Widget _buildLayersButton() {
-    return Positioned(
-      top: MediaQuery.of(context).padding.top + 16,
-      right: 16,
-      child: Material(
-        elevation: 4,
-        shape: const CircleBorder(),
-        color: Colors.white,
-        child: InkWell(
-          customBorder: const CircleBorder(),
-          onTap: _openLayers,
-          child: const SizedBox(
-            width: 48,
-            height: 48,
-            child: Icon(Icons.layers, color: AppColors.primary),
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _openLayers() async {
-    final selected = await showModalBottomSheet<MapStyle>(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    const Icon(Icons.layers, color: AppColors.primary),
-                    const SizedBox(width: 8),
-                    Text('Map Layers', style: GoogleFonts.notoSans(fontSize: 16, fontWeight: FontWeight.bold)),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                _mapStyleTile(MapStyle.standard, 'Standard (OSM)', Icons.map),
-                _mapStyleTile(MapStyle.satellite, 'Satellite (Esri)', Icons.satellite_alt),
-                _mapStyleTile(MapStyle.topo, 'Topographic', Icons.terrain),
-                const SizedBox(height: 12),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-    if (selected != null) {
-      setState(() => _mapStyle = selected);
-    }
-  }
+  // Layers button and modal removed per new spec
 
   // Favorites panel
   Widget _buildFavoritesPanel() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Positioned(
       bottom: 80,
       left: 16,
@@ -2232,11 +2448,11 @@ out skel qt;
           key: ValueKey(_favorites.length),
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: AppColors.cardBackground(context),
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.08),
+                color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.08),
                 blurRadius: 12,
                 offset: const Offset(0, 4),
               ),
@@ -2270,7 +2486,7 @@ out skel qt;
                           width: 160,
                           padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
-                            color: AppColors.ash,
+                            color: isDark ? AppColors.darkSurface : AppColors.ash,
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Column(
@@ -2309,6 +2525,7 @@ out skel qt;
 
   // Simple settings panel placeholder
   Widget _buildSettingsPanel() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Positioned(
       bottom: 80,
       left: 16,
@@ -2316,11 +2533,11 @@ out skel qt;
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppColors.cardBackground(context),
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.08),
+              color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.08),
               blurRadius: 12,
               offset: const Offset(0, 4),
             ),
@@ -2349,27 +2566,36 @@ out skel qt;
     setState(() {
       if (_favorites.any((b) => b.name == building.name)) {
         _favorites.removeWhere((b) => b.name == building.name);
+        _favService.removeFavorite(building.name);
       } else {
         _favorites.add(building);
+        _favService.addFavorite(building.name);
       }
     });
   }
 
-  void _showBuildingSheet(CampusBuilding building) {
+  void _showBuildingSheet(CampusBuilding building) async {
     _addToRecent(building);
     setState(() => _selectedBuilding = building);
     final isFav = _favorites.any((b) => b.name == building.name);
     final distance = _currentLocation != null
         ? const Distance().distance(_currentLocation!, building.coordinates)
         : null;
+    // Precompute precise ETAs via OSRM in background for all modes
+    final start = _currentLocation ?? _campusCenter;
+    _precomputeEtas(start, building.coordinates);
+    await Future.delayed(const Duration(milliseconds: 90));
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      backgroundColor: Colors.transparent,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (ctx) {
-        return DraggableScrollableSheet(
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          child: DraggableScrollableSheet(
           expand: false,
             initialChildSize: 0.40,
             minChildSize: 0.30,
@@ -2377,10 +2603,22 @@ out skel qt;
             builder: (context, scrollController) {
               return SingleChildScrollView(
                 controller: scrollController,
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // handle bar
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        margin: const EdgeInsets.only(bottom: 12),
+                        decoration: BoxDecoration(
+                          color: AppColors.lightGrey,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
                     Row(
                       children: [
                         Container(
@@ -2429,14 +2667,17 @@ out skel qt;
                     if (building.description != null)
                       Text(building.description!, style: GoogleFonts.notoSans(fontSize: 14, color: AppColors.darkGrey)),
                     const SizedBox(height: 18),
+                    // Transport selector with quick ETAs
+                    _buildTransportSelector(building, distance),
+                    const SizedBox(height: 16),
                     Wrap(
                       spacing: 12,
                       runSpacing: 12,
                       children: [
                         ElevatedButton.icon(
-                          onPressed: () {
+                          onPressed: () async {
                             Navigator.pop(context);
-                            _calculateRoute(building);
+                            await _calculateRoute(building);
                           },
                           icon: Icon(_getTransportIcon()),
                           label: const Text('Directions'),
@@ -2448,9 +2689,18 @@ out skel qt;
                           ),
                         ),
                         OutlinedButton.icon(
-                          onPressed: () {
+                          onPressed: () async {
                             Navigator.pop(context);
-                            setState(() => _currentLocation = building.coordinates);
+                            // compute and go to live navigation directly
+                            await _calculateRoute(building);
+                            if (!mounted || _routePolyline.isEmpty) return;
+                            await Navigator.of(context).push(MaterialPageRoute(
+                              builder: (_) => LiveNavigationScreen(
+                                routePoints: _routePolyline,
+                                destination: building.coordinates,
+                                transportMode: _transportMode,
+                              ),
+                            ));
                           },
                           icon: const Icon(Icons.play_arrow),
                           label: const Text('Start'),
@@ -2506,9 +2756,140 @@ out skel qt;
                 ),
               );
             }
+          ),
         );
       },
     );
+  }
+
+  Widget _buildTransportSelector(CampusBuilding building, double? straightDistance) {
+    final modes = const [
+      {'key': 'foot', 'icon': Icons.directions_walk, 'label': 'Walk'},
+      {'key': 'bicycle', 'icon': Icons.directions_bike, 'label': 'Bike'},
+      {'key': 'car', 'icon': Icons.directions_car, 'label': 'Car'},
+      {'key': 'bus', 'icon': Icons.directions_bus, 'label': 'Bus'},
+    ];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Mode & ETA', style: GoogleFonts.notoSans(fontSize: 13, fontWeight: FontWeight.w600)),
+        const SizedBox(height: 8),
+        Row(
+          children: modes.map((m) {
+            final key = m['key'] as String;
+            final selected = _transportMode == key;
+            final eta = _etaLabelFor(key, straightDistance);
+            return Expanded(
+              child: Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: InkWell(
+                  onTap: () async {
+                    setState(() => _transportMode = key);
+                    await _prefs.saveSettings(lastTransportMode: key);
+                  },
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    decoration: BoxDecoration(
+                      color: selected ? AppColors.primary : AppColors.ash,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: selected ? AppColors.primary : AppColors.borderAdaptive(context)),
+                    ),
+                    child: Column(
+                      children: [
+                        Icon(m['icon'] as IconData, color: selected ? Colors.white : AppColors.darkGrey),
+                        const SizedBox(height: 4),
+                        Text(m['label'] as String, style: GoogleFonts.notoSans(fontSize: 11, color: selected ? Colors.white : AppColors.darkGrey)),
+                        if (eta.isNotEmpty) ...[
+                          const SizedBox(height: 2),
+                          Text(eta, style: GoogleFonts.notoSans(fontSize: 10, color: selected ? Colors.white70 : AppColors.grey)),
+                        ]
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+      ],
+    );
+  }
+
+  String _formatEtaApprox(double meters, String mode) {
+    double speed; // m/s
+    switch (mode) {
+      case 'bicycle': speed = 4.2; break;
+      case 'car':
+      case 'bus': speed = 8.3; break;
+      default: speed = 1.4; break;
+    }
+    final secs = meters / speed;
+    final mins = (secs / 60).ceil();
+    return mins < 60 ? '$mins min' : '${mins ~/ 60}h ${mins % 60}m';
+  }
+
+  Future<void> _precomputeEtas(LatLng start, LatLng end) async {
+    setState(() {
+      _etaSecsByMode = null; // mark loading
+      _distByMode = null;
+    });
+    final Map<String, double> etas = {};
+    final Map<String, double> dists = {};
+    // profiles mapping
+    final profiles = <String, String>{
+      'foot': 'walking',
+      'bicycle': 'cycling',
+      'car': 'driving',
+      'bus': 'driving',
+    };
+    for (final entry in profiles.entries) {
+      try {
+        final res = await _fetchOsrmRoute(entry.value, start, end);
+        if (res != null) {
+          dists[entry.key] = res.item1; // meters
+          etas[entry.key] = res.item2; // seconds
+        }
+      } catch (_) {}
+    }
+    if (mounted) {
+      setState(() {
+        _etaSecsByMode = etas;
+        _distByMode = dists;
+      });
+    }
+  }
+
+  // Returns (distanceMeters, durationSeconds)
+  Future<_Tuple?> _fetchOsrmRoute(String profile, LatLng start, LatLng end) async {
+    final url = 'https://router.project-osrm.org/route/v1/$profile/'
+        '${start.longitude},${start.latitude};'
+        '${end.longitude},${end.latitude}'
+        '?overview=false';
+    final resp = await http.get(Uri.parse(url));
+    if (resp.statusCode == 200) {
+      final data = jsonDecode(resp.body);
+      final routes = data['routes'] as List?;
+      if (routes != null && routes.isNotEmpty) {
+        final r = routes.first as Map;
+        final dist = (r['distance'] as num).toDouble();
+        final dur = (r['duration'] as num).toDouble();
+        return _Tuple(dist, dur);
+      }
+    }
+    return null;
+  }
+
+  String _etaLabelFor(String mode, double? straightLineMeters) {
+    final etaMap = _etaSecsByMode;
+    if (etaMap != null && etaMap.containsKey(mode) && (etaMap[mode] ?? 0) > 0) {
+      final secs = etaMap[mode]!;
+      final mins = (secs / 60).ceil();
+      return mins < 60 ? '$mins min' : '${mins ~/ 60}h ${mins % 60}m';
+    }
+    // fallback approximate if not yet loaded
+    if (straightLineMeters != null) return _formatEtaApprox(straightLineMeters, mode);
+    return '…';
   }
 }
 

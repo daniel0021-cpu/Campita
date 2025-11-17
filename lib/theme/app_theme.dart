@@ -36,6 +36,37 @@ class AppColors {
   static const Color routeColor = Color(0xFF0366FC);
   static const Color userLocationColor = Color(0xFF0366FC);
   static const Color destinationColor = Color(0xFFF44336);
+  
+  // Dark mode colors
+  static const Color darkBackground = Color(0xFF121212);
+  static const Color darkSurface = Color(0xFF1E1E1E);
+  static const Color darkCard = Color(0xFF2C2C2C);
+  static const Color darkBorder = Color(0xFF3A3A3A);
+  
+  // Adaptive colors helpers
+  static Color surface(BuildContext context) {
+    return Theme.of(context).brightness == Brightness.dark ? darkSurface : white;
+  }
+  
+  static Color cardBackground(BuildContext context) {
+    return Theme.of(context).brightness == Brightness.dark ? darkCard : white;
+  }
+  
+  static Color textPrimaryAdaptive(BuildContext context) {
+    return Theme.of(context).brightness == Brightness.dark ? Colors.white : textPrimary;
+  }
+  
+  static Color textSecondaryAdaptive(BuildContext context) {
+    return Theme.of(context).brightness == Brightness.dark ? Colors.white70 : textSecondary;
+  }
+  
+  static Color greyAdaptive(BuildContext context) {
+    return Theme.of(context).brightness == Brightness.dark ? Colors.white54 : grey;
+  }
+  
+  static Color borderAdaptive(BuildContext context) {
+    return Theme.of(context).brightness == Brightness.dark ? darkBorder : lightGrey;
+  }
 }
 
 class AppSizes {

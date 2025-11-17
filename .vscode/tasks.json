@@ -1,0 +1,160 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Build Flutter web (release)",
+			"type": "shell",
+			"command": "flutter",
+			"args": [
+				"build",
+				"web",
+				"--release",
+				"--no-tree-shake-icons",
+				"--dart-define=BUILD_STAMP=UI-SLEEK-REVIVAL-%DATE%-%TIME%"
+			],
+			"isBackground": false,
+			"problemMatcher": [
+				"$gcc"
+			],
+			"group": "build"
+		},
+		{
+			"label": "Deploy to Vercel (prod)",
+			"type": "shell",
+			"command": "vercel",
+			"args": [
+				"--prod",
+				"--yes"
+			],
+			"isBackground": false,
+			"problemMatcher": [
+				"$gcc"
+			],
+			"group": "build"
+		},
+		{
+			"label": "Build Flutter web (release) - floating UI",
+			"type": "shell",
+			"command": "flutter",
+			"args": [
+				"build",
+				"web",
+				"--release",
+				"--no-tree-shake-icons",
+				"--dart-define=BUILD_STAMP=UI-FAB-RESTORE-%DATE%-%TIME%"
+			],
+			"isBackground": false,
+			"problemMatcher": [
+				"$gcc"
+			],
+			"group": "build"
+		},
+		{
+			"label": "Deploy to Vercel (prod) - floating UI",
+			"type": "shell",
+			"command": "vercel",
+			"args": [
+				"--prod",
+				"--yes"
+			],
+			"isBackground": false,
+			"problemMatcher": [
+				"$gcc"
+			],
+			"group": "build"
+		},
+		{
+			"label": "Build Flutter web (release) - no AR button",
+			"type": "shell",
+			"command": "flutter",
+			"args": [
+				"build",
+				"web",
+				"--release",
+				"--no-tree-shake-icons",
+				"--dart-define=BUILD_STAMP=UI-FAB-NO-AR-%DATE%-%TIME%"
+			],
+			"isBackground": false,
+			"problemMatcher": [
+				"$gcc"
+			],
+			"group": "build"
+		},
+		{
+			"label": "Build and Deploy to Vercel",
+			"type": "shell",
+			"command": "flutter build web --release --no-tree-shake-icons --no-wasm-dry-run && cd build\\web && vercel --prod --yes",
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Ad-hoc: Build web release",
+			"type": "shell",
+			"command": "flutter",
+			"args": [
+				"build",
+				"web",
+				"--release",
+				"--no-tree-shake-icons",
+				"--dart-define=BUILD_STAMP=UI-FLOATING-NAV-%DATE%-%TIME%"
+			],
+			"isBackground": false,
+			"problemMatcher": [
+				"$dart"
+			],
+			"group": "build"
+		},
+		{
+			"label": "Ad-hoc: Build web release (profile+splash)",
+			"type": "shell",
+			"command": "flutter",
+			"args": [
+				"build",
+				"web",
+				"--release",
+				"--no-tree-shake-icons",
+				"--dart-define=BUILD_STAMP=PROFILE-SPLASH-%DATE%-%TIME%"
+			],
+			"isBackground": false,
+			"problemMatcher": [
+				"$dart"
+			],
+			"group": "build"
+		},
+		{
+			"label": "Ad-hoc: Build web release (settings)",
+			"type": "shell",
+			"command": "flutter",
+			"args": [
+				"build",
+				"web",
+				"--release",
+				"--no-tree-shake-icons",
+				"--dart-define=BUILD_STAMP=SETTINGS-DARKMODE-%DATE%-%TIME%"
+			],
+			"isBackground": false,
+			"problemMatcher": [
+				"$dart"
+			],
+			"group": "build"
+		},
+		{
+			"label": "Ad-hoc: Build web release (dark overlays)",
+			"type": "shell",
+			"command": "flutter",
+			"args": [
+				"build",
+				"web",
+				"--release",
+				"--no-tree-shake-icons",
+				"--dart-define=BUILD_STAMP=DARKTHEME-MAPS-%DATE%-%TIME%"
+			],
+			"isBackground": false,
+			"problemMatcher": [
+				"$dart"
+			],
+			"group": "build"
+		}
+	]
+}

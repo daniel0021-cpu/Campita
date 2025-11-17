@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+<head>
+  
+  <!--
+    If you are serving your web app in a path other than the root, change the
+    href value below to reflect the base path you are serving from.
+
+    The path provided below has to start and end with a slash "/" in order for
+    it to work correctly.
+
+    For more details:
+    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
+
+    This is a placeholder for base href that will be replaced by the value of
+    the `--base-href` argument provided to `flutter build`.
+  -->
+  <base href="/">
+
+  <meta charset="UTF-8">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="description" content="CampusNav – Igbinedion University Okada campus navigation.">
+
+  <!-- iOS meta tags & icons -->
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="CampusNav">
+  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="favicon.png"/>
+
+  <title>CampusNav</title>
+  
+  <!-- Material Icons -->
+  <link href="https://fonts.googleapis.com/css2?family=Material+Icons" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Icons+Outlined" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Icons+Round" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Icons+Sharp" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Icons+Two+Tone" rel="stylesheet">
+  
+  <link rel="manifest" href="manifest.json">
+  <style>
+    html, body { height: 100%; margin: 0; }
+    #splash {
+      position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+      background: linear-gradient(180deg, #0B1930 0%, #0F2A7B 100%);
+      z-index: 1;
+    }
+    #splash .wrap { text-align: center; color: white; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
+    #splash img { width: 120px; height: 120px; filter: drop-shadow(0 6px 12px rgba(0,0,0,0.35)); }
+    #splash h1 { margin: 16px 0 6px; font-size: 28px; letter-spacing: .5px; }
+    #splash p { margin: 0; opacity: .7; }
+  </style>
+</head>
+<body>
+  <div id="splash">
+    <div class="wrap">
+      <img src="assets/logo/campusnav_logo.svg" alt="CampusNav logo"/>
+      <h1>CampusNav</h1>
+      <p>Igbinedion University Okada</p>
+    </div>
+  </div>
+  <!--<script src="https://maps.goggleapis.com/maps/api/js?key="YOUR_API_KEY&libraries=places"></script>-->
+    <script src="main.dart.js" type="application/javascript" async></script>
+    <script>
+      // Hide splash once Flutter attaches (simple timeout fallback)
+      window.addEventListener('load', () => {
+        setTimeout(() => {
+          const el = document.getElementById('splash');
+          if (el) el.style.display = 'none';
+        }, 1200);
+      });
+    </script>
+</body>
+</html>
