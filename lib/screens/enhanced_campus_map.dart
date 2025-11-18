@@ -1396,12 +1396,11 @@ out skel qt;
       backgroundColor: Colors.white,
       resizeToAvoidBottomInset: false,
       body: Stack(
+        fit: StackFit.expand,
         children: [
-          // Map with RepaintBoundary for better performance - MUST be full screen
-          Positioned.fill(
-            child: RepaintBoundary(
-              child: FlutterMap(
-              mapController: _mapController,
+          // Map layer - must be first to be at bottom
+          FlutterMap(
+            mapController: _mapController,
               options: MapOptions(
                 initialCenter: _campusCenter,
                 initialZoom: 16.5,
@@ -1469,8 +1468,6 @@ out skel qt;
                 ),
               MarkerLayer(markers: _buildMarkers()),
             ],
-          ),
-            ),
           ),
           
           if (!_isNavigating) _buildSearchBar(),
