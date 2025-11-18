@@ -179,72 +179,168 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget _buildQuickLinks() {
     return Column(
       children: [
-        _linkCard('Settings', 'App preferences and map options', Icons.settings, () {
-          Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen()));
-        }),
-        const SizedBox(height: 12),
-        _linkCard('Subscription', 'Premium plans and benefits', Icons.workspace_premium, () {
-          Navigator.push(context, MaterialPageRoute(builder: (_) => const SubscriptionScreen()));
-        }),
-        const SizedBox(height: 12),
-        _linkCard('Help & Support', 'FAQs and contact', Icons.help_outline, () {
-          Navigator.push(context, MaterialPageRoute(builder: (_) => const HelpSupportScreen()));
-        }),
-        const SizedBox(height: 12),
-        _linkCard('Privacy Policy', 'How we handle your data', Icons.privacy_tip_outlined, () {
-          Navigator.push(context, MaterialPageRoute(builder: (_) => const PrivacyPolicyScreen()));
-        }),
-        const SizedBox(height: 12),
-        _linkCard('About', 'About this app', Icons.info_outline, () {
-          Navigator.push(context, MaterialPageRoute(builder: (_) => const AboutScreen()));
-        }),
+        // Subscription at TOP with PRO badge
+        _pillShapedLink(
+          'Subscription',
+          'Unlock premium features',
+          Icons.workspace_premium,
+          () {
+            Navigator.push(context, MaterialPageRoute(builder: (_) => const SubscriptionScreen()));
+          },
+          showProBadge: true,
+        ),
+        const SizedBox(height: 14),
+        // Settings in its own separate pill
+        _pillShapedLink(
+          'Settings',
+          'App preferences and map options',
+          Icons.settings_rounded,
+          () {
+            Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen()));
+          },
+        ),
+        const SizedBox(height: 14),
+        _pillShapedLink(
+          'Help & Support',
+          'FAQs and contact',
+          Icons.help_outline_rounded,
+          () {
+            Navigator.push(context, MaterialPageRoute(builder: (_) => const HelpSupportScreen()));
+          },
+        ),
+        const SizedBox(height: 14),
+        _pillShapedLink(
+          'Privacy Policy',
+          'How we handle your data',
+          Icons.privacy_tip_outlined,
+          () {
+            Navigator.push(context, MaterialPageRoute(builder: (_) => const PrivacyPolicyScreen()));
+          },
+        ),
+        const SizedBox(height: 14),
+        _pillShapedLink(
+          'About',
+          'About this app',
+          Icons.info_outline_rounded,
+          () {
+            Navigator.push(context, MaterialPageRoute(builder: (_) => const AboutScreen()));
+          },
+        ),
       ],
     );
   }
 
-  Widget _linkCard(String title, String subtitle, IconData icon, VoidCallback onTap) {
+  Widget _pillShapedLink(String title, String subtitle, IconData icon, VoidCallback onTap, {bool showProBadge = false}) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(18),
-      child: Container(
-        padding: const EdgeInsets.all(18),
-        decoration: BoxDecoration(
-          color: AppColors.cardBackground(context),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: AppColors.borderAdaptive(context)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(isDark ? 0.4 : 0.06),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(28),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          decoration: BoxDecoration(
+            color: AppColors.cardBackground(context),
+            borderRadius: BorderRadius.circular(28),
+            border: Border.all(
+              color: showProBadge ? AppColors.primary.withOpacity(0.3) : AppColors.borderAdaptive(context),
+              width: showProBadge ? 1.5 : 1,
             ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                color: AppColors.primary.withOpacity(0.12),
-                borderRadius: BorderRadius.circular(14),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(isDark ? 0.4 : 0.08),
+                blurRadius: 16,
+                offset: const Offset(0, 6),
               ),
-              child: Icon(icon, color: AppColors.primary, size: 24),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title, style: GoogleFonts.notoSans(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.textPrimaryAdaptive(context))),
-                  const SizedBox(height: 3),
-                  Text(subtitle, style: GoogleFonts.notoSans(fontSize: 12, color: AppColors.textSecondaryAdaptive(context))),
-                ],
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  gradient: showProBadge
+                      ? LinearGradient(
+                          colors: [AppColors.primary, AppColors.primary.withOpacity(0.7)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        )
+                      : null,
+                  color: showProBadge ? null : AppColors.primary.withOpacity(0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  icon,
+                  color: showProBadge ? Colors.white : AppColors.primary,
+                  size: 26,
+                ),
               ),
-            ),
-            Icon(Icons.chevron_right, color: AppColors.grey, size: 22),
-          ],
+              const SizedBox(width: 18),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(
+                          title,
+                          style: GoogleFonts.notoSans(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textPrimaryAdaptive(context),
+                          ),
+                        ),
+                        if (showProBadge) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [AppColors.primary, AppColors.primary.withOpacity(0.75)],
+                              ),
+                              borderRadius: BorderRadius.circular(12),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: AppColors.primary.withOpacity(0.3),
+                                  blurRadius: 6,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: Text(
+                              'PRO',
+                              style: GoogleFonts.notoSans(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w900,
+                                color: Colors.white,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 5),
+                    Text(
+                      subtitle,
+                      style: GoogleFonts.notoSans(
+                        fontSize: 13,
+                        color: AppColors.textSecondaryAdaptive(context),
+                        height: 1.3,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Icon(
+                Icons.arrow_forward_ios_rounded,
+                color: AppColors.grey.withOpacity(0.6),
+                size: 18,
+              ),
+            ],
+          ),
         ),
       ),
     );
