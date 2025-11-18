@@ -76,14 +76,14 @@ class SubscriptionScreen extends StatelessWidget {
   Widget _buildPlanCards(BuildContext context) {
     return Column(
       children: [
-        _planCard(context, 'Monthly', '₦2,000', 'per month', [
+        _planCard(context, 'Monthly Plan', '₦2,000', 'per month', [
           'All navigation modes',
           'Pedestrian entrance routing',
           'Favorites & settings sync',
           'Priority support',
         ]),
-        const SizedBox(height: 14),
-        _planCard(context, 'Yearly', '₦24,000', 'per year', [
+        const SizedBox(height: 20),
+        _planCard(context, 'Yearly Plan', '₦24,000', 'per year', [
           '2 months free compared to monthly',
           'All Monthly features',
           'Early access features',
@@ -102,125 +102,121 @@ class SubscriptionScreen extends StatelessWidget {
     bool featured = false,
     bool recommended = false,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: featured ? AppColors.primary.withValues(alpha: 0.05) : Colors.white,
+        color: featured ? (isDark ? AppColors.primary.withValues(alpha: 0.15) : AppColors.primary.withValues(alpha: 0.08)) : AppColors.cardBackground(context),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
+            color: Colors.black.withValues(alpha: isDark ? 0.4 : 0.08),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
           ),
         ],
-        border: featured ? Border.all(color: AppColors.primary, width: 2) : null,
-        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: featured ? AppColors.primary : AppColors.borderAdaptive(context),
+          width: featured ? 2.5 : 1,
+        ),
+        borderRadius: BorderRadius.circular(20),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Text(
-                title,
-                style: GoogleFonts.notoSans(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.darkGrey,
+              Expanded(
+                child: Text(
+                  title,
+                  style: GoogleFonts.notoSans(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textPrimaryAdaptive(context),
+                  ),
                 ),
               ),
-              if (featured) ...[
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    'Best Value',
-                    style: GoogleFonts.notoSans(
-                      fontSize: 12,
-                      color: AppColors.primary,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ],
-              if (recommended) ...[
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        AppColors.primary,
-                        AppColors.primary.withOpacity(0.7),
-                      ],
-                    ),
-                    borderRadius: BorderRadius.circular(18),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.primary.withOpacity(0.3),
-                        blurRadius: 8,
-                        offset: const Offset(0, 3),
-                      ),
-                    ],
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.recommend, size: 14, color: Colors.white),
-                      const SizedBox(width: 4),
-                      Text(
-                        'Recommended',
-                        style: GoogleFonts.notoSans(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
             ],
           ),
-          const SizedBox(height: 8),
+          if (recommended) ...[
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    AppColors.primary,
+                    AppColors.primary.withOpacity(0.7),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.primary.withOpacity(0.3),
+                    blurRadius: 8,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.recommend, size: 16, color: Colors.white),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Recommended',
+                    style: GoogleFonts.notoSans(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+          const SizedBox(height: 16),
           Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
                 price,
                 style: GoogleFonts.notoSans(
-                  fontSize: 28,
+                  fontSize: 32,
                   fontWeight: FontWeight.w800,
                   color: AppColors.primary,
                 ),
               ),
-              const SizedBox(width: 6),
-              Text(
-                period,
-                style: GoogleFonts.notoSans(
-                  fontSize: 12,
-                  color: AppColors.grey,
+              const SizedBox(width: 8),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Text(
+                  period,
+                  style: GoogleFonts.notoSans(
+                    fontSize: 13,
+                    color: AppColors.textSecondaryAdaptive(context),
+                  ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 18),
+          const Divider(),
+          const SizedBox(height: 18),
           ...features.map(
             (f) => Padding(
-              padding: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.only(bottom: 12),
               child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(Icons.check_circle, color: AppColors.success, size: 18),
-                  const SizedBox(width: 8),
+                  const Icon(Icons.check_circle, color: AppColors.success, size: 20),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: Text(
                       f,
                       style: GoogleFonts.notoSans(
-                        fontSize: 13,
-                        color: AppColors.textSecondary,
+                        fontSize: 14,
+                        color: AppColors.textPrimaryAdaptive(context),
+                        height: 1.4,
                       ),
                     ),
                   ),
@@ -228,7 +224,7 @@ class SubscriptionScreen extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 20),
           SizedBox(
             width: double.infinity,
             height: 48,

@@ -20,9 +20,9 @@ class AboutScreen extends StatelessWidget {
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            _buildAppCard(context),
+            Center(child: _buildAppCard(context)),
             const SizedBox(height: 24),
             
             _buildSectionHeader('About Campus Navigation'),
@@ -96,6 +96,8 @@ class AboutScreen extends StatelessWidget {
   Widget _buildAppCard(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
+      width: double.infinity,
+      constraints: const BoxConstraints(maxWidth: 400),
       padding: const EdgeInsets.all(32),
       decoration: BoxDecoration(
         color: AppColors.cardBackground(context),
@@ -121,7 +123,7 @@ class AboutScreen extends StatelessWidget {
             child: const Icon(Icons.explore, size: 50, color: AppColors.primary),
           ),
           const SizedBox(height: 20),
-          Text('Campus Navigation', style: GoogleFonts.notoSans(fontSize: 24, fontWeight: FontWeight.w800, color: AppColors.textPrimaryAdaptive(context))),
+          Text('Campus Navigation', style: GoogleFonts.notoSans(fontSize: 24, fontWeight: FontWeight.w800, color: AppColors.textPrimaryAdaptive(context)), textAlign: TextAlign.center),
           const SizedBox(height: 10),
           Text('Version 1.0.0', style: GoogleFonts.notoSans(fontSize: 14, color: AppColors.textSecondaryAdaptive(context))),
           const SizedBox(height: 6),
@@ -132,8 +134,9 @@ class AboutScreen extends StatelessWidget {
   }
 
   Widget _buildSectionHeader(String title) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 4, bottom: 12),
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.only(left: 4, bottom: 12, top: 4),
       child: Text(
         title,
         style: GoogleFonts.notoSans(

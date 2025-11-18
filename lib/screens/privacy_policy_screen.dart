@@ -24,41 +24,7 @@ class PrivacyPolicyScreen extends StatelessWidget {
           children: [
             _buildHeader(context),
             const SizedBox(height: 24),
-            _buildSection(
-              context,
-              'Information We Collect',
-              'We collect location data to provide navigation services. This includes your device location, search queries, and navigation history.',
-            ),
-            _buildSection(
-              context,
-              'How We Use Your Information',
-              'Your information is used to:\n• Provide accurate navigation\n• Improve app functionality\n• Enhance user experience\n• Display relevant campus information',
-            ),
-            _buildSection(
-              context,
-              'Data Storage',
-              'All data is stored securely on your device. We do not share your personal information with third parties without your consent.',
-            ),
-            _buildSection(
-              context,
-              'Location Services',
-              'Location services can be disabled at any time through your device settings or app preferences. Some features may be limited without location access.',
-            ),
-            _buildSection(
-              context,
-              'Your Rights',
-              'You have the right to:\n• Access your personal data\n• Request data deletion\n• Opt out of data collection\n• Update your preferences',
-            ),
-            _buildSection(
-              context,
-              'Updates to Privacy Policy',
-              'We may update this privacy policy from time to time. Continued use of the app after changes constitutes acceptance of the updated policy.',
-            ),
-            _buildSection(
-              context,
-              'Contact Us',
-              'If you have questions about this privacy policy, please contact us at:\nsupport@campusnav.edu.ng',
-            ),
+            _buildBodyContent(context),
             const SizedBox(height: 20),
             Center(
               child: Text(
@@ -113,11 +79,10 @@ class PrivacyPolicyScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildSection(BuildContext context, String title, String content) {
+  Widget _buildBodyContent(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
-      margin: const EdgeInsets.only(bottom: 18),
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: AppColors.cardBackground(context),
         borderRadius: BorderRadius.circular(22),
@@ -133,11 +98,32 @@ class PrivacyPolicyScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: GoogleFonts.notoSans(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textPrimaryAdaptive(context))),
-          const SizedBox(height: 10),
-          Text(content, style: GoogleFonts.notoSans(fontSize: 14, color: AppColors.textSecondaryAdaptive(context), height: 1.6)),
+          _buildSectionText(context, 'Information We Collect', 'We collect location data to provide navigation services. This includes your device location, search queries, and navigation history.'),
+          const SizedBox(height: 20),
+          _buildSectionText(context, 'How We Use Your Information', 'Your information is used to:\n• Provide accurate navigation\n• Improve app functionality\n• Enhance user experience\n• Display relevant campus information'),
+          const SizedBox(height: 20),
+          _buildSectionText(context, 'Data Storage', 'All data is stored securely on your device. We do not share your personal information with third parties without your consent.'),
+          const SizedBox(height: 20),
+          _buildSectionText(context, 'Location Services', 'Location services can be disabled at any time through your device settings or app preferences. Some features may be limited without location access.'),
+          const SizedBox(height: 20),
+          _buildSectionText(context, 'Your Rights', 'You have the right to:\n• Access your personal data\n• Request data deletion\n• Opt out of data collection\n• Update your preferences'),
+          const SizedBox(height: 20),
+          _buildSectionText(context, 'Updates to Privacy Policy', 'We may update this privacy policy from time to time. Continued use of the app after changes constitutes acceptance of the updated policy.'),
+          const SizedBox(height: 20),
+          _buildSectionText(context, 'Contact Us', 'If you have questions about this privacy policy, please contact us at:\nsupport@campusnav.edu.ng'),
         ],
       ),
+    );
+  }
+
+  Widget _buildSectionText(BuildContext context, String title, String content) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(title, style: GoogleFonts.notoSans(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textPrimaryAdaptive(context))),
+        const SizedBox(height: 10),
+        Text(content, style: GoogleFonts.notoSans(fontSize: 14, color: AppColors.textSecondaryAdaptive(context), height: 1.6)),
+      ],
     );
   }
 }

@@ -168,7 +168,13 @@ class _EnhancedCampusMapState extends State<EnhancedCampusMap> with TickerProvid
   Future<void> _loadOSMBuildings() async {
     setState(() => _loadingOSMData = true);
     try {
-      final buildings = await OSMDataFetcher.fetchCampusBuildings();
+      final buildings = await OSMDataFetcher.fetchCampusBuildings().timeout(
+        const Duration(seconds: 8),
+        onTimeout: () {
+          debugPrint('OSM fetch timeout - using fallback data');
+          return <CampusBuilding>[];
+        },
+      );
       if (buildings.isNotEmpty) {
         setState(() {
           _osmBuildings = buildings;
@@ -1387,6 +1393,7 @@ out skel qt;
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.grey[200],
       resizeToAvoidBottomInset: false,
       body: Stack(
         children: [
@@ -1476,21 +1483,34 @@ out skel qt;
           if (!_isNavigating && _selectedNavIndex == 3) _buildSettingsPanel(),
           if (_isNavigating) _buildNavigationHUD(),
           
-          // Loading indicator
+          // Loading indicator - non-blocking, positioned at bottom
           if (_loadingOSMData)
-            Container(
-              color: Colors.black26,
-              child: const Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    CircularProgressIndicator(color: Colors.white),
-                    SizedBox(height: 16),
-                    Text(
-                      'Loading building data from OpenStreetMap...',
-                      style: TextStyle(color: Colors.white, fontSize: 16),
-                    ),
-                  ],
+            Positioned(
+              bottom: 100,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.black87,
+                    borderRadius: BorderRadius.circular(30),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: const [
+                      SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                      ),
+                      SizedBox(width: 12),
+                      Text(
+                        'Loading campus data...',
+                        style: TextStyle(color: Colors.white, fontSize: 14),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),

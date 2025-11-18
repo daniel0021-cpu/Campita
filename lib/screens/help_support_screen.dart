@@ -171,40 +171,50 @@ class HelpSupportScreen extends StatelessWidget {
   }
 
   Widget _buildFAQItem(String question, String answer) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        color: AppColors.cardBackground(context),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.borderAdaptive(context)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+            color: Colors.black.withValues(alpha: isDark ? 0.4 : 0.06),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
-      child: ExpansionTile(
-        tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-        childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-        title: Text(
-          question,
-          style: GoogleFonts.notoSans(
-            fontSize: 15,
-            fontWeight: FontWeight.w600,
-            color: AppColors.darkGrey,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: Theme(
+          data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+          child: ExpansionTile(
+            tilePadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 6),
+            childrenPadding: const EdgeInsets.fromLTRB(18, 0, 18, 18),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            collapsedShape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: Text(
+              question,
+              style: GoogleFonts.notoSans(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimaryAdaptive(context),
+              ),
+            ),
+            children: [
+              Text(
+                answer,
+                style: GoogleFonts.notoSans(
+                  fontSize: 14,
+                  color: AppColors.textSecondaryAdaptive(context),
+                  height: 1.5,
+                ),
+              ),
+            ],
           ),
         ),
-        children: [
-          Text(
-            answer,
-            style: GoogleFonts.notoSans(
-              fontSize: 14,
-              color: AppColors.textSecondary,
-              height: 1.5,
-            ),
-          ),
-        ],
       ),
     );
   }

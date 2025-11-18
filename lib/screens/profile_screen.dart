@@ -177,41 +177,76 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildQuickLinks() {
-    return Container(
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), boxShadow: [
-        BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 8, offset: const Offset(0, 2)),
-      ]),
-      child: Column(children: [
-        _linkTile('Settings', 'App preferences and map options', Icons.settings, () {
+    return Column(
+      children: [
+        _linkCard('Settings', 'App preferences and map options', Icons.settings, () {
           Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen()));
         }),
-        const Divider(height: 1),
-        _linkTile('Subscription', 'Premium plans and benefits', Icons.workspace_premium, () {
+        const SizedBox(height: 12),
+        _linkCard('Subscription', 'Premium plans and benefits', Icons.workspace_premium, () {
           Navigator.push(context, MaterialPageRoute(builder: (_) => const SubscriptionScreen()));
         }),
-        const Divider(height: 1),
-        _linkTile('Help & Support', 'FAQs and contact', Icons.help_outline, () {
+        const SizedBox(height: 12),
+        _linkCard('Help & Support', 'FAQs and contact', Icons.help_outline, () {
           Navigator.push(context, MaterialPageRoute(builder: (_) => const HelpSupportScreen()));
         }),
-        const Divider(height: 1),
-        _linkTile('Privacy Policy', 'How we handle your data', Icons.privacy_tip_outlined, () {
+        const SizedBox(height: 12),
+        _linkCard('Privacy Policy', 'How we handle your data', Icons.privacy_tip_outlined, () {
           Navigator.push(context, MaterialPageRoute(builder: (_) => const PrivacyPolicyScreen()));
         }),
-        const Divider(height: 1),
-        _linkTile('About', 'About this app', Icons.info_outline, () {
+        const SizedBox(height: 12),
+        _linkCard('About', 'About this app', Icons.info_outline, () {
           Navigator.push(context, MaterialPageRoute(builder: (_) => const AboutScreen()));
         }),
-      ]),
+      ],
     );
   }
 
-  Widget _linkTile(String title, String subtitle, IconData icon, VoidCallback onTap) {
-    return ListTile(
-      leading: Icon(icon, color: AppColors.primary),
-      title: Text(title, style: GoogleFonts.notoSans(fontWeight: FontWeight.w600)),
-      subtitle: Text(subtitle, style: GoogleFonts.notoSans(color: AppColors.grey, fontSize: 12)),
-      trailing: const Icon(Icons.chevron_right, color: AppColors.grey),
+  Widget _linkCard(String title, String subtitle, IconData icon, VoidCallback onTap) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return InkWell(
       onTap: onTap,
+      borderRadius: BorderRadius.circular(18),
+      child: Container(
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: AppColors.cardBackground(context),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: AppColors.borderAdaptive(context)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(isDark ? 0.4 : 0.06),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: AppColors.primary.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Icon(icon, color: AppColors.primary, size: 24),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: GoogleFonts.notoSans(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.textPrimaryAdaptive(context))),
+                  const SizedBox(height: 3),
+                  Text(subtitle, style: GoogleFonts.notoSans(fontSize: 12, color: AppColors.textSecondaryAdaptive(context))),
+                ],
+              ),
+            ),
+            Icon(Icons.chevron_right, color: AppColors.grey, size: 22),
+          ],
+        ),
+      ),
     );
   }
 }
