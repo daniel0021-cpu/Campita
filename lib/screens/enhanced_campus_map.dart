@@ -1392,20 +1392,28 @@ out skel qt;
 
   @override
   Widget build(BuildContext context) {
+    // Debug: Print build info to trace rendering
+    debugPrint('EnhancedCampusMap building - navIndex: $_selectedNavIndex, isNavigating: $_isNavigating');
+    debugPrint('Map state - style: $_mapStyle, zoom: $_currentZoom, rotation: $_mapRotation');
+    debugPrint('Data state - buildings: ${_osmBuildings.length}, loading: $_loadingOSMData');
+    
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.ash, // Changed from white to light grey to see if map is rendering
       resizeToAvoidBottomInset: false,
       body: LayoutBuilder(
         builder: (context, constraints) {
+          debugPrint('LayoutBuilder constraints: ${constraints.maxWidth}x${constraints.maxHeight}');
+          
           return SizedBox(
             width: constraints.maxWidth,
             height: constraints.maxHeight,
             child: Stack(
               children: [
                 // Map layer - must fill entire available space
-                SizedBox(
+                Container(
                   width: constraints.maxWidth,
                   height: constraints.maxHeight,
+                  color: AppColors.lightGrey, // Debug: Add background to see if container is rendered
                   child: FlutterMap(
                     mapController: _mapController,
                     options: MapOptions(
@@ -1445,8 +1453,12 @@ out skel qt;
                 subdomains: _mapStyle == MapStyle.topo ? const ['a','b','c'] : const <String>[],
                 userAgentPackageName: 'com.example.campus_navigation',
                 tileBuilder: (context, tileWidget, tile) {
-                  // Fallback visual to mitigate 'map data not available' blank tiles
+                  // Debug: Log tile loading
+                  debugPrint('Loading tile: ${tile.coordinates.z}/${tile.coordinates.x}/${tile.coordinates.y}');
                   return tileWidget;
+                },
+                errorTileCallback: (tile, error, stackTrace) {
+                  debugPrint('Tile load error: ${tile.coordinates.z}/${tile.coordinates.x}/${tile.coordinates.y} - $error');
                 },
               ),
               // OSM Footpaths layer
@@ -1476,7 +1488,8 @@ out skel qt;
               MarkerLayer(markers: _buildMarkers()),
             ],
                   ),
-                ),
+                ), // FlutterMap
+              ), // Container
           
                 if (!_isNavigating) _buildSearchBar(),
           if (!_isNavigating) _buildCategoryFilter(),
