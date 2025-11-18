@@ -1397,12 +1397,49 @@ out skel qt;
     debugPrint('Map state - style: $_mapStyle, zoom: $_currentZoom, rotation: $_mapRotation');
     debugPrint('Data state - buildings: ${_osmBuildings.length}, loading: $_loadingOSMData');
     
+    // Error boundary: catch any build errors
+    try {
+      return _buildScaffold(context);
+    } catch (e, stackTrace) {
+      debugPrint('ERROR in EnhancedCampusMap build: $e');
+      debugPrint('Stack trace: $stackTrace');
+      return Scaffold(
+        appBar: AppBar(title: const Text('Error')),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error_outline, size: 64, color: Colors.red),
+              const SizedBox(height: 16),
+              const Text('Failed to build map screen', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Text('$e', style: const TextStyle(fontSize: 12), textAlign: TextAlign.center),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+  }
+
+  Widget _buildScaffold(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.ash, // Changed from white to light grey to see if map is rendering
       resizeToAvoidBottomInset: false,
       body: LayoutBuilder(
         builder: (context, constraints) {
           debugPrint('LayoutBuilder constraints: ${constraints.maxWidth}x${constraints.maxHeight}');
+          
+          // Ensure non-zero size for the body
+          if (constraints.maxWidth <= 0 || constraints.maxHeight <= 0) {
+            debugPrint('WARNING: Invalid constraints: ${constraints.maxWidth}x${constraints.maxHeight}');
+            return Container(
+              color: Colors.red,
+              child: const Center(child: Text('Invalid layout constraints', style: TextStyle(color: Colors.white))),
+            );
+          }
           
           return SizedBox(
             width: constraints.maxWidth,
