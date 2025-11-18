@@ -1409,11 +1409,23 @@ out skel qt;
             height: constraints.maxHeight,
             child: Stack(
               children: [
+                // Debug: Test widget to verify body is rendering
+                Positioned.fill(
+                  child: Container(
+                    color: Colors.blue.withOpacity(0.1),
+                    child: Center(
+                      child: Text(
+                        'Body Layer (${constraints.maxWidth.toStringAsFixed(0)}x${constraints.maxHeight.toStringAsFixed(0)})',
+                        style: const TextStyle(color: Colors.red, fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
+                ),
                 // Map layer - must fill entire available space
                 Container(
                   width: constraints.maxWidth,
                   height: constraints.maxHeight,
-                  color: AppColors.lightGrey, // Debug: Add background to see if container is rendered
+                  color: AppColors.lightGrey.withOpacity(0.5), // Semi-transparent to see debug widget
                   child: FlutterMap(
                     mapController: _mapController,
                     options: MapOptions(
