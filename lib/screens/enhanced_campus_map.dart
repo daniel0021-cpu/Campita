@@ -1677,13 +1677,14 @@ out skel qt;
       left: 0,
       right: 0,
       child: SizedBox(
-        height: 50,
+        height: 58,
         child: ListView(
           scrollDirection: Axis.horizontal,
           padding: const EdgeInsets.symmetric(horizontal: 16),
+          physics: const BouncingScrollPhysics(),
           children: [
-            _buildCategoryChip('All', null),
-            const SizedBox(width: 8),
+            _buildModernCategoryChip('All', null, Icons.explore_rounded),
+            const SizedBox(width: 10),
             ...BuildingCategory.values.where((category) {
               final buildingsToCheck = _osmBuildings.isNotEmpty ? _osmBuildings : campusBuildings;
               return buildingsToCheck.any((b) => b.category == category);
@@ -1691,10 +1692,11 @@ out skel qt;
               final buildingsToCheck = _osmBuildings.isNotEmpty ? _osmBuildings : campusBuildings;
               final building = buildingsToCheck.firstWhere((b) => b.category == category);
               return Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: _buildCategoryChip(
+                padding: const EdgeInsets.only(right: 10),
+                child: _buildModernCategoryChip(
                   building.categoryName,
                   category,
+                  _getCategoryIcon(category),
                 ),
               );
             }),
@@ -1730,25 +1732,51 @@ out skel qt;
     }
   }
 
-  Widget _buildCategoryChip(String label, BuildingCategory? category) {
+  Widget _buildModernCategoryChip(String label, BuildingCategory? category, IconData icon) {
     final isSelected = _selectedCategory == category;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     
-    return FilterChip(
-      label: Text(label),
-      selected: isSelected,
-      onSelected: (selected) {
-        setState(() {
-          _selectedCategory = selected ? category : null;
-        });
-      },
-      backgroundColor: isDark ? AppColors.darkCard : AppColors.ash,
-      selectedColor: AppColors.primary,
-      labelStyle: GoogleFonts.notoSans(
-        color: isSelected ? Colors.white : AppColors.textPrimaryAdaptive(context),
-        fontWeight: FontWeight.w500,
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 250),
+      curve: Curves.easeOutCubic,
+      child: Material(
+        elevation: isSelected ? 8 : 3,
+        shadowColor: isSelected ? AppColors.primary.withOpacity(0.4) : Colors.black.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(28),
+        color: isSelected 
+            ? AppColors.primary 
+            : (isDark ? AppColors.darkCard : Colors.white),
+        child: InkWell(
+          onTap: () {
+            setState(() {
+              _selectedCategory = _selectedCategory == category ? null : category;
+            });
+          },
+          borderRadius: BorderRadius.circular(28),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  icon,
+                  size: 20,
+                  color: isSelected ? Colors.white : AppColors.primary,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  label,
+                  style: GoogleFonts.notoSans(
+                    color: isSelected ? Colors.white : AppColors.textPrimaryAdaptive(context),
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
     );
   }
 
@@ -2360,28 +2388,34 @@ out skel qt;
         top: false,
         child: Center(
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            margin: const EdgeInsets.only(bottom: 16, left: 20, right: 20),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
             decoration: BoxDecoration(
               color: AppColors.cardBackground(context),
-              borderRadius: BorderRadius.circular(28),
+              borderRadius: BorderRadius.circular(32),
+              border: Border.all(
+                color: AppColors.borderAdaptive(context).withOpacity(0.3),
+                width: 1,
+              ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: isDark ? 0.4 : 0.12),
-                  blurRadius: 16,
-                  offset: const Offset(0, 6),
+                  color: Colors.black.withValues(alpha: isDark ? 0.5 : 0.15),
+                  blurRadius: 24,
+                  offset: const Offset(0, 8),
+                  spreadRadius: 2,
                 ),
               ],
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                _navItem(Icons.home, 'Home', 0),
-                const SizedBox(width: 6),
-                _navItem(Icons.star, 'Favorites', 1),
-                const SizedBox(width: 6),
-                _navItem(Icons.workspace_premium, 'Subscription', 2),
-                const SizedBox(width: 6),
-                _navItem(Icons.person, 'Profile', 3),
+                _navItem(Icons.home_rounded, 'Home', 0),
+                const SizedBox(width: 4),
+                _navItem(Icons.star_rounded, 'Favorites', 1),
+                const SizedBox(width: 4),
+                _navItem(Icons.workspace_premium_rounded, 'Pro', 2),
+                const SizedBox(width: 4),
+                _navItem(Icons.person_rounded, 'Profile', 3),
               ],
             ),
           ),
@@ -2392,64 +2426,101 @@ out skel qt;
 
   Widget _navItem(IconData icon, String label, int index) {
     final selected = _selectedNavIndex == index;
-    return InkWell(
-      onTap: () {
-        if (index == 1) {
-          // Dedicated Favorites screen
-          Navigator.push(
-            context,
-            AppRoutes.slideRoute(const FavoritesScreen()),
-          ).then((result) {
-            if (result is CampusBuilding) {
-              setState(() => _selectedBuilding = result);
-              _mapController.move(result.coordinates, 18);
-            }
-          });
-        } else if (index == 2) {
-          // Subscription screen replaces Layers
-          Navigator.push(
-            context,
-            AppRoutes.scaleRoute(const SubscriptionScreen()),
-          );
-        } else if (index == 3) {
-          // Profile screen
-          Navigator.push(
-            context,
-            AppRoutes.slideRoute(const ProfileScreen()),
-          ).then((result) {
-            if (result is CampusBuilding) {
-              setState(() => _selectedBuilding = result);
-              _mapController.move(result.coordinates, 18);
-            }
-          });
-        } else {
-          setState(() => _selectedNavIndex = index);
-        }
-      },
-      borderRadius: BorderRadius.circular(40),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-        decoration: BoxDecoration(
-          color: selected ? AppColors.primary.withValues(alpha: 0.12) : Colors.transparent,
-          borderRadius: BorderRadius.circular(40),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, color: selected ? AppColors.primary : AppColors.grey, size: 22),
-            const SizedBox(height: 1),
-            Text(
-              label,
-              style: GoogleFonts.notoSans(
-                fontSize: 10,
-                fontWeight: FontWeight.w600,
-                color: selected ? AppColors.primary : AppColors.grey,
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.0, end: selected ? 1.0 : 0.0),
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOutCubic,
+      builder: (context, value, child) {
+        return Transform.scale(
+          scale: 1.0 + (value * 0.08),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () {
+                if (index == 1) {
+                  // Dedicated Favorites screen
+                  Navigator.push(
+                    context,
+                    AppRoutes.slideRoute(const FavoritesScreen()),
+                  ).then((result) {
+                    if (result is CampusBuilding) {
+                      setState(() => _selectedBuilding = result);
+                      _mapController.move(result.coordinates, 18);
+                    }
+                  });
+                } else if (index == 2) {
+                  // Subscription screen replaces Layers
+                  Navigator.push(
+                    context,
+                    AppRoutes.scaleRoute(const SubscriptionScreen()),
+                  );
+                } else if (index == 3) {
+                  // Profile screen
+                  Navigator.push(
+                    context,
+                    AppRoutes.slideRoute(const ProfileScreen()),
+                  ).then((result) {
+                    if (result is CampusBuilding) {
+                      setState(() => _selectedBuilding = result);
+                      _mapController.move(result.coordinates, 18);
+                    }
+                  });
+                } else {
+                  setState(() => _selectedNavIndex = index);
+                }
+              },
+              borderRadius: BorderRadius.circular(24),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeOutCubic,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                decoration: BoxDecoration(
+                  gradient: selected
+                      ? LinearGradient(
+                          colors: [
+                            AppColors.primary,
+                            AppColors.primary.withOpacity(0.85),
+                          ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        )
+                      : null,
+                  color: selected ? null : Colors.transparent,
+                  borderRadius: BorderRadius.circular(24),
+                  boxShadow: selected
+                      ? [
+                          BoxShadow(
+                            color: AppColors.primary.withOpacity(0.3),
+                            blurRadius: 8,
+                            offset: const Offset(0, 4),
+                          ),
+                        ]
+                      : null,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      icon,
+                      color: selected ? Colors.white : AppColors.grey,
+                      size: 24,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      label,
+                      style: GoogleFonts.notoSans(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: selected ? Colors.white : AppColors.grey,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
