@@ -1479,57 +1479,57 @@ out skel qt;
                 ),
           
                 if (!_isNavigating) _buildSearchBar(),
-          if (!_isNavigating) _buildCategoryFilter(),
-          if (!_isNavigating) _buildCompassButton(),
-          if (!_isNavigating) _build2D3DToggle(),
-          _buildMyLocationButton(), // Keep location button always
-          if (!_isNavigating) _buildRefreshButton(),
-          // Layers button removed per new UI spec
-          // Favorites overlay removed: dedicated screen now handles favorites
-          // if (!_isNavigating && _selectedNavIndex == 1) _buildFavoritesPanel(),
-          if (!_isNavigating && _selectedNavIndex == 3) _buildSettingsPanel(),
-          if (_isNavigating) _buildNavigationHUD(),
+                if (!_isNavigating) _buildCategoryFilter(),
+                if (!_isNavigating) _buildCompassButton(),
+                if (!_isNavigating) _build2D3DToggle(),
+                _buildMyLocationButton(), // Keep location button always
+                if (!_isNavigating) _buildRefreshButton(),
+                // Layers button removed per new UI spec
+                // Favorites overlay removed: dedicated screen now handles favorites
+                // if (!_isNavigating && _selectedNavIndex == 1) _buildFavoritesPanel(),
+                if (!_isNavigating && _selectedNavIndex == 3) _buildSettingsPanel(),
+                if (_isNavigating) _buildNavigationHUD(),
           
-          // Loading indicator - non-blocking, positioned at bottom
-          if (_loadingOSMData)
-            Positioned(
-              bottom: 100,
-              left: 0,
-              right: 0,
-              child: Center(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                  decoration: BoxDecoration(
-                    color: Colors.black87,
-                    borderRadius: BorderRadius.circular(30),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: const [
-                      SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                // Loading indicator - non-blocking, positioned at bottom
+                if (_loadingOSMData)
+                  Positioned(
+                    bottom: 100,
+                    left: 0,
+                    right: 0,
+                    child: Center(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                        decoration: BoxDecoration(
+                          color: Colors.black87,
+                          borderRadius: BorderRadius.circular(30),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: const [
+                            SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                            ),
+                            SizedBox(width: 12),
+                            Text(
+                              'Loading campus data...',
+                              style: TextStyle(color: Colors.white, fontSize: 14),
+                            ),
+                          ],
+                        ),
                       ),
-                      SizedBox(width: 12),
-                      Text(
-                        'Loading campus data...',
-                        style: TextStyle(color: Colors.white, fontSize: 14),
-                      ),
-                    ],
+                    ),
                   ),
-                ),
-              ),
-            ),
           
-          if (!_isNavigating) _buildDirectionsFAB(),
+                if (!_isNavigating) _buildDirectionsFAB(),
           
-          // Search results
-          if (_showSearchResults) _buildSearchResults(),
+                // Search results
+                if (_showSearchResults) _buildSearchResults(),
           
-          // Selected building info (only show if no active route)
-          if (_selectedBuilding != null && _routePolyline.isEmpty) 
-            _buildBuildingInfo(),
+                // Selected building info (only show if no active route)
+                if (_selectedBuilding != null && _routePolyline.isEmpty) 
+                  _buildBuildingInfo(),
           
           // Deprecated route info card replaced by navigation HUD
               ],
