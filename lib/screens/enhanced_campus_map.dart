@@ -1392,28 +1392,31 @@ out skel qt;
 
   @override
   Widget build(BuildContext context) {
+    debugPrint('EnhancedCampusMap: Building with navIndex=$_selectedNavIndex');
+    
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor, // Use theme color
       resizeToAvoidBottomInset: false,
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          return SizedBox(
-            width: constraints.maxWidth,
-            height: constraints.maxHeight,
-            child: Stack(
-              children: [
-                // Map layer - must fill entire available space
-                SizedBox(
-                  width: constraints.maxWidth,
-                  height: constraints.maxHeight,
-                  child: FlutterMap(
-                    mapController: _mapController,
-                    options: MapOptions(
-                initialCenter: _campusCenter,
-                initialZoom: 16.5,
-                maxZoom: 20, // Higher zoom for detailed building inspection
-                minZoom: 13,
-                initialRotation: _mapRotation,
+      body: SafeArea(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return Container(
+              width: constraints.maxWidth,
+              height: constraints.maxHeight,
+              color: Theme.of(context).colorScheme.surface, // Ensure visible background
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  // Map layer - must fill entire available space
+                  Positioned.fill(
+                    child: FlutterMap(
+                      mapController: _mapController,
+                      options: MapOptions(
+                  initialCenter: _campusCenter,
+                  initialZoom: 16.5,
+                  maxZoom: 20, // Higher zoom for detailed building inspection
+                  minZoom: 13,
+                  initialRotation: _mapRotation,
                 interactionOptions: InteractionOptions(
                   flags: InteractiveFlag.all,
                   enableMultiFingerGestureRace: true,
@@ -1444,9 +1447,9 @@ out skel qt;
                 urlTemplate: _tileTemplateFor(_mapStyle),
                 subdomains: _mapStyle == MapStyle.topo ? const ['a','b','c'] : const <String>[],
                 userAgentPackageName: 'com.example.campus_navigation',
-                tileBuilder: (context, tileWidget, tile) {
-                  // Fallback visual to mitigate 'map data not available' blank tiles
-                  return tileWidget;
+                // Error tile callback to handle failed tile loads gracefully
+                errorTileCallback: (tile, error, stackTrace) {
+                  debugPrint('Tile load error at ${tile.coordinates.z}/${tile.coordinates.x}/${tile.coordinates.y}: $error');
                 },
               ),
               // OSM Footpaths layer
@@ -1475,8 +1478,9 @@ out skel qt;
                 ),
               MarkerLayer(markers: _buildMarkers()),
             ],
-                  ),
-                ),
+                    ),
+                  ), // FlutterMap
+                ), // Positioned.fill
           
                 if (!_isNavigating) _buildSearchBar(),
           if (!_isNavigating) _buildCategoryFilter(),
@@ -1490,33 +1494,48 @@ out skel qt;
           if (!_isNavigating && _selectedNavIndex == 3) _buildSettingsPanel(),
           if (_isNavigating) _buildNavigationHUD(),
           
-          // Loading indicator - non-blocking, positioned at bottom
+          // Loading indicator - non-blocking, positioned at center for visibility
           if (_loadingOSMData)
-            Positioned(
-              bottom: 100,
-              left: 0,
-              right: 0,
-              child: Center(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                  decoration: BoxDecoration(
-                    color: Colors.black87,
-                    borderRadius: BorderRadius.circular(30),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: const [
-                      SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                      ),
-                      SizedBox(width: 12),
-                      Text(
-                        'Loading campus data...',
-                        style: TextStyle(color: Colors.white, fontSize: 14),
-                      ),
-                    ],
+            Positioned.fill(
+              child: Container(
+                color: Colors.black.withOpacity(0.3),
+                child: Center(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.2),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const CircularProgressIndicator(strokeWidth: 3),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Loading Campus Map',
+                          style: GoogleFonts.notoSans(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Fetching building data...',
+                          style: GoogleFonts.notoSans(
+                            fontSize: 12,
+                            color: AppColors.grey,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -1532,11 +1551,12 @@ out skel qt;
             _buildBuildingInfo(),
           
           // Deprecated route info card replaced by navigation HUD
-              ],
-            ),
-          );
-        },
-      ),
+                ],
+              ), // Stack
+            ); // Container
+          },
+        ), // LayoutBuilder
+      ), // SafeArea
       bottomNavigationBar: _isNavigating ? null : _buildBottomNavBar(),
     );
   }

@@ -1,35 +1,41 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
+// Basic Flutter widget tests for Campus Navigation App
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-
-// ignore: unused_import
 import 'package:campus_navigation/main.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp() as Widget);
+  testWidgets('App starts and shows splash screen', (WidgetTester tester) async {
+    // Build our app and trigger a frame
+    await tester.pumpWidget(const CampusNavigationApp());
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
-
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
-
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    // Verify splash screen elements are present
+    expect(find.text('Igbinedion University'), findsOneWidget);
+    expect(find.text('Campus Navigation'), findsOneWidget);
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
   });
-}
 
-class MyApp {
-  const MyApp();
+  testWidgets('App navigates to home screen after splash', (WidgetTester tester) async {
+    // Build our app and trigger a frame
+    await tester.pumpWidget(const CampusNavigationApp());
+
+    // Wait for splash screen animation and navigation
+    await tester.pumpAndSettle(const Duration(seconds: 3));
+
+    // Verify we're on the home screen (EnhancedCampusMap)
+    // The bottom navigation bar should be present
+    expect(find.byIcon(Icons.home_rounded), findsOneWidget);
+    expect(find.byIcon(Icons.star_rounded), findsOneWidget);
+    expect(find.byIcon(Icons.workspace_premium_rounded), findsOneWidget);
+    expect(find.byIcon(Icons.person_rounded), findsOneWidget);
+  });
+
+  testWidgets('Home screen has search bar', (WidgetTester tester) async {
+    // Build our app and navigate past splash
+    await tester.pumpWidget(const CampusNavigationApp());
+    await tester.pumpAndSettle(const Duration(seconds: 3));
+
+    // Verify search bar is present
+    expect(find.text('Search campus buildings...'), findsOneWidget);
+  });
 }
