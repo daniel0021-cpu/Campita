@@ -28,26 +28,32 @@ class HelpSupportScreen extends StatelessWidget {
             
             _buildSectionHeader('Frequently Asked Questions'),
             _buildFAQItem(
+              context,
               'How do I search for a building?',
               'Use the search bar at the top of the map screen to type the building name. Select from the suggestions to view its location.',
             ),
             _buildFAQItem(
+              context,
               'How do I get directions?',
               'Tap on any building marker or search result, then tap the "Directions" button. Choose your starting point and navigation mode.',
             ),
             _buildFAQItem(
+              context,
               'Can I save favorite locations?',
               'Yes! Tap the star icon on any building info card to add it to your favorites. Access them from the Favorites tab.',
             ),
             _buildFAQItem(
+              context,
               'How do I enable location services?',
               'Go to your device Settings > Privacy > Location Services and enable it for Campus Navigation app.',
             ),
             _buildFAQItem(
+              context,
               'What are the different map styles?',
               'You can switch between Standard, Satellite, and Terrain views using the layers button on the map screen.',
             ),
             _buildFAQItem(
+              context,
               'How do I report an issue?',
               'Contact us using the information below, and we\'ll respond as soon as possible.',
             ),
@@ -170,7 +176,7 @@ class HelpSupportScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildFAQItem(String question, String answer) {
+  Widget _buildFAQItem(BuildContext context, String question, String answer) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
