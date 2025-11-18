@@ -1403,9 +1403,7 @@ out skel qt;
             child: Stack(
               children: [
                 // Map layer - must fill entire available space
-                SizedBox(
-                  width: constraints.maxWidth,
-                  height: constraints.maxHeight,
+                Positioned.fill(
                   child: FlutterMap(
                     mapController: _mapController,
                     options: MapOptions(
