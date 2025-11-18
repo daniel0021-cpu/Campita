@@ -1395,13 +1395,20 @@ out skel qt;
     return Scaffold(
       backgroundColor: Colors.white,
       resizeToAvoidBottomInset: false,
-      body: Stack(
-        fit: StackFit.expand,
-        children: [
-          // Map layer - must be first to be at bottom
-          FlutterMap(
-            mapController: _mapController,
-              options: MapOptions(
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          return SizedBox(
+            width: constraints.maxWidth,
+            height: constraints.maxHeight,
+            child: Stack(
+              children: [
+                // Map layer - must fill entire available space
+                SizedBox(
+                  width: constraints.maxWidth,
+                  height: constraints.maxHeight,
+                  child: FlutterMap(
+                    mapController: _mapController,
+                    options: MapOptions(
                 initialCenter: _campusCenter,
                 initialZoom: 16.5,
                 maxZoom: 20, // Higher zoom for detailed building inspection
@@ -1468,9 +1475,10 @@ out skel qt;
                 ),
               MarkerLayer(markers: _buildMarkers()),
             ],
-          ),
+                  ),
+                ),
           
-          if (!_isNavigating) _buildSearchBar(),
+                if (!_isNavigating) _buildSearchBar(),
           if (!_isNavigating) _buildCategoryFilter(),
           if (!_isNavigating) _buildCompassButton(),
           if (!_isNavigating) _build2D3DToggle(),
@@ -1524,7 +1532,10 @@ out skel qt;
             _buildBuildingInfo(),
           
           // Deprecated route info card replaced by navigation HUD
-        ],
+              ],
+            ),
+          );
+        },
       ),
       bottomNavigationBar: _isNavigating ? null : _buildBottomNavBar(),
     );
