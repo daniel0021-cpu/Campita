@@ -36,7 +36,8 @@ class _SearchScreenState extends State<SearchScreen> {
       final source = campusBuildings; // could be replaced by OSM list via injection
       _searchResults = source
           .where((b) => b.name.toLowerCase().contains(query.toLowerCase()))
-          .toList();
+          .toList()
+        ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase())); // Sort alphabetically
 
       if (!_recentSearches.contains(query)) {
         _recentSearches.insert(0, query);
@@ -60,6 +61,10 @@ class _SearchScreenState extends State<SearchScreen> {
     return Scaffold(
   backgroundColor: AppColors.ash,
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new, color: AppColors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
         title: Text(
           'Search Campus',
           style: AppTextStyles.heading2.copyWith(color: AppColors.white),
@@ -107,10 +112,10 @@ class _SearchScreenState extends State<SearchScreen> {
               fontSize: 14,
               color: AppColors.grey,
             ),
-            prefixIcon: Icon(Icons.search, color: AppColors.primary),
+            prefixIcon: const Icon(Icons.search_rounded, color: AppColors.primary),
             suffixIcon: _searchController.text.isNotEmpty
                 ? IconButton(
-                    icon: Icon(Icons.clear, color: AppColors.grey),
+                    icon: const Icon(Icons.clear_rounded, color: AppColors.grey),
                     onPressed: _clearSearch,
                   )
                 : null,
@@ -198,10 +203,23 @@ class _SearchScreenState extends State<SearchScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(
-                Icons.search_off,
-                size: 80,
-                color: AppColors.grey.withValues(alpha: 0.5),
+              TweenAnimationBuilder<double>(
+                tween: Tween(begin: 0.0, end: 1.0),
+                duration: const Duration(milliseconds: 400),
+                builder: (context, value, child) {
+                  return Transform.scale(
+                    scale: value,
+                    child: Opacity(
+                      opacity: value,
+                      child: child,
+                    ),
+                  );
+                },
+                child: Icon(
+                  Icons.search_off_rounded,
+                  size: 80,
+                  color: AppColors.grey.withValues(alpha: 0.5),
+                ),
               ),
               const SizedBox(height: 16),
               Text(
@@ -232,7 +250,21 @@ class _SearchScreenState extends State<SearchScreen> {
       itemCount: _searchResults.length,
       itemBuilder: (context, index) {
         final building = _searchResults[index];
-        return _buildResultCard(building);
+        return TweenAnimationBuilder<double>(
+          tween: Tween(begin: 0.0, end: 1.0),
+          duration: Duration(milliseconds: 300 + (index * 50)),
+          curve: Curves.easeOutCubic,
+          builder: (context, value, child) {
+            return Transform.translate(
+              offset: Offset(0, 20 * (1 - value)),
+              child: Opacity(
+                opacity: value,
+                child: child,
+              ),
+            );
+          },
+          child: _buildResultCard(building, index),
+        );
       },
     );
   }
@@ -259,7 +291,7 @@ class _SearchScreenState extends State<SearchScreen> {
         borderRadius: BorderRadius.circular(12),
       ),
       child: ListTile(
-        leading: Icon(Icons.history, color: AppColors.grey),
+        leading: const Icon(Icons.history_rounded, color: AppColors.grey),
         title: Text(
           search,
           style: GoogleFonts.notoSans(
@@ -268,7 +300,7 @@ class _SearchScreenState extends State<SearchScreen> {
           ),
         ),
         trailing: IconButton(
-          icon: Icon(Icons.close, color: AppColors.grey, size: 20),
+          icon: const Icon(Icons.close_rounded, color: AppColors.grey, size: 20),
           onPressed: () {
             setState(() {
               _recentSearches.remove(search);
@@ -288,7 +320,7 @@ class _SearchScreenState extends State<SearchScreen> {
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.05),
@@ -297,36 +329,56 @@ class _SearchScreenState extends State<SearchScreen> {
           ),
         ],
       ),
-      child: ListTile(
-        leading: Container(
-          width: 50,
-          height: 50,
-          decoration: BoxDecoration(
-            color: AppColors.primary.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(12),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () {
+            // Navigate to location
+            Navigator.pop(context);
+          },
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            child: Row(
+              children: [
+                Container(
+                  width: 50,
+                  height: 50,
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Icon(icon, color: AppColors.primary, size: 26),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: GoogleFonts.notoSans(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.darkGrey,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        subtitle,
+                        style: GoogleFonts.notoSans(
+                          fontSize: 13,
+                          color: AppColors.grey,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(Icons.arrow_forward_ios_rounded, size: 16, color: AppColors.grey),
+              ],
+            ),
           ),
-          child: Icon(icon, color: AppColors.primary, size: 26),
         ),
-        title: Text(
-          title,
-          style: GoogleFonts.notoSans(
-            fontSize: 15,
-            fontWeight: FontWeight.w600,
-            color: AppColors.darkGrey,
-          ),
-        ),
-        subtitle: Text(
-          subtitle,
-          style: GoogleFonts.notoSans(
-            fontSize: 13,
-            color: AppColors.grey,
-          ),
-        ),
-        trailing: Icon(Icons.arrow_forward_ios, size: 16, color: AppColors.grey),
-        onTap: () {
-          // Navigate to location
-          Navigator.pop(context);
-        },
       ),
     );
   }
@@ -356,54 +408,76 @@ class _SearchScreenState extends State<SearchScreen> {
     );
   }
 
-  Widget _buildResultCard(CampusBuilding building) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: ListTile(
-        contentPadding: const EdgeInsets.all(16),
-        leading: Container(
-          width: 50,
-          height: 50,
+  Widget _buildResultCard(CampusBuilding building, int index) {
+    return Hero(
+      tag: 'building-${building.name}-$index',
+      child: Material(
+        color: Colors.transparent,
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 12),
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [AppColors.primary, AppColors.primary.withValues(alpha: 0.8)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.08),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: InkWell(
+            onTap: () {
+              Navigator.pop(context, building);
+            },
+            borderRadius: BorderRadius.circular(16),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Container(
+                    width: 56,
+                    height: 56,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [AppColors.primary, AppColors.primary.withValues(alpha: 0.8)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: const Icon(Icons.location_city_rounded, color: Colors.white, size: 28),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          building.name,
+                          style: GoogleFonts.notoSans(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.darkGrey,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          building.categoryName,
+                          style: GoogleFonts.notoSans(
+                            fontSize: 13,
+                            color: AppColors.grey,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Icon(Icons.arrow_forward_ios_rounded, size: 18, color: AppColors.primary),
+                ],
+              ),
             ),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Icon(Icons.location_city, color: Colors.white, size: 26),
-        ),
-        title: Text(
-          building.name,
-          style: GoogleFonts.notoSans(
-            fontSize: 15,
-            fontWeight: FontWeight.w600,
-            color: AppColors.darkGrey,
           ),
         ),
-        subtitle: Text(
-          building.categoryName,
-          style: GoogleFonts.notoSans(
-            fontSize: 13,
-            color: AppColors.grey,
-          ),
-        ),
-        trailing: Icon(Icons.arrow_forward, color: AppColors.primary),
-        onTap: () {
-          Navigator.pop(context, building);
-        },
       ),
     );
   }
