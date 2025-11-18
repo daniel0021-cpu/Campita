@@ -661,7 +661,7 @@ out skel qt;
       final double radiusMeters = 60; // search within ~60m around the destination
       final query = '''
 [out:json];
-node(around:${radiusMeters},${target.latitude},${target.longitude})["entrance"];
+node(around:$radiusMeters,${target.latitude},${target.longitude})["entrance"];
 out body;''';
       final response = await http.post(
         Uri.parse('https://overpass-api.de/api/interpreter'),
@@ -1309,7 +1309,7 @@ out skel qt;
                   // Direction arrow (rotates with device heading)
                   Transform.rotate(
                     angle: (_userHeading) * 3.141592653589793 / 180.0,
-                    child: Container(
+                    child: SizedBox(
                       width: 30,
                       height: 30,
                       child: CustomPaint(
@@ -2389,43 +2389,37 @@ out skel qt;
   // Bottom navigation bar — floating pill with rounded background and highlight
   Widget _buildBottomNavBar() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Container(
-      color: Colors.transparent,
-      padding: const EdgeInsets.only(bottom: 12),
-      child: SafeArea(
-        top: false,
-        child: Center(
-          child: Container(
-            margin: const EdgeInsets.only(bottom: 16, left: 20, right: 20),
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-            decoration: BoxDecoration(
-              color: AppColors.cardBackground(context),
-              borderRadius: BorderRadius.circular(32),
-              border: Border.all(
-                color: AppColors.borderAdaptive(context).withOpacity(0.3),
-                width: 1,
+    return SafeArea(
+      top: false,
+      child: Container(
+        color: Colors.transparent,
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+          decoration: BoxDecoration(
+            color: AppColors.cardBackground(context),
+            borderRadius: BorderRadius.circular(32),
+            border: Border.all(
+              color: AppColors.borderAdaptive(context).withOpacity(0.3),
+              width: 1,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: isDark ? 0.5 : 0.15),
+                blurRadius: 24,
+                offset: const Offset(0, 8),
+                spreadRadius: 2,
               ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: isDark ? 0.5 : 0.15),
-                  blurRadius: 24,
-                  offset: const Offset(0, 8),
-                  spreadRadius: 2,
-                ),
-              ],
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _navItem(Icons.home_rounded, 'Home', 0),
-                const SizedBox(width: 4),
-                _navItem(Icons.star_rounded, 'Favorites', 1),
-                const SizedBox(width: 4),
-                _navItem(Icons.workspace_premium_rounded, 'Pro', 2),
-                const SizedBox(width: 4),
-                _navItem(Icons.person_rounded, 'Profile', 3),
-              ],
-            ),
+            ],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _navItem(Icons.home_rounded, 'Home', 0),
+              _navItem(Icons.star_rounded, 'Favorites', 1),
+              _navItem(Icons.workspace_premium_rounded, 'Pro', 2),
+              _navItem(Icons.person_rounded, 'Profile', 3),
+            ],
           ),
         ),
       ),
