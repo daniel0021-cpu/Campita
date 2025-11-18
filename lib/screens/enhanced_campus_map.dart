@@ -1393,13 +1393,14 @@ out skel qt;
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[200],
+      backgroundColor: AppColors.ash,
       resizeToAvoidBottomInset: false,
       body: Stack(
         children: [
-          // Map with RepaintBoundary for better performance
-          RepaintBoundary(
-            child: FlutterMap(
+          // Map with RepaintBoundary for better performance - MUST be full screen
+          Positioned.fill(
+            child: RepaintBoundary(
+              child: FlutterMap(
               mapController: _mapController,
               options: MapOptions(
                 initialCenter: _campusCenter,
@@ -1469,6 +1470,7 @@ out skel qt;
               MarkerLayer(markers: _buildMarkers()),
             ],
           ),
+            ),
           ),
           
           if (!_isNavigating) _buildSearchBar(),
