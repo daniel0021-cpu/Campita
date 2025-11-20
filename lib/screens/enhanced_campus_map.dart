@@ -661,7 +661,7 @@ out skel qt;
       final double radiusMeters = 60; // search within ~60m around the destination
       final query = '''
 [out:json];
-node(around:${radiusMeters},${target.latitude},${target.longitude})["entrance"];
+node(around:$radiusMeters,${target.latitude},${target.longitude})["entrance"];
 out body;''';
       final response = await http.post(
         Uri.parse('https://overpass-api.de/api/interpreter'),
@@ -1309,7 +1309,7 @@ out skel qt;
                   // Direction arrow (rotates with device heading)
                   Transform.rotate(
                     angle: (_userHeading) * 3.141592653589793 / 180.0,
-                    child: Container(
+                    child: SizedBox(
                       width: 30,
                       height: 30,
                       child: CustomPaint(

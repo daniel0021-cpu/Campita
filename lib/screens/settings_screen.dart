@@ -65,7 +65,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               subtitle: 'Reduce glare & save battery',
               trailing: Switch(
                 value: _darkMode,
-                activeColor: AppColors.primary,
+                activeThumbColor: AppColors.primary,
                 onChanged: (val) async {
                   setState(() => _darkMode = val);
                   await _prefs.saveSettings(darkMode: val);
@@ -96,7 +96,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               subtitle: _locationServices ? 'Enabled' : 'Disabled',
               trailing: Switch(
                 value: _locationServices,
-                activeColor: AppColors.primary,
+                activeThumbColor: AppColors.primary,
                 onChanged: (val) async {
                   setState(() => _locationServices = val);
                   await _prefs.saveSettings(locationServices: val);
@@ -126,7 +126,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               subtitle: _notifications ? 'Enabled' : 'Disabled',
               trailing: Switch(
                 value: _notifications,
-                activeColor: AppColors.primary,
+                activeThumbColor: AppColors.primary,
                 onChanged: (val) async {
                   setState(() => _notifications = val);
                   await _prefs.saveSettings(notifications: val);
