@@ -1,6 +1,8 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'screens/enhanced_campus_map.dart';
+import 'screens/developer_login_screen.dart';
+import 'screens/admin_panel_screen.dart';
 import 'theme/app_theme.dart';
 import 'utils/app_settings.dart';
 import 'screens/live_navigation_screen.dart';
@@ -27,6 +29,9 @@ class CampusNavigationApp extends StatelessWidget {
           title: 'Igbinedion University Campus Navigation',
           debugShowCheckedModeBanner: false,
           routes: {
+            '/': (ctx) => const EnhancedCampusMap(),
+            '/developer_login': (ctx) => const DeveloperLoginScreen(),
+            '/admin_panel': (ctx) => const AdminPanelScreen(),
             '/live-navigation': (ctx) {
               final args = ModalRoute.of(ctx)!.settings.arguments as Map?;
               if (args == null) return const Scaffold(body: Center(child: Text('Missing route data')));

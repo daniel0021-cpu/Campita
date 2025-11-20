@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html>
+<head>
+  
+  <!--
+    If you are serving your web app in a path other than the root, change the
+    href value below to reflect the base path you are serving from.
+
+    The path provided below has to start and end with a slash "/" in order for
+    it to work correctly.
+
+    For more details:
+    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
+
+    This is a placeholder for base href that will be replaced by the value of
+    the `--base-href` argument provided to `flutter build`.
+  -->
+  <base href="/">
+
+  <meta charset="UTF-8">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="description" content="CampusNav – Igbinedion University Okada campus navigation.">
+
+  <!-- iOS meta tags & icons -->
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="CampusNav">
+  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="favicon.png"/>
+
+  <title>CampusNav</title>
+  
+  <!-- Material Icons -->
+  <link href="https://fonts.googleapis.com/css2?family=Material+Icons" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Icons+Outlined" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Icons+Round" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Icons+Sharp" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Icons+Two+Tone" rel="stylesheet">
+  
+  <link rel="manifest" href="manifest.json">
+  <style>
+    html, body { height: 100%; margin: 0; background: #fff; }
+    #error-overlay {
+      position: fixed; inset: 0; display: none; align-items: center; justify-content: center;
+      background: #0B1930; color: #fff; z-index: 2; padding: 24px; text-align: center;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    }
+    #error-overlay .card { max-width: 520px; }
+    #error-overlay button { margin-top: 12px; padding: 10px 16px; border-radius: 8px; border: 0; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <div id="error-overlay">
+    <div class="card">
+      <h2>Loading took too long</h2>
+      <p style="opacity:.8">If this screen doesn't go away, please hard refresh (Ctrl+F5) or clear the site data. We also tried to clear old cache for you.</p>
+      <button id="retry-btn">Reload App</button>
+    </div>
+  </div>
+  <script>
+    (function() {
+      const showErrorOverlay = (msg) => {
+        console.error('[CampusNav] Load error:', msg);
+        const overlay = document.getElementById('error-overlay');
+        if (overlay) {
+          overlay.style.display = 'flex';
+          const btn = document.getElementById('retry-btn');
+          if (btn) btn.onclick = () => location.reload();
+        }
+      };
+
+      // One-time service worker + cache cleanup to avoid stale broken bundles
+      const SW_FLAG = 'sw-cleared-v2';
+      if ('serviceWorker' in navigator && !localStorage.getItem(SW_FLAG)) {
+        navigator.serviceWorker.getRegistrations().then(regs => {
+          if (regs && regs.length) {
+            return Promise.all(regs.map(r => r.unregister())).then(() => {
+              if (window.caches && caches.keys) {
+                return caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k))));
+              }
+            }).finally(() => {
+              localStorage.setItem(SW_FLAG, '1');
+              // Reload once to pick fresh files without SW
+              location.reload();
+            });
+          }
+        }).catch(err => console.warn('SW cleanup failed', err));
+      }
+
+      // Safety fallback: if nothing rendered after 8s, hide splash and show help
+      const fallbackTimer = setTimeout(() => {
+        showErrorOverlay('Startup timeout');
+      }, 8000);
+
+      // Wait for flutter.js to load and set up the loader
+      window.addEventListener('load', function() {
+        // Check if _flutter is defined and ready
+        if (typeof _flutter === 'undefined') {
+          showErrorOverlay('Flutter loader not found');
+          return;
+        }
+        
+        // Use the proper loader API with config
+        _flutter.loader.loadEntrypoint({
+          entrypointUrl: "main.dart.js",
+          onEntrypointLoaded: async function(engineInitializer) {
+            try {
+              const appRunner = await engineInitializer.initializeEngine();
+              await appRunner.runApp();
+              clearTimeout(fallbackTimer);
+            } catch(e) {
+              clearTimeout(fallbackTimer);
+              showErrorOverlay(e && (e.message || e.toString()));
+            }
+          }
+        });
+      });
+    })();
+  </script>
+  <script src="flutter.js" defer></script>
+</body>
+</html>
