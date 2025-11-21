@@ -644,6 +644,43 @@ out geom;
   }
 
   Future<void> _calculateRoute(CampusBuilding destination) async {
+    // Ensure we have current location before routing
+    if (_currentLocation == null) {
+      if (mounted) {
+        showAnimatedSuccess(
+          context,
+          'Getting your location... Please wait.',
+          icon: Icons.gps_fixed,
+          iconColor: AppColors.primary,
+          duration: const Duration(seconds: 2),
+        );
+      }
+      
+      // Wait for GPS to be ready (max 5 seconds)
+      try {
+        final position = await Geolocator.getCurrentPosition(
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.bestForNavigation,
+            timeLimit: Duration(seconds: 5),
+          ),
+        );
+        setState(() {
+          _currentLocation = LatLng(position.latitude, position.longitude);
+        });
+      } catch (e) {
+        if (mounted) {
+          showAnimatedSuccess(
+            context,
+            'Could not get your location. Please enable GPS.',
+            icon: Icons.gps_off,
+            iconColor: AppColors.error,
+            duration: const Duration(seconds: 3),
+          );
+        }
+        return;
+      }
+    }
+    
     final start = _currentLocation ?? _campusCenter;
     
     try {
@@ -4106,53 +4143,51 @@ class _VoiceSearchDialogState extends State<_VoiceSearchDialog>
       _recognition!.onResult.listen((event) {
         try {
           final results = event.results;
-          if (results != null && results.length > 0) {
+          if (results != null && results.isNotEmpty) {
             final result = results[results.length - 1];
-            if (result != null) {
-              // Handle both iOS and standard browser formats
-              String? transcript;
-              bool isFinal = false;
-              
-              try {
-                // Try standard format first
-                final alternatives = result as List<dynamic>;
-                if (alternatives.isNotEmpty) {
-                  transcript = alternatives[0].transcript as String?;
-                  isFinal = result.isFinal ?? false;
-                }
-              } catch (e) {
-                // iOS Safari format - direct access
-                try {
-                  transcript = (result as dynamic).transcript as String?;
-                  isFinal = (result as dynamic).isFinal ?? false;
-                } catch (e2) {
-                  debugPrint('Error parsing result: $e2');
-                }
+            // Handle both iOS and standard browser formats
+            String? transcript;
+            bool isFinal = false;
+            
+            try {
+              // Try standard format first
+              final alternatives = result as List<dynamic>;
+              if (alternatives.isNotEmpty) {
+                transcript = alternatives[0].transcript as String?;
+                isFinal = result.isFinal ?? false;
               }
-              
-              if (transcript != null && transcript.isNotEmpty && mounted) {
-                setState(() {
-                  _spokenText = transcript!;
-                  if (isFinal) {
-                    _listeningText = 'Processing...';
-                    _isListening = false;
-                  } else {
-                    _listeningText = 'Listening...';
-                  }
-                });
-                
-                // If final result, process it and stop recognition
-                if (isFinal) {
-                  try {
-                    _recognition?.stop();
-                  } catch (e) {
-                    debugPrint('Error stopping recognition: $e');
-                  }
-                  _finalizeSpeech();
-                }
+            } catch (e) {
+              // iOS Safari format - direct access
+              try {
+                transcript = (result as dynamic).transcript as String?;
+                isFinal = (result as dynamic).isFinal ?? false;
+              } catch (e2) {
+                debugPrint('Error parsing result: $e2');
               }
             }
-          }
+            
+            if (transcript != null && transcript.isNotEmpty && mounted) {
+              setState(() {
+                _spokenText = transcript!;
+                if (isFinal) {
+                  _listeningText = 'Processing...';
+                  _isListening = false;
+                } else {
+                  _listeningText = 'Listening...';
+                }
+              });
+              
+              // If final result, process it and stop recognition
+              if (isFinal) {
+                try {
+                  _recognition?.stop();
+                } catch (e) {
+                  debugPrint('Error stopping recognition: $e');
+                }
+                _finalizeSpeech();
+              }
+            }
+                    }
         } catch (e) {
           debugPrint('Result handling error: $e');
         }

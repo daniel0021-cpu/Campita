@@ -4,7 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:audioplayers/audioplayers.dart';
 import '../widgets/expanding_dots_indicator.dart';
-import 'enhanced_campus_map.dart';
+import 'login_screen.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -104,18 +104,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> with SingleTickerPr
     if (mounted) {
       Navigator.of(context).pushReplacement(
         PageRouteBuilder(
-          pageBuilder: (context, animation, secondaryAnimation) => const EnhancedCampusMap(),
-          transitionDuration: const Duration(milliseconds: 150),
+          pageBuilder: (context, animation, secondaryAnimation) => const LoginScreen(),
+          transitionDuration: const Duration(milliseconds: 400),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            // Start with almost full opacity to prevent grey screen
-            var fadeAnimation = Tween<double>(begin: 0.95, end: 1.0).animate(
-              CurvedAnimation(
-                parent: animation,
-                curve: Curves.easeOut,
-              ),
-            );
             return FadeTransition(
-              opacity: fadeAnimation,
+              opacity: animation,
               child: child,
             );
           },

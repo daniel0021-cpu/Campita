@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:flutter_compass/flutter_compass.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:just_audio/just_audio.dart';
@@ -38,8 +39,11 @@ class _LiveNavigationScreenState extends State<LiveNavigationScreen>
   
   LatLng? _currentLocation;
   StreamSubscription<Position>? _posSub;
+  StreamSubscription<CompassEvent>? _compassSub;
   double? _remainingDistance;
   double _etaSeconds = 0;
+  double _userHeading = 0.0; // Device compass heading in degrees
+  double _mapBearing = 0.0; // Map rotation angle
   
   // Navigation features
   bool _is3DView = false;
@@ -51,6 +55,9 @@ class _LiveNavigationScreenState extends State<LiveNavigationScreen>
   // Building info sheet
   AnimationController? _infoSheetController;
   late Animation<double> _infoSheetAnimation;
+  bool _isInfoSheetExpanded = false;
+  final double _collapsedSheetHeight = 8.0; // Just the handle
+  final double _expandedSheetHeight = 400.0; // Full info card
   
   // Music player
   AnimationController? _musicController;
@@ -70,6 +77,7 @@ class _LiveNavigationScreenState extends State<LiveNavigationScreen>
   void initState() {
     super.initState();
     _initLocation();
+    _initCompass();
     _initializeTTS();
     _startInstructionUpdates();
     
@@ -90,6 +98,19 @@ class _LiveNavigationScreenState extends State<LiveNavigationScreen>
       parent: _musicController!,
       curve: Curves.elasticOut,
     );
+  }
+  
+  void _initCompass() {
+    _compassSub = FlutterCompass.events?.listen((event) {
+      if (event.heading != null && mounted) {
+        setState(() {
+          _userHeading = event.heading!;
+          // Auto-rotate map based on heading during navigation
+          _mapBearing = _userHeading;
+        });
+        _mapController.rotate(_mapBearing);
+      }
+    });
   }
   
   Future<void> _initializeTTS() async {
@@ -347,9 +368,23 @@ class _LiveNavigationScreenState extends State<LiveNavigationScreen>
 
   Future<void> _initLocation() async {
     try {
-      final pos = await Geolocator.getCurrentPosition();
+      // Get initial position with highest accuracy
+      final pos = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.bestForNavigation,
+          distanceFilter: 1,
+        ),
+      );
       setState(() => _currentLocation = LatLng(pos.latitude, pos.longitude));
-      _posSub = Geolocator.getPositionStream().listen((p) {
+      
+      // Stream position updates with highest accuracy
+      const locationSettings = LocationSettings(
+        accuracy: LocationAccuracy.bestForNavigation,
+        distanceFilter: 1, // Update every 1 meter
+        timeLimit: Duration(seconds: 10),
+      );
+      
+      _posSub = Geolocator.getPositionStream(locationSettings: locationSettings).listen((p) {
         final loc = LatLng(p.latitude, p.longitude);
         setState(() => _currentLocation = loc);
         _updateStats();
@@ -362,6 +397,7 @@ class _LiveNavigationScreenState extends State<LiveNavigationScreen>
   @override
   void dispose() {
     _posSub?.cancel();
+    _compassSub?.cancel();
     _instructionTimer?.cancel();
     _infoSheetController?.dispose();
     _musicController?.dispose();
@@ -440,14 +476,17 @@ class _LiveNavigationScreenState extends State<LiveNavigationScreen>
 
   @override
   Widget build(BuildContext context) {
+    final screenHeight = MediaQuery.of(context).size.height;
+    
     return Scaffold(
       body: Stack(
         children: [
+          // Map with route
           FlutterMap(
             mapController: _mapController,
             options: MapOptions(
-              initialCenter: widget.routePoints.isNotEmpty ? widget.routePoints.first : widget.destination,
-              initialZoom: 17,
+              initialCenter: _currentLocation ?? widget.routePoints.first,
+              initialZoom: _is3DView ? 19.0 : 17.0,
             ),
             children: [
               TileLayer(
@@ -459,7 +498,7 @@ class _LiveNavigationScreenState extends State<LiveNavigationScreen>
                   polylines: [
                     Polyline(
                       points: widget.routePoints,
-                      color: AppColors.routeColor,
+                      color: AppColors.primary,
                       strokeWidth: 6,
                       borderColor: Colors.white,
                       borderStrokeWidth: 2,
@@ -470,48 +509,384 @@ class _LiveNavigationScreenState extends State<LiveNavigationScreen>
                 if (_currentLocation != null)
                   Marker(
                     point: _currentLocation!,
-                    width: 50,
-                    height: 50,
-                    child: Container(
-                      decoration: const BoxDecoration(
-                        color: Colors.blue,
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Center(child: Icon(Icons.circle, color: Colors.white, size: 14)),
+                    width: 70,
+                    height: 70,
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        // Pulsing blue glow
+                        Container(
+                          width: 50,
+                          height: 50,
+                          decoration: BoxDecoration(
+                            color: Colors.blue.withValues(alpha: 0.2),
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        // Inner blue dot
+                        Container(
+                          width: 20,
+                          height: 20,
+                          decoration: BoxDecoration(
+                            color: Colors.blue,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 3),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.blue.withValues(alpha: 0.5),
+                                blurRadius: 8,
+                                spreadRadius: 2,
+                              ),
+                            ],
+                          ),
+                        ),
+                        // Direction arrow (rotates with device heading)
+                        Transform.rotate(
+                          angle: (_userHeading) * 3.141592653589793 / 180.0,
+                          child: Icon(
+                            Icons.navigation_rounded,
+                            color: Colors.white,
+                            size: 24,
+                            shadows: [
+                              Shadow(
+                                color: Colors.black.withValues(alpha: 0.5),
+                                blurRadius: 4,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                Marker(point: widget.destination, width: 36, height: 36, child: const Icon(Icons.place, color: Colors.red, size: 28)),
+                Marker(
+                  point: widget.destination,
+                  width: 48,
+                  height: 48,
+                  child: Icon(
+                    Icons.place_rounded,
+                    color: AppColors.error,
+                    size: 48,
+                    shadows: [
+                      Shadow(
+                        color: Colors.black.withValues(alpha: 0.3),
+                        blurRadius: 8,
+                      ),
+                    ],
+                  ),
+                ),
               ])
             ],
           ),
 
-          // Instruction placeholder
+          // Top control buttons
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Row(
+                children: [
+                  // Exit button
+                  _buildControlButton(
+                    icon: Icons.close_rounded,
+                    onTap: () => Navigator.pop(context),
+                    tooltip: 'Exit Navigation',
+                  ),
+                  const Spacer(),
+                  // 3D/2D toggle
+                  _buildControlButton(
+                    icon: _is3DView ? Icons.layers_rounded : Icons.threed_rotation_rounded,
+                    onTap: () {
+                      setState(() => _is3DView = !_is3DView);
+                      _mapController.move(_currentLocation ?? widget.routePoints.first, _is3DView ? 19.0 : 17.0);
+                    },
+                    tooltip: _is3DView ? '2D View' : '3D View',
+                  ),
+                  const SizedBox(width: 8),
+                  // TTS toggle
+                  _buildControlButton(
+                    icon: _ttsEnabled ? Icons.volume_up_rounded : Icons.volume_off_rounded,
+                    onTap: () {
+                      setState(() => _ttsEnabled = !_ttsEnabled);
+                      if (_ttsEnabled && _nextInstruction.isNotEmpty) {
+                        _speakInstruction(_nextInstruction);
+                      }
+                    },
+                    tooltip: 'Voice Instructions',
+                    isActive: _ttsEnabled,
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // Curved navigation info sheet at bottom
           Positioned(
-            left: 12,
-            right: 12,
-            bottom: 12,
-            child: Material(
-              elevation: 6,
-              color: AppColors.cardBackground(context),
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: _buildNavigationSheet(context),
+          ),
+
+          // Floating building info sheet (handle at very bottom)
+          if (widget.destinationBuilding != null)
+            Positioned(
+              left: 16,
+              right: 16,
+              bottom: 180,
+              child: _buildFloatingInfoSheet(context),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildControlButton({
+    required IconData icon,
+    required VoidCallback onTap,
+    required String tooltip,
+    bool isActive = false,
+  }) {
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        elevation: 4,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: isActive ? AppColors.primary.withValues(alpha: 0.1) : Colors.white,
               borderRadius: BorderRadius.circular(12),
-              child: Padding(
+              border: Border.all(
+                color: isActive ? AppColors.primary : Colors.grey.shade300,
+                width: 2,
+              ),
+            ),
+            child: Icon(
+              icon,
+              color: isActive ? AppColors.primary : Colors.grey.shade700,
+              size: 24,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNavigationSheet(BuildContext context) {
+    final destination = widget.destinationBuilding?.name ?? 'Destination';
+    
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: const BorderRadius.only(
+          topLeft: Radius.circular(32),
+          topRight: Radius.circular(32),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.15),
+            blurRadius: 20,
+            offset: const Offset(0, -5),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Route info
+          Row(
+            children: [
+              Container(
                 padding: const EdgeInsets.all(12),
-                child: Row(
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  _getTransportIcon(),
+                  color: AppColors.primary,
+                  size: 28,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Icon(Icons.turn_right, color: AppColors.primary),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'Head to destination. Turn-by-turn guidance will improve with more OSM data.',
-                        style: GoogleFonts.notoSans(fontSize: 13),
+                    Text(
+                      'Current Location → $destination',
+                      style: GoogleFonts.poppins(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textPrimary,
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Icon(Icons.near_me_rounded, size: 14, color: AppColors.grey),
+                        const SizedBox(width: 4),
+                        Text(
+                          _remainingDistance != null
+                              ? '${(_remainingDistance! / 1000).toStringAsFixed(1)} km'
+                              : 'Calculating...',
+                          style: GoogleFonts.notoSans(
+                            fontSize: 13,
+                            color: AppColors.grey,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Icon(Icons.schedule_rounded, size: 14, color: AppColors.grey),
+                        const SizedBox(width: 4),
+                        Text(
+                          _etaSeconds > 0
+                              ? '${(_etaSeconds / 60).ceil()} min'
+                              : 'Calculating...',
+                          style: GoogleFonts.notoSans(
+                            fontSize: 13,
+                            color: AppColors.grey,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
               ),
-            ),
+            ],
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildFloatingInfoSheet(BuildContext context) {
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _isInfoSheetExpanded = !_isInfoSheetExpanded;
+        });
+        if (_isInfoSheetExpanded) {
+          _infoSheetController?.forward();
+        } else {
+          _infoSheetController?.reverse();
+        }
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOutCubic,
+        height: _isInfoSheetExpanded ? _expandedSheetHeight : 40,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.1),
+              blurRadius: 15,
+              offset: const Offset(0, 5),
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            // Handle bar
+            Container(
+              margin: const EdgeInsets.symmetric(vertical: 12),
+              width: 50,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            
+            if (_isInfoSheetExpanded) ...[
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Building placeholder image
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          height: 150,
+                          width: double.infinity,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                AppColors.primary.withValues(alpha: 0.2),
+                                AppColors.primary.withValues(alpha: 0.05),
+                              ],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                          ),
+                          child: Icon(Icons.domain_rounded, size: 60, color: AppColors.primary.withValues(alpha: 0.5)),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      
+                      // Building name
+                      Text(
+                        widget.destinationBuilding?.name ?? 'Destination',
+                        style: GoogleFonts.poppins(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      
+                      // Description
+                      if (widget.destinationBuilding?.description != null)
+                        Text(
+                          widget.destinationBuilding!.description!,
+                          style: GoogleFonts.notoSans(
+                            fontSize: 14,
+                            color: AppColors.grey,
+                            height: 1.5,
+                          ),
+                        ),
+                      const SizedBox(height: 16),
+                      
+                      // Transport mode
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(_getTransportIcon(), size: 18, color: AppColors.primary),
+                            const SizedBox(width: 8),
+                            Text(
+                              _getTransportModeName(),
+                              style: GoogleFonts.notoSans(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }
