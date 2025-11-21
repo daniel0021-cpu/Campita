@@ -193,6 +193,11 @@ class _EnhancedCampusMapState extends State<EnhancedCampusMap> with TickerProvid
       final h = event.heading;
       if (h != null && mounted) {
         setState(() => _userHeading = h);
+        
+        // Auto-rotate map when in 3D compass mode or navigating
+        if ((_is3DCompassMode || _isNavigating) && _currentLocation != null) {
+          _mapController.rotate(h);
+        }
       }
     });
     
@@ -273,6 +278,34 @@ class _EnhancedCampusMapState extends State<EnhancedCampusMap> with TickerProvid
     });
     if (_locationEnabled) {
       _startLocation();
+    }
+  }
+
+  // Pull-to-refresh handler
+  Future<void> _handleRefresh() async {
+    try {
+      // Reload OSM buildings data
+      await _loadOSMBuildings();
+      
+      // Refresh current location
+      if (_locationEnabled) {
+        final position = await Geolocator.getCurrentPosition(
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.bestForNavigation,
+            distanceFilter: 1,
+          ),
+        );
+        if (mounted) {
+          setState(() {
+            _currentLocation = LatLng(position.latitude, position.longitude);
+          });
+        }
+      }
+      
+      // Small delay for smooth UX
+      await Future.delayed(const Duration(milliseconds: 300));
+    } catch (e) {
+      debugPrint('Refresh error: $e');
     }
   }
 
@@ -380,8 +413,8 @@ out geom;
     try {
       final position = await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.best,
-          distanceFilter: 5,
+          accuracy: LocationAccuracy.bestForNavigation, // Highest precision like Google Maps/Apple Maps
+          distanceFilter: 1, // Update every 1 meter for smooth tracking
         ),
       );
       final userLocation = LatLng(position.latitude, position.longitude);
@@ -394,8 +427,9 @@ out geom;
       _posSub?.cancel();
       _posSub = Geolocator.getPositionStream(
         locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.best,
-          distanceFilter: 5,
+          accuracy: LocationAccuracy.bestForNavigation, // Highest precision for real-time navigation
+          distanceFilter: 1, // Update every 1 meter for smooth precise tracking
+          timeLimit: Duration(seconds: 10), // Ensure updates even if stationary
         ),
       ).listen((position) {
         if (mounted) {
@@ -406,6 +440,11 @@ out geom;
           setState(() => _currentLocation = newLocation);
           if (_isNavigating && _currentLocation != null) {
             _mapController.move(_currentLocation!, (_currentZoom + 0.8).clamp(16.0, 19.0));
+            // Smooth continuous rotation with device heading
+            _mapController.rotate(_userHeading);
+          }
+          // Also rotate in 3D compass mode
+          if (_is3DCompassMode && _currentLocation != null) {
             _mapController.rotate(_userHeading);
           }
         }
@@ -1710,18 +1749,24 @@ out skel qt;
     return Scaffold(
       backgroundColor: AppColors.surface(context),
       resizeToAvoidBottomInset: false,
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          return SizedBox(
-            width: constraints.maxWidth,
-            height: constraints.maxHeight,
-            child: Stack(
-              children: [
-                // Map layer - must fill entire available space
-                Positioned.fill(
-                  child: Container(
-                    color: AppColors.surface(context),
-                    child: FlutterMap(
+      body: RefreshIndicator(
+        onRefresh: _handleRefresh,
+        color: AppColors.primary,
+        backgroundColor: Colors.white,
+        strokeWidth: 2.0,
+        displacement: 40.0,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return SizedBox(
+              width: constraints.maxWidth,
+              height: constraints.maxHeight,
+              child: Stack(
+                children: [
+                  // Map layer - must fill entire available space
+                  Positioned.fill(
+                    child: Container(
+                      color: AppColors.surface(context),
+                      child: FlutterMap(
                       mapController: _mapController,
                       options: MapOptions(
                 initialCenter: _campusCenter,
@@ -1837,10 +1882,11 @@ out skel qt;
               bottom: 0,
               child: ModernNavBar(currentIndex: 0),
             ),
-              ],
-            ),
-          );
-        },
+                ],
+              ),
+            );
+          },
+        ),
       ),
     );
   }
@@ -2461,18 +2507,26 @@ out skel qt;
     final screenHeight = MediaQuery.of(context).size.height;
     final screenWidth = MediaQuery.of(context).size.width;
     final isMobile = screenWidth < 600;
+    final topPadding = MediaQuery.of(context).padding.top;
     
-    // Calculate responsive top position to avoid overlapping layers button
-    // On mobile, use smaller spacing; on larger screens use more
+    // Calculate responsive top position
+    // Search bar is at topPadding + 16, with height ~50px
+    // We need clear spacing below it: topPadding + 16 + 50 + spacing
     double topPosition;
     if (isMobile) {
       if (screenHeight < 700) {
-        topPosition = MediaQuery.of(context).padding.top + 70; // Small phones
+        // Small phones: search bar + 56px height + 12px spacing = 84px total from top
+        topPosition = topPadding + 84;
+      } else if (screenHeight < 800) {
+        // Regular phones: search bar + 56px height + 16px spacing = 88px total from top
+        topPosition = topPadding + 88;
       } else {
-        topPosition = MediaQuery.of(context).padding.top + 80; // Regular phones
+        // Large phones: search bar + 56px height + 20px spacing = 92px total from top
+        topPosition = topPadding + 92;
       }
     } else {
-      topPosition = MediaQuery.of(context).padding.top + 96; // Tablets/Desktop
+      // Tablets/Desktop: search bar + 56px height + 24px spacing = 96px total from top
+      topPosition = topPadding + 96;
     }
     
     return Positioned(
