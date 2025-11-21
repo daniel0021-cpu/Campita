@@ -1735,10 +1735,13 @@ out skel qt;
                   rotationWinGestures: MultiFingerGesture.rotate,
                   pinchMoveWinGestures: MultiFingerGesture.pinchMove | MultiFingerGesture.pinchZoom,
                   // Apple Maps-like ultra-smooth scrolling with momentum
-                  scrollWheelVelocity: 0.0015, // Buttery smooth mouse wheel
-                  rotationThreshold: 12.0, // Easier, more fluid rotation
-                  pinchZoomThreshold: 0.35, // Smoother, more responsive pinch zoom
-                  pinchMoveThreshold: 25.0, // Lower threshold for instant pan response
+                  scrollWheelVelocity: 0.002, // Faster, more responsive zoom
+                  rotationThreshold: 8.0, // Even easier rotation
+                  pinchZoomThreshold: 0.2, // Faster, more responsive pinch zoom
+                  pinchMoveThreshold: 15.0, // Lower threshold for instant smooth pan
+                  cursorKeyboardRotationOptions: CursorKeyboardRotationOptions(
+                    isKeyTrigger: null,
+                  ),
                 ),
                 // Continuous smooth updates for fluid Apple Maps feel
                 onPositionChanged: (position, hasGesture) {
@@ -2455,8 +2458,25 @@ out skel qt;
   }
 
   Widget _buildCategoryFilter() {
+    final screenHeight = MediaQuery.of(context).size.height;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isMobile = screenWidth < 600;
+    
+    // Calculate responsive top position to avoid overlapping layers button
+    // On mobile, use smaller spacing; on larger screens use more
+    double topPosition;
+    if (isMobile) {
+      if (screenHeight < 700) {
+        topPosition = MediaQuery.of(context).padding.top + 70; // Small phones
+      } else {
+        topPosition = MediaQuery.of(context).padding.top + 80; // Regular phones
+      }
+    } else {
+      topPosition = MediaQuery.of(context).padding.top + 96; // Tablets/Desktop
+    }
+    
     return Positioned(
-      top: MediaQuery.of(context).padding.top + 96,
+      top: topPosition,
       left: 0,
       right: 0,
       child: SizedBox(
@@ -4004,24 +4024,50 @@ class _VoiceSearchDialogState extends State<_VoiceSearchDialog>
         return;
       }
       
-      _recognition!.continuous = false;
+      // iOS Safari requires specific settings
+      // Set continuous to true for better speech detection
+      _recognition!.continuous = true;
       _recognition!.interimResults = true;
       _recognition!.lang = 'en-US';
       
+      // Set max alternatives for better recognition
+      try {
+        _recognition!.maxAlternatives = 5;
+      } catch (e) {
+        debugPrint('maxAlternatives not supported: $e');
+      }
+      
       // Handle results
       _recognition!.onResult.listen((event) {
-        final results = event.results;
-        if (results != null && results.length > 0) {
-          final result = results[results.length - 1];
-          if (result != null) {
-            final alternatives = result as List<dynamic>;
-            if (alternatives.isNotEmpty) {
-              final transcript = alternatives[0].transcript as String?;
-              final isFinal = result.isFinal ?? false;
+        try {
+          final results = event.results;
+          if (results != null && results.length > 0) {
+            final result = results[results.length - 1];
+            if (result != null) {
+              // Handle both iOS and standard browser formats
+              String? transcript;
+              bool isFinal = false;
+              
+              try {
+                // Try standard format first
+                final alternatives = result as List<dynamic>;
+                if (alternatives.isNotEmpty) {
+                  transcript = alternatives[0].transcript as String?;
+                  isFinal = result.isFinal ?? false;
+                }
+              } catch (e) {
+                // iOS Safari format - direct access
+                try {
+                  transcript = (result as dynamic).transcript as String?;
+                  isFinal = (result as dynamic).isFinal ?? false;
+                } catch (e2) {
+                  debugPrint('Error parsing result: $e2');
+                }
+              }
               
               if (transcript != null && transcript.isNotEmpty && mounted) {
                 setState(() {
-                  _spokenText = transcript;
+                  _spokenText = transcript!;
                   if (isFinal) {
                     _listeningText = 'Processing...';
                     _isListening = false;
@@ -4030,19 +4076,35 @@ class _VoiceSearchDialogState extends State<_VoiceSearchDialog>
                   }
                 });
                 
-                // If final result, process it
+                // If final result, process it and stop recognition
                 if (isFinal) {
+                  try {
+                    _recognition?.stop();
+                  } catch (e) {
+                    debugPrint('Error stopping recognition: $e');
+                  }
                   _finalizeSpeech();
                 }
               }
             }
           }
+        } catch (e) {
+          debugPrint('Result handling error: $e');
         }
       });
       
       // Handle errors
       _recognition!.onError.listen((error) {
         debugPrint('Speech error: ${error.error}');
+        
+        // Stop and clean up microphone access
+        try {
+          _recognition?.stop();
+          _recognition?.abort();
+        } catch (e) {
+          debugPrint('Error cleaning up: $e');
+        }
+        
         if (mounted) {
           String message = 'Error occurred';
           if (error.error == 'not-allowed' || error.error == 'service-not-allowed') {
@@ -4050,28 +4112,38 @@ class _VoiceSearchDialogState extends State<_VoiceSearchDialog>
           } else if (error.error == 'network') {
             message = 'Network error';
           } else if (error.error == 'no-speech') {
-            message = 'No speech detected';
+            message = 'No speech detected - tap to try again';
+          } else if (error.error == 'aborted') {
+            // Don't show error for intentional abort
+            return;
           }
           setState(() {
             _listeningText = message;
             _isListening = false;
           });
-          Future.delayed(const Duration(seconds: 2), () {
-            if (mounted) Navigator.pop(context);
-          });
+          if (error.error != 'no-speech') {
+            Future.delayed(const Duration(seconds: 2), () {
+              if (mounted) Navigator.pop(context);
+            });
+          }
         }
       });
       
       // Handle end
       _recognition!.onEnd.listen((_) {
         debugPrint('Speech recognition ended');
-        if (mounted && _spokenText.isEmpty) {
+        
+        // Ensure microphone is fully released
+        try {
+          _recognition?.abort();
+        } catch (e) {
+          debugPrint('Error aborting: $e');
+        }
+        
+        if (mounted && _spokenText.isEmpty && _isListening) {
           setState(() {
-            _listeningText = 'No speech detected';
+            _listeningText = 'No speech detected - tap to try again';
             _isListening = false;
-          });
-          Future.delayed(const Duration(seconds: 1), () {
-            if (mounted) Navigator.pop(context);
           });
         }
       });
@@ -4099,29 +4171,50 @@ class _VoiceSearchDialogState extends State<_VoiceSearchDialog>
     HapticFeedback.mediumImpact();
     
     setState(() {
-      _listeningText = 'Listening...';
-      _spokenText = '';
-    });
-
-    await Future.delayed(const Duration(milliseconds: 500));
-    if (!mounted) return;
-
-    setState(() {
       _listeningText = 'Speak now...';
+      _spokenText = '';
+      _isListening = true;
     });
 
+    // iOS Safari requires immediate start without delay
+    // Delay causes the API to timeout and fail
     try {
-      // Start web speech recognition
+      // Start web speech recognition immediately
       _recognition!.start();
+      
+      // Update UI after start
+      if (mounted) {
+        setState(() {
+          _listeningText = 'Listening...';
+        });
+      }
+      
+      // Auto-stop after 10 seconds to release microphone
+      Future.delayed(const Duration(seconds: 10), () {
+        if (mounted && _isListening) {
+          try {
+            _recognition?.stop();
+            _recognition?.abort();
+          } catch (e) {
+            debugPrint('Timeout stop error: $e');
+          }
+          if (_spokenText.isNotEmpty) {
+            _finalizeSpeech();
+          } else if (mounted) {
+            setState(() {
+              _listeningText = 'Timeout - tap to try again';
+              _isListening = false;
+            });
+          }
+        }
+      });
+      
     } catch (e) {
       debugPrint('Error starting speech recognition: $e');
       if (mounted) {
         setState(() {
-          _listeningText = 'Failed to start';
+          _listeningText = 'Failed to start - tap mic again';
           _isListening = false;
-        });
-        Future.delayed(const Duration(seconds: 1), () {
-          if (mounted) Navigator.pop(context);
         });
       }
     }
@@ -4129,6 +4222,13 @@ class _VoiceSearchDialogState extends State<_VoiceSearchDialog>
 
   void _finalizeSpeech() async {
     if (_spokenText.isEmpty) {
+      // Clean up microphone before closing
+      try {
+        _recognition?.stop();
+        _recognition?.abort();
+      } catch (e) {
+        debugPrint('Cleanup error: $e');
+      }
       Navigator.pop(context);
       return;
     }
@@ -4137,6 +4237,14 @@ class _VoiceSearchDialogState extends State<_VoiceSearchDialog>
       _listeningText = 'Processing...';
       _isListening = false;
     });
+    
+    // Stop and release microphone immediately
+    try {
+      _recognition?.stop();
+      _recognition?.abort();
+    } catch (e) {
+      debugPrint('Stop error: $e');
+    }
 
     HapticFeedback.lightImpact();
 
@@ -4150,8 +4258,10 @@ class _VoiceSearchDialogState extends State<_VoiceSearchDialog>
 
   @override
   void dispose() {
+    // Fully release microphone access
     try {
       _recognition?.stop();
+      _recognition?.abort();
     } catch (e) {
       debugPrint('Error stopping speech recognition: $e');
     }
