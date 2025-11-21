@@ -85,51 +85,69 @@ class AppSizes {
 }
 
 class AppTextStyles {
+  // Headers use Open Sans
   static const TextStyle heading1 = TextStyle(
+    fontFamily: 'Open Sans',
     fontSize: 24,
     fontWeight: FontWeight.bold,
     color: Colors.black87,
   );
   
   static const TextStyle heading2 = TextStyle(
+    fontFamily: 'Open Sans',
     fontSize: 20,
     fontWeight: FontWeight.w600,
     color: Colors.black87,
   );
   
   static const TextStyle heading3 = TextStyle(
+    fontFamily: 'Open Sans',
     fontSize: 18,
     fontWeight: FontWeight.w600,
     color: Colors.black87,
   );
   
+  // Body text uses Montserrat
   static const TextStyle bodyLarge = TextStyle(
+    fontFamily: 'Montserrat',
     fontSize: 16,
     fontWeight: FontWeight.normal,
     color: Colors.black87,
   );
   
   static const TextStyle bodyMedium = TextStyle(
+    fontFamily: 'Montserrat',
     fontSize: 14,
     fontWeight: FontWeight.normal,
     color: Colors.black87,
   );
   
   static const TextStyle bodySmall = TextStyle(
+    fontFamily: 'Montserrat',
     fontSize: 12,
     fontWeight: FontWeight.normal,
     color: Colors.black54,
   );
   
   static const TextStyle caption = TextStyle(
+    fontFamily: 'Montserrat',
     fontSize: 12,
     fontWeight: FontWeight.normal,
     color: AppColors.grey,
   );
   
   static const TextStyle button = TextStyle(
+    fontFamily: 'Montserrat',
     fontSize: 14,
     fontWeight: FontWeight.w600,
     letterSpacing: 0.5,
+  );
+  
+  // Confirmation messages use Noto Sans
+  static const TextStyle notification = TextStyle(
+    fontFamily: 'Noto Sans',
+    fontSize: 14,
+    fontWeight: FontWeight.w600,
+    color: Colors.black87,
   );
 }

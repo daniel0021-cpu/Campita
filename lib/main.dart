@@ -1,6 +1,9 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'screens/enhanced_campus_map.dart';
+import 'screens/onboarding_screen.dart';
+import 'screens/events_screen.dart';
 import 'screens/developer_login_screen.dart';
 import 'screens/admin_panel_screen.dart';
 import 'theme/app_theme.dart';
@@ -29,9 +32,9 @@ class CampusNavigationApp extends StatelessWidget {
           title: 'Igbinedion University Campus Navigation',
           debugShowCheckedModeBanner: false,
           routes: {
-            '/': (ctx) => const EnhancedCampusMap(),
             '/developer_login': (ctx) => const DeveloperLoginScreen(),
             '/admin_panel': (ctx) => const AdminPanelScreen(),
+            '/events': (ctx) => const EventsScreen(),
             '/live-navigation': (ctx) {
               final args = ModalRoute.of(ctx)!.settings.arguments as Map?;
               if (args == null) return const Scaffold(body: Center(child: Text('Missing route data')));
@@ -97,10 +100,33 @@ class _SplashScreenState extends State<SplashScreen>
         .animate(_controller);
     _controller.forward();
 
-    Future.delayed(const Duration(milliseconds: 2600), () {
+    Future.delayed(const Duration(milliseconds: 2600), () async {
       if (mounted) {
+        // Check if onboarding completed
+        final prefs = await SharedPreferences.getInstance();
+        final onboardingComplete = prefs.getBool('onboarding_completed') ?? false;
+        
+        final nextScreen = onboardingComplete ? const EnhancedCampusMap() : const OnboardingScreen();
+        
         Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const EnhancedCampusMap()),
+          PageRouteBuilder(
+            pageBuilder: (context, animation, secondaryAnimation) => nextScreen,
+            transitionDuration: const Duration(milliseconds: 150),
+            transitionsBuilder: (context, animation, secondaryAnimation, child) {
+              // Start with almost full opacity to prevent grey screen
+              var fadeAnimation = Tween<double>(begin: 0.95, end: 1.0).animate(
+                CurvedAnimation(
+                  parent: animation,
+                  curve: Curves.easeOut,
+                ),
+              );
+
+              return FadeTransition(
+                opacity: fadeAnimation,
+                child: child,
+              );
+            },
+          ),
         );
       }
     });

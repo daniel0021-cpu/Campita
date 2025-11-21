@@ -1,8 +1,16 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
 import '../models/campus_building.dart';
 import '../utils/favorites_service.dart';
+import '../utils/app_routes.dart';
+import '../widgets/modern_navbar.dart';
+import '../widgets/building_detail_sheet.dart';
+import 'enhanced_campus_map.dart';
+import '../widgets/animated_success_card.dart';
+import '../utils/page_transitions.dart';
 
 class FavoritesScreen extends StatefulWidget {
   const FavoritesScreen({super.key});
@@ -11,38 +19,172 @@ class FavoritesScreen extends StatefulWidget {
   State<FavoritesScreen> createState() => _FavoritesScreenState();
 }
 
-class _FavoritesScreenState extends State<FavoritesScreen> {
+class _FavoritesScreenState extends State<FavoritesScreen> with SingleTickerProviderStateMixin {
   // This would normally come from a provider/state management
   List<CampusBuilding> _favorites = [];
   final FavoritesService _favService = FavoritesService();
+  final Set<String> _pinnedBuildings = {};
+  StreamSubscription<List<String>>? _favoritesSubscription;
 
   @override
   void initState() {
     super.initState();
     _loadFavorites();
+    // Listen to favorites changes for auto-update
+    _favoritesSubscription = _favService.favoritesStream.listen((_) {
+      _loadFavorites();
+    });
+  }
+
+  @override
+  void dispose() {
+    _favoritesSubscription?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadFavorites() async {
     final list = await _favService.loadFavorites(campusBuildings);
     if (!mounted) return;
-    setState(() => _favorites = list);
+    setState(() {
+      _favorites = list;
+      debugPrint('✅ Loaded ${_favorites.length} favorites from ${campusBuildings.length} total buildings');
+    });
+  }
+
+  Widget _buildCurvedHeaderCard() {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            AppColors.primary,
+            AppColors.primary.withOpacity(0.85),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withOpacity(0.3),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: ClipPath(
+        clipper: CurvedBottomClipper(),
+        child: Container(
+          height: 180,
+          padding: const EdgeInsets.fromLTRB(24, 40, 24, 40),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                AppColors.primary,
+                AppColors.primary.withOpacity(0.9),
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: const Icon(
+                      Icons.favorite_rounded,
+                      color: Colors.white,
+                      size: 32,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Your Favorites',
+                          style: GoogleFonts.poppins(
+                            fontSize: 26,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                            height: 1.2,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'All your hearted buildings in one place',
+                          style: GoogleFonts.notoSans(
+                            fontSize: 14,
+                            color: Colors.white.withOpacity(0.95),
+                            height: 1.3,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.bookmark_rounded,
+                      color: Colors.white,
+                      size: 18,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      '${_favorites.length} ${_favorites.length == 1 ? "Building" : "Buildings"} Saved',
+                      style: GoogleFonts.notoSans(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-  backgroundColor: AppColors.ash,
-      appBar: AppBar(
-        title: Text(
-          'Favorites',
-          style: AppTextStyles.heading2.copyWith(color: AppColors.white),
-        ),
-        centerTitle: true,
-        elevation: 0,
+      backgroundColor: AppColors.ash,
+      body: RefreshIndicator(
+        onRefresh: () async {
+          await Future.delayed(const Duration(milliseconds: 1200));
+          await _loadFavorites();
+        },
+        color: AppColors.primary,
+        child: _favorites.isEmpty
+            ? _buildEmptyState()
+            : Column(
+                children: [
+                  _buildCurvedHeaderCard(),
+                  Expanded(child: _buildFavoritesList()),
+                ],
+              ),
       ),
-      body: _favorites.isEmpty
-          ? _buildEmptyState()
-          : _buildFavoritesList(),
+      bottomNavigationBar: const ModernNavBar(currentIndex: 1),
     );
   }
 
@@ -87,7 +229,12 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
             ),
             const SizedBox(height: 32),
             ElevatedButton.icon(
-              onPressed: () => Navigator.pop(context),
+              onPressed: () {
+                Navigator.pushReplacement(
+                  context,
+                  AppRoutes.fadeRoute(const EnhancedCampusMap()),
+                );
+              },
               icon: const Icon(Icons.explore),
               label: const Text('Explore Campus'),
               style: ElevatedButton.styleFrom(
@@ -107,61 +254,208 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
   }
 
   Widget _buildFavoritesList() {
+    // Sort: pinned items first
+    final sortedFavorites = List<CampusBuilding>.from(_favorites)
+      ..sort((a, b) {
+        final aPinned = _pinnedBuildings.contains(a.name);
+        final bPinned = _pinnedBuildings.contains(b.name);
+        if (aPinned && !bPinned) return -1;
+        if (!aPinned && bPinned) return 1;
+        return 0;
+      });
+
     return ListView.builder(
       padding: const EdgeInsets.all(16),
-      itemCount: _favorites.length,
+      itemCount: sortedFavorites.length,
       itemBuilder: (context, index) {
-        final building = _favorites[index];
-        return _buildFavoriteCard(building);
+        final building = sortedFavorites[index];
+        return _buildSwipeableFavoriteCard(building, index);
       },
     );
   }
 
-  Widget _buildFavoriteCard(CampusBuilding building) {
+  Widget _buildSwipeableFavoriteCard(CampusBuilding building, int index) {
+    final isPinned = _pinnedBuildings.contains(building.name);
+    
+    return Dismissible(
+      key: ValueKey('${building.name}-$index'),
+      confirmDismiss: (direction) async {
+        if (direction == DismissDirection.endToStart) {
+          // Swipe left to delete (30%)
+          setState(() {
+            _favorites.removeWhere((b) => b.name == building.name);
+          });
+          await _favService.removeFavorite(building.name);
+          if (mounted) {
+            showAnimatedSuccess(
+              context,
+              '${building.name} removed',
+              icon: Icons.delete_outline_rounded,
+              iconColor: AppColors.error,
+            );
+          }
+          return true;
+        } else if (direction == DismissDirection.startToEnd) {
+          // Swipe right to pin/unpin (30%)
+          setState(() {
+            if (isPinned) {
+              _pinnedBuildings.remove(building.name);
+            } else {
+              _pinnedBuildings.add(building.name);
+            }
+          });
+          if (mounted) {
+            showAnimatedSuccess(
+              context,
+              isPinned ? 'Unpinned' : 'Pinned to top',
+              icon: isPinned ? Icons.push_pin_outlined : Icons.push_pin_rounded,
+              iconColor: AppColors.primary,
+            );
+          }
+          return false;
+        }
+        return false;
+      },
+      dismissThresholds: const {
+        DismissDirection.endToStart: 0.3,
+        DismissDirection.startToEnd: 0.3,
+      },
+      background: _buildSwipeBackground(
+        alignment: Alignment.centerLeft,
+        color: AppColors.primary,
+        icon: isPinned ? Icons.push_pin_outlined : Icons.push_pin,
+        label: isPinned ? 'Unpin' : 'Pin',
+      ),
+      secondaryBackground: _buildSwipeBackground(
+        alignment: Alignment.centerRight,
+        color: Colors.red.shade600,
+        icon: Icons.delete_outline_rounded,
+        label: 'Delete',
+      ),
+      child: TweenAnimationBuilder<double>(
+        tween: Tween(begin: 0.0, end: 1.0),
+        duration: Duration(milliseconds: 300 + (index * 50)),
+        curve: Curves.easeOutCubic,
+        builder: (context, value, child) {
+          return Transform.translate(
+            offset: Offset(0, 20 * (1 - value)),
+            child: Opacity(
+              opacity: value,
+              child: child,
+            ),
+          );
+        },
+        child: _buildFavoriteCard(building, isPinned),
+      ),
+    );
+  }
+
+  Widget _buildSwipeBackground({
+    required Alignment alignment,
+    required Color color,
+    required IconData icon,
+    required String label,
+  }) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: color,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+      ),
+      alignment: alignment,
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: Colors.white, size: 28),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: GoogleFonts.notoSans(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: Colors.white,
+            ),
           ),
         ],
       ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () {
-            // Navigate to building location on map
-            Navigator.pop(context);
-          },
+    );
+  }
+
+  Widget _buildFavoriteCard(CampusBuilding building, bool isPinned) {
+    return Hero(
+      tag: 'building_${building.name}',
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        decoration: BoxDecoration(
+          color: Colors.white,
           borderRadius: BorderRadius.circular(16),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                Container(
-                  width: 60,
-                  height: 60,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        AppColors.primary,
-                        AppColors.primary.withValues(alpha: 0.8),
-                      ],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
+          border: isPinned
+              ? Border.all(color: AppColors.primary.withOpacity(0.3), width: 2)
+              : null,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.08),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () {
+              _showBuildingDetails(building);
+            },
+            borderRadius: BorderRadius.circular(16),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                Stack(
+                  children: [
+                    Container(
+                      width: 60,
+                      height: 60,
+                      decoration: BoxDecoration(
+                        color: _getCategoryColor(building.category).withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: _getCategoryColor(building.category).withOpacity(0.3),
+                          width: 1.5,
+                        ),
+                      ),
+                      child: Icon(
+                        _getCategoryIcon(building.category),
+                        color: _getCategoryColor(building.category),
+                        size: 30,
+                      ),
                     ),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(
-                    _getBuildingIcon(building.name),
-                    color: Colors.white,
-                    size: 30,
-                  ),
+                    if (isPinned)
+                      Positioned(
+                        top: -4,
+                        right: -4,
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary,
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppColors.primary.withOpacity(0.3),
+                                blurRadius: 8,
+                                spreadRadius: 2,
+                              ),
+                            ],
+                          ),
+                          child: const Icon(
+                            Icons.push_pin,
+                            color: Colors.white,
+                            size: 12,
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
                 const SizedBox(width: 16),
                 Expanded(
@@ -187,56 +481,149 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                     ],
                   ),
                 ),
-                Row(
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.directions),
-                      color: AppColors.primary,
-                      onPressed: () {
-                        // Navigate to directions
-                      },
-                      tooltip: 'Get Directions',
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.star),
-                      color: Colors.amber,
-                      onPressed: () async {
-                        await _favService.removeFavorite(building.name);
-                        await _loadFavorites();
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('${building.name} removed from favorites'),
-                            duration: const Duration(seconds: 2),
-                            behavior: SnackBarBehavior.floating,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                          ),
-                        );
-                      },
-                      tooltip: 'Remove from Favorites',
-                    ),
-                  ],
+                const Icon(
+                  Icons.chevron_right_rounded,
+                  color: AppColors.grey,
+                  size: 24,
                 ),
               ],
             ),
           ),
         ),
       ),
+      ),
     );
   }
 
-  IconData _getBuildingIcon(String name) {
-    final lowerName = name.toLowerCase();
-    if (lowerName.contains('library')) return Icons.local_library;
-    if (lowerName.contains('lab')) return Icons.science;
-    if (lowerName.contains('admin')) return Icons.admin_panel_settings;
-    if (lowerName.contains('hostel') || lowerName.contains('hall')) return Icons.hotel;
-    if (lowerName.contains('sport') || lowerName.contains('stadium')) return Icons.sports;
-    if (lowerName.contains('cafeteria') || lowerName.contains('restaurant')) return Icons.restaurant;
-    if (lowerName.contains('medical') || lowerName.contains('clinic')) return Icons.medical_services;
-    if (lowerName.contains('chapel') || lowerName.contains('mosque')) return Icons.church;
-    if (lowerName.contains('lecture') || lowerName.contains('theater')) return Icons.school;
-    return Icons.location_city;
+  void _showBuildingDetails(CampusBuilding building) {
+    // Navigate to map screen with smooth transition
+    Navigator.push(
+      context,
+      PageTransitions.fadeRoute(const EnhancedCampusMap()),
+    ).then((_) {
+      // After navigation, show building detail sheet with delay for smooth appearance
+      Future.delayed(const Duration(milliseconds: 300), () {
+        if (mounted) {
+          showDialog(
+            context: context,
+            barrierColor: Colors.transparent,
+            builder: (context) => BuildingDetailSheet(
+              building: building,
+              onClose: () => Navigator.pop(context),
+              onFavoriteToggle: (bldg, isFavorite) async {
+                if (!isFavorite) {
+                  await _favService.removeFavorite(bldg.name);
+                  await _loadFavorites();
+                }
+              },
+            ),
+          );
+        }
+      });
+    });
   }
+
+  IconData _getCategoryIcon(BuildingCategory category) {
+    switch (category) {
+      case BuildingCategory.academic:
+        return Icons.school_rounded;
+      case BuildingCategory.administrative:
+        return Icons.admin_panel_settings_rounded;
+      case BuildingCategory.library:
+        return Icons.local_library_rounded;
+      case BuildingCategory.residential:
+        return Icons.hotel_rounded;
+      case BuildingCategory.dining:
+        return Icons.restaurant_rounded;
+      case BuildingCategory.sports:
+        return Icons.sports_tennis_rounded;
+      case BuildingCategory.health:
+        return Icons.local_hospital_rounded;
+      case BuildingCategory.worship:
+        return Icons.church_rounded;
+      case BuildingCategory.banking:
+        return Icons.account_balance_rounded;
+      case BuildingCategory.student_services:
+        return Icons.support_agent_rounded;
+      case BuildingCategory.research:
+        return Icons.biotech_rounded;
+    }
+  }
+
+  Color _getCategoryColor(BuildingCategory category) {
+    switch (category) {
+      case BuildingCategory.academic:
+        return const Color(0xFF2196F3); // Blue
+      case BuildingCategory.administrative:
+        return const Color(0xFF9C27B0); // Purple
+      case BuildingCategory.library:
+        return const Color(0xFF00BCD4); // Cyan
+      case BuildingCategory.residential:
+        return const Color(0xFFFF9800); // Orange
+      case BuildingCategory.dining:
+        return const Color(0xFF4CAF50); // Green
+      case BuildingCategory.sports:
+        return const Color(0xFFE91E63); // Pink
+      case BuildingCategory.health:
+        return const Color(0xFFF44336); // Red
+      case BuildingCategory.worship:
+        return const Color(0xFF795548); // Brown
+      case BuildingCategory.banking:
+        return const Color(0xFF009688); // Teal
+      case BuildingCategory.student_services:
+        return const Color(0xFFFF5722); // Deep Orange
+      case BuildingCategory.research:
+        return const Color(0xFF673AB7); // Deep Purple
+    }
+  }
+}
+
+// Custom clipper for dripping chocolate/milk effect from bottom
+class CurvedBottomClipper extends CustomClipper<Path> {
+  @override
+  Path getClip(Size size) {
+    final path = Path();
+    
+    // Start from top-left
+    path.moveTo(0, 0);
+    path.lineTo(0, size.height - 60);
+    
+    // Create dripping effect (like melting chocolate)
+    // First drip
+    path.quadraticBezierTo(
+      size.width * 0.15, size.height - 50,
+      size.width * 0.2, size.height - 40,
+    );
+    
+    // Second drip (longer)
+    path.quadraticBezierTo(
+      size.width * 0.3, size.height - 20,
+      size.width * 0.4, size.height - 10,
+    );
+    
+    // Third drip (deepest)
+    path.quadraticBezierTo(
+      size.width * 0.5, size.height + 5,
+      size.width * 0.6, size.height - 5,
+    );
+    
+    // Fourth drip
+    path.quadraticBezierTo(
+      size.width * 0.7, size.height - 25,
+      size.width * 0.8, size.height - 35,
+    );
+    
+    // Final drip
+    path.quadraticBezierTo(
+      size.width * 0.9, size.height - 55,
+      size.width, size.height - 65,
+    );
+    
+    path.lineTo(size.width, 0);
+    path.close();
+    return path;
+  }
+
+  @override
+  bool shouldReclip(CustomClipper<Path> oldClipper) => true;
 }

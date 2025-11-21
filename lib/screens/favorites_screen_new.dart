@@ -4,6 +4,7 @@ import '../theme/app_theme.dart';
 import '../utils/favorites_service.dart';
 import '../models/campus_building.dart';
 import 'enhanced_campus_map.dart';
+import '../widgets/animated_success_card.dart';
 
 class FavoritesScreenNew extends StatefulWidget {
   const FavoritesScreenNew({super.key});
@@ -36,8 +37,11 @@ class _FavoritesScreenNewState extends State<FavoritesScreenNew> {
     await _favoritesService.removeFavorite(buildingName);
     await _loadFavorites();
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Removed "$buildingName" from favorites')),
+      showAnimatedSuccess(
+        context,
+        'Removed "$buildingName" from favorites',
+        icon: Icons.delete_outline_rounded,
+        iconColor: AppColors.error,
       );
     }
   }

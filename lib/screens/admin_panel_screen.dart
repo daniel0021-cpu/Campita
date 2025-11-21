@@ -751,7 +751,7 @@ class _SettingsTabState extends State<_SettingsTab> {
       subtitle: Text(subtitle),
       value: value,
       onChanged: onChanged,
-      activeColor: AppColors.primary,
+      activeThumbColor: AppColors.primary,
     );
   }
 }

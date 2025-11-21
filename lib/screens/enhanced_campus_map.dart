@@ -4,7 +4,6 @@ import 'dart:convert';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
-import 'settings_screen.dart';
 import 'package:flutter_compass/flutter_compass.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
@@ -18,6 +17,7 @@ import '../utils/osm_data_fetcher.dart';
 import 'directions_screen.dart';
 import 'route_preview_screen.dart';
 import 'live_navigation_screen.dart';
+import 'events_screen.dart';
  import '../utils/preferences_service.dart';
  import '../utils/favorites_service.dart';
  import '../utils/app_settings.dart';
@@ -26,7 +26,11 @@ import 'live_navigation_screen.dart';
  import 'profile_screen.dart';
  import 'favorites_screen.dart';
  import '../utils/app_routes.dart';
- enum MapStyle { standard, satellite, topo }
+ import '../widgets/modern_navbar.dart';
+ import '../widgets/building_detail_sheet.dart';
+ import '../widgets/map_layers_sheet.dart';
+ import '../widgets/animated_success_card.dart';
+ import '../models/map_style.dart';
 
 class _Tuple {
   final double item1; // distanceMeters
@@ -47,6 +51,13 @@ class _EnhancedCampusMapState extends State<EnhancedCampusMap> with TickerProvid
   final LatLng _campusCenter = const LatLng(6.7415, 5.4055);
   LatLng? _currentLocation;
   CampusBuilding? _selectedBuilding;
+  
+  // Entrance animations
+  late AnimationController _entranceController;
+  late Animation<double> _fadeAnimation;
+  late Animation<Offset> _slideAnimation;
+  final List<AnimationController> _elementControllers = [];
+  bool _animationsInitialized = false;
   List<LatLng> _routePolyline = [];
   LatLng? _destinationEntrance;
   bool _showSearchResults = false;
@@ -55,9 +66,11 @@ class _EnhancedCampusMapState extends State<EnhancedCampusMap> with TickerProvid
   double? _routeDistance;
   double? _routeDuration;
   double _mapRotation = 0.0;
+  bool _is3DCompassMode = false;
+  bool _isRecentering = false;
+  AnimationController? _recenterAnimationController;
   double _currentZoom = 16.5;
   String _transportMode = 'foot';
-  bool _is3DView = true;
   List<List<LatLng>> _footpaths = [];
   List<CampusBuilding> _osmBuildings = [];
   bool _loadingOSMData = true;
@@ -75,7 +88,6 @@ class _EnhancedCampusMapState extends State<EnhancedCampusMap> with TickerProvid
   bool _locationEnabled = true;
   late Animation<double> _pulseAnimation;
   double _locBtnScale = 1.0;
-  double _viewToggleScale = 1.0;
   bool _outsideOkadaWarned = false;
   // Route draw animation
   late AnimationController _routeDrawController;
@@ -83,6 +95,11 @@ class _EnhancedCampusMapState extends State<EnhancedCampusMap> with TickerProvid
   // Precomputed ETAs/distances per mode for bottom sheet
   Map<String, double>? _etaSecsByMode; // key: foot/bicycle/car/bus
   Map<String, double>? _distByMode;
+  // Temporary marker animation for search results
+  AnimationController? _tempMarkerController;
+  late Animation<double> _tempMarkerBounce;
+  CampusBuilding? _tempMarkerBuilding;
+  bool _showTempMarker = false;
 
   @override
   void initState() {
@@ -108,6 +125,43 @@ class _EnhancedCampusMapState extends State<EnhancedCampusMap> with TickerProvid
         _stopLocation();
       }
     });
+    
+    // Initialize entrance animations
+    _entranceController = AnimationController(
+      duration: const Duration(milliseconds: 1200),
+      vsync: this,
+    );
+    
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _entranceController,
+        curve: const Interval(0.0, 0.6, curve: Curves.easeOut),
+      ),
+    );
+    
+    _slideAnimation = Tween<Offset>(
+      begin: const Offset(0, 0.3),
+      end: Offset.zero,
+    ).animate(
+      CurvedAnimation(
+        parent: _entranceController,
+        curve: const Interval(0.0, 0.8, curve: Curves.easeOutCubic),
+      ),
+    );
+    
+    // Create staggered controllers for each element
+    for (int i = 0; i < 8; i++) {
+      final controller = AnimationController(
+        duration: const Duration(milliseconds: 600),
+        vsync: this,
+      );
+      _elementControllers.add(controller);
+    }
+    
+    // Start entrance animations immediately to prevent grey screen
+    _entranceController.forward();
+    _startStaggeredAnimations();
+    
     _pulseController = AnimationController(
       duration: const Duration(milliseconds: 1500),
       vsync: this,
@@ -115,17 +169,46 @@ class _EnhancedCampusMapState extends State<EnhancedCampusMap> with TickerProvid
     _pulseAnimation = Tween<double>(begin: 1.0, end: 1.4).animate(
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
+    _recenterAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    );
     _routeDrawController = AnimationController(
       duration: const Duration(milliseconds: 900),
       vsync: this,
     );
     _routeDrawProgress = CurvedAnimation(parent: _routeDrawController, curve: Curves.easeOut);
+    _tempMarkerController = AnimationController(
+      duration: const Duration(milliseconds: 600),
+      vsync: this,
+    );
+    _tempMarkerBounce = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _tempMarkerController!, curve: Curves.elasticOut),
+    );
     FlutterCompass.events?.listen((event) {
       final h = event.heading;
       if (h != null && mounted) {
         setState(() => _userHeading = h);
       }
     });
+  }
+  
+  void _startStaggeredAnimations() {
+    // Stagger animations for different UI elements
+    // 0: Search bar, 1: Category filter, 2: Layers button
+    // 3: Compass, 4: Location button, 5: Directions FAB
+    // 6: Events FAB, 7: Bottom nav
+    final delays = [100, 200, 300, 400, 450, 500, 550, 600];
+    
+    for (int i = 0; i < _elementControllers.length; i++) {
+      Future.delayed(Duration(milliseconds: delays[i]), () {
+        if (mounted && _elementControllers[i].status != AnimationStatus.completed) {
+          _elementControllers[i].forward();
+        }
+      });
+    }
+    
+    setState(() => _animationsInitialized = true);
   }
 
   Future<void> _loadUserPreferences() async {
@@ -139,8 +222,21 @@ class _EnhancedCampusMapState extends State<EnhancedCampusMap> with TickerProvid
         case 'satellite':
           _mapStyle = MapStyle.satellite;
           break;
+        case 'satellitehybrid':
+          _mapStyle = MapStyle.satelliteHybrid;
+          break;
         case 'terrain':
+        case 'topo':
           _mapStyle = MapStyle.topo;
+          break;
+        case 'terrain3d':
+          _mapStyle = MapStyle.terrain3d;
+          break;
+        case 'dark':
+          _mapStyle = MapStyle.dark;
+          break;
+        case 'streethd':
+          _mapStyle = MapStyle.streetHD;
           break;
         default:
           _mapStyle = MapStyle.standard;
@@ -307,6 +403,114 @@ out geom;
   void _stopLocation() {
     _posSub?.cancel();
     _posSub = null;
+  }
+
+  /// 3-Stage 3D Compass Recenter Animation
+  /// Stage 1: Recenter to GPS location (300ms)
+  /// Stage 2: Tilt camera to 3D view 55-60° (250ms)
+  /// Stage 3: Rotate to device heading (250ms)
+  Future<void> _recenterAndTilt3D() async {
+    if (_currentLocation == null || _isRecentering) return;
+
+    setState(() {
+      _isRecentering = true;
+    });
+
+    try {
+      // Smooth single animation: Recenter + zoom + rotate simultaneously (600ms)
+      final startCenter = _mapController.camera.center;
+      final targetCenter = _currentLocation!;
+      final startZoom = _mapController.camera.zoom;
+      final targetZoom = 18.5;
+
+      // Single fluid animation - no delays, no green screen flash
+      await _animateMapTransition(
+        duration: const Duration(milliseconds: 600),
+        centerFrom: startCenter,
+        centerTo: targetCenter,
+        zoomFrom: startZoom,
+        zoomTo: targetZoom,
+        rotationFrom: _mapRotation,
+        rotationTo: _userHeading, // Rotate to compass heading immediately
+        curve: Curves.easeInOutCubic,
+      );
+
+      // Enable 3D compass tracking mode
+      setState(() {
+        _is3DCompassMode = true;
+        _mapRotation = _userHeading;
+      });
+
+      // Auto-update rotation with compass in 3D mode
+      if (_is3DCompassMode) {
+        _start3DCompassTracking();
+      }
+    } finally {
+      setState(() {
+        _isRecentering = false;
+      });
+    }
+  }
+
+  /// Animates map transition smoothly
+  Future<void> _animateMapTransition({
+    required Duration duration,
+    required LatLng centerFrom,
+    required LatLng centerTo,
+    required double zoomFrom,
+    required double zoomTo,
+    required double rotationFrom,
+    required double rotationTo,
+    required Curve curve,
+  }) async {
+    const steps = 30;
+    final stepDuration = duration.inMilliseconds ~/ steps;
+
+    for (int i = 0; i <= steps; i++) {
+      final t = curve.transform(i / steps);
+
+      final lat = centerFrom.latitude + ((centerTo.latitude - centerFrom.latitude) * t);
+      final lng = centerFrom.longitude + ((centerTo.longitude - centerFrom.longitude) * t);
+      final zoom = zoomFrom + ((zoomTo - zoomFrom) * t);
+      final rotation = rotationFrom + ((rotationTo - rotationFrom) * t);
+
+      _mapController.move(LatLng(lat, lng), zoom);
+      _mapController.rotate(rotation);
+
+      if (mounted) {
+        setState(() {
+          _currentZoom = zoom;
+          _mapRotation = rotation;
+        });
+      }
+
+      await Future.delayed(Duration(milliseconds: stepDuration));
+    }
+  }
+
+  /// Starts real-time compass tracking in 3D mode
+  void _start3DCompassTracking() {
+    // Smoothly update rotation as user turns device
+    FlutterCompass.events?.listen((event) {
+      final h = event.heading;
+      if (h != null && _is3DCompassMode && mounted && !_isRecentering) {
+        // Low-pass filter to smooth rapid changes
+        final smoothedHeading = (_mapRotation * 0.7) + (h * 0.3);
+        setState(() {
+          _mapRotation = smoothedHeading;
+        });
+        _mapController.rotate(smoothedHeading);
+      }
+    });
+  }
+
+  /// Exits 3D compass mode
+  void _exit3DCompassMode() {
+    setState(() {
+      _is3DCompassMode = false;
+      _mapRotation = 0.0;
+    });
+    _mapController.rotate(0.0);
   }
 
   bool _isWithinOkadaBounds(LatLng location) {
@@ -520,12 +724,12 @@ out geom;
     } catch (e) {
       print('Route calculation error: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(e.toString().replaceAll('Exception: ', '')),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 4),
-          ),
+        showAnimatedSuccess(
+          context,
+          e.toString().replaceAll('Exception: ', ''),
+          icon: Icons.error_outline_rounded,
+          iconColor: AppColors.error,
+          duration: const Duration(seconds: 4),
         );
       }
     }
@@ -606,11 +810,19 @@ out skel qt;
     // Prefer routing to a mapped entrance node, if available
     LatLng? entrance = await _fetchNearestEntrance(end);
     // Find nearest nodes to start and end
-    // For end node, if entrance is available, snap to it; otherwise require at least 15m from building to stay on footpath
+    // For end node, if entrance is available, snap to it; otherwise use nearest footpath node
     int? startNode = _findNearestNodeId(start, nodes);
-    int? endNode = entrance != null
-      ? _findNearestNodeId(entrance, nodes)
-      : _findNearestNodeId(end, nodes, minDistanceFromTarget: 15.0);
+    int? endNode;
+    
+    if (entrance != null) {
+      // Route to entrance node
+      endNode = _findNearestNodeId(entrance, nodes);
+      debugPrint('Routing to entrance: ${entrance.latitude},${entrance.longitude}');
+    } else {
+      // No entrance found, find nearest footpath node to building
+      endNode = _findNearestNodeId(end, nodes);
+      debugPrint('No entrance found, routing to nearest footpath node');
+    }
         
         if (startNode != null && endNode != null) {
           // Use A* pathfinding through the pedestrian graph
@@ -619,33 +831,37 @@ out skel qt;
           if (path != null && path.isNotEmpty) {
             List<LatLng> route = [];
             
-            // Only add start if it's close to the first node (within 20m)
-            if (nodes.containsKey(path.first)) {
-              final distToFirstNode = const Distance().distance(start, nodes[path.first]!);
-              if (distToFirstNode < 20) {
-                route.add(start);
-              }
-            }
+            // Always add user's current position as starting point
+            route.add(start);
             
             for (var nodeId in path) {
               if (nodes.containsKey(nodeId)) {
                 route.add(nodes[nodeId]!);
               }
             }
-            // End at the nearest footpath node, not the building 
-            // If we found an entrance, remember it for UI display; end stays on the nearest footpath node
+            
+            // Set destination entrance for UI display
             if (entrance != null) {
               _destinationEntrance = entrance;
+              debugPrint('Route ends at entrance: ${entrance.latitude},${entrance.longitude}');
+            } else if (route.isNotEmpty) {
+              _destinationEntrance = route.last;
+              debugPrint('Route ends at footpath node: ${route.last.latitude},${route.last.longitude}');
             }
-            print('Pedestrian route: ${route.length} points, ending at ${entrance != null ? 'building entrance' : 'footpath'}');
+            
+            print('Pedestrian route: ${route.length} points, ${entrance != null ? 'to building entrance' : 'to nearest footpath'}');
+            
             if (route.length >= 2) {
               final newBearing = _computeBearing(route[0], route[1]);
               setState(() => _mapBearing = newBearing);
               _mapController.rotate(_mapBearing);
             }
             return route;
-
+          } else {
+            debugPrint('A* pathfinding returned no path between nodes');
           }
+        } else {
+          debugPrint('Could not find start or end node: start=$startNode, end=$endNode');
         }
       }
     } catch (e) {
@@ -658,45 +874,64 @@ out skel qt;
   // Query the nearest OSM entrance node (entrance=*) around a target location
   Future<LatLng?> _fetchNearestEntrance(LatLng target) async {
     try {
-      final double radiusMeters = 60; // search within ~60m around the destination
+      final double radiusMeters = 100; // search within ~100m around the destination
       final query = '''
 [out:json];
-node(around:$radiusMeters,${target.latitude},${target.longitude})["entrance"];
+(
+  node(around:$radiusMeters,${target.latitude},${target.longitude})["entrance"];
+  node(around:$radiusMeters,${target.latitude},${target.longitude})["door"];
+);
 out body;''';
       final response = await http.post(
         Uri.parse('https://overpass-api.de/api/interpreter'),
         body: query,
-      );
+      ).timeout(const Duration(seconds: 5));
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final elements = (data['elements'] as List?) ?? [];
-        if (elements.isEmpty) return null;
+        if (elements.isEmpty) {
+          debugPrint('No entrance nodes found within ${radiusMeters}m');
+          return null;
+        }
+        
         // Prefer entrance=main if present; otherwise the closest node
-        LatLng? best;
-        double bestDist = double.infinity;
+        LatLng? mainEntrance;
+        LatLng? closestEntrance;
+        double mainDist = double.infinity;
+        double closestDist = double.infinity;
+        
         for (final el in elements) {
           if (el['type'] != 'node') continue;
           final lat = (el['lat'] as num).toDouble();
           final lon = (el['lon'] as num).toDouble();
           final node = LatLng(lat, lon);
           final tags = (el['tags'] as Map?) ?? {};
-          final isMain = (tags['entrance']?.toString().toLowerCase() == 'main');
+          final entranceType = tags['entrance']?.toString().toLowerCase();
           final d = const Distance().distance(target, node);
-          if (isMain) {
-            // pick first main or closer main
-            if (d < bestDist) {
-              best = node;
-              bestDist = d;
-            }
-          } else if (best == null) {
-            // track the closest if no main found yet
-            if (d < bestDist) {
-              best = node;
-              bestDist = d;
+          
+          // Track main entrance
+          if (entranceType == 'main' || entranceType == 'yes') {
+            if (d < mainDist) {
+              mainEntrance = node;
+              mainDist = d;
             }
           }
+          
+          // Track closest entrance
+          if (d < closestDist) {
+            closestEntrance = node;
+            closestDist = d;
+          }
         }
-        return best;
+        
+        // Return main entrance if within 80m, otherwise closest entrance
+        if (mainEntrance != null && mainDist < 80) {
+          debugPrint('Found main entrance at ${mainDist.toStringAsFixed(1)}m');
+          return mainEntrance;
+        } else if (closestEntrance != null) {
+          debugPrint('Found entrance at ${closestDist.toStringAsFixed(1)}m');
+          return closestEntrance;
+        }
       }
     } catch (e) {
       debugPrint('Entrance lookup failed: $e');
@@ -1325,60 +1560,120 @@ out skel qt;
       );
     }
     
+    // Add temporary animated marker for search results
+    if (_showTempMarker && _tempMarkerBuilding != null) {
+      markers.add(
+        Marker(
+          point: _tempMarkerBuilding!.coordinates,
+          width: 60,
+          height: 80,
+          child: AnimatedBuilder(
+            animation: _tempMarkerBounce,
+            builder: (context, child) {
+              final bounceOffset = (1.0 - _tempMarkerBounce.value) * 30.0;
+              return Transform.translate(
+                offset: Offset(0, -bounceOffset),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Animated pin icon
+                    Container(
+                      width: 50,
+                      height: 50,
+                      decoration: BoxDecoration(
+                        color: AppColors.error,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: Colors.white,
+                          width: 3,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.error.withOpacity(0.4),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: const Icon(
+                        Icons.place_rounded,
+                        color: Colors.white,
+                        size: 32,
+                      ),
+                    ),
+                    // Pin shadow
+                    Container(
+                      margin: const EdgeInsets.only(top: 4),
+                      width: 20 * _tempMarkerBounce.value,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.2 * _tempMarkerBounce.value),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+      );
+    }
+    
     return markers;
   }
 
   IconData _getCategoryIcon(BuildingCategory category) {
     switch (category) {
       case BuildingCategory.academic:
-        return Icons.school;
+        return Icons.school_rounded;
       case BuildingCategory.administrative:
-        return Icons.apartment;
+        return Icons.business_rounded;
       case BuildingCategory.library:
-        return Icons.local_library;
+        return Icons.auto_stories_rounded;
       case BuildingCategory.dining:
-        return Icons.restaurant_menu;
+        return Icons.restaurant_rounded;
       case BuildingCategory.banking:
-        return Icons.account_balance;
+        return Icons.account_balance_rounded;
       case BuildingCategory.sports:
-        return Icons.fitness_center;
+        return Icons.sports_soccer_rounded;
       case BuildingCategory.student_services:
-        return Icons.support;
+        return Icons.groups_rounded;
       case BuildingCategory.research:
-        return Icons.science;
+        return Icons.biotech_rounded;
       case BuildingCategory.health:
-        return Icons.local_hospital;
+        return Icons.medical_services_rounded;
       case BuildingCategory.residential:
-        return Icons.home;
+        return Icons.hotel_rounded;
       case BuildingCategory.worship:
-        return Icons.church;
+        return Icons.church_rounded;
     }
   }
 
   Color _getCategoryColor(BuildingCategory category) {
     switch (category) {
       case BuildingCategory.academic:
-        return AppColors.academic;
+        return const Color(0xFFFF9800); // Orange - bright and energetic for learning
       case BuildingCategory.administrative:
-        return AppColors.administrative;
+        return const Color(0xFF607D8B); // Blue-grey - professional and organized
       case BuildingCategory.library:
-        return AppColors.library;
+        return const Color(0xFF9C27B0); // Purple - knowledge and wisdom
       case BuildingCategory.dining:
-        return AppColors.dining;
+        return const Color(0xFFE91E63); // Pink - appetizing and inviting
       case BuildingCategory.banking:
-        return AppColors.banking;
+        return const Color(0xFF4CAF50); // Green - money and prosperity
       case BuildingCategory.sports:
-        return AppColors.sports;
+        return const Color(0xFFF44336); // Red - energy and action
       case BuildingCategory.student_services:
-        return AppColors.studentServices;
+        return const Color(0xFF00BCD4); // Cyan - helpful and supportive
       case BuildingCategory.research:
-        return AppColors.research;
+        return const Color(0xFF3F51B5); // Indigo - innovation and discovery
       case BuildingCategory.health:
-        return Colors.red;
+        return const Color(0xFFFF5722); // Deep orange - medical urgency
       case BuildingCategory.residential:
-        return Colors.purple;
+        return const Color(0xFF795548); // Brown - home and comfort
       case BuildingCategory.worship:
-        return Colors.deepPurple;
+        return const Color(0xFF673AB7); // Deep purple - spirituality
     }
   }
 
@@ -1387,13 +1682,18 @@ out skel qt;
     _searchController.dispose();
     _pulseController.dispose();
     _routeDrawController.dispose();
+    _tempMarkerController?.dispose();
+    _entranceController.dispose();
+    for (var controller in _elementControllers) {
+      controller.dispose();
+    }
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.surface(context),
       resizeToAvoidBottomInset: false,
       body: LayoutBuilder(
         builder: (context, constraints) {
@@ -1404,9 +1704,11 @@ out skel qt;
               children: [
                 // Map layer - must fill entire available space
                 Positioned.fill(
-                  child: FlutterMap(
-                    mapController: _mapController,
-                    options: MapOptions(
+                  child: Container(
+                    color: AppColors.surface(context),
+                    child: FlutterMap(
+                      mapController: _mapController,
+                      options: MapOptions(
                 initialCenter: _campusCenter,
                 initialZoom: 16.5,
                 maxZoom: 20, // Higher zoom for detailed building inspection
@@ -1426,6 +1728,12 @@ out skel qt;
                 // Continuous smooth updates for fluid Apple Maps feel
                 onPositionChanged: (position, hasGesture) {
                   if (hasGesture && mounted) {
+                    // Exit 3D compass mode if user manually rotates
+                    if (_is3DCompassMode && (_mapRotation - position.rotation).abs() > 5.0) {
+                      setState(() {
+                        _is3DCompassMode = false;
+                      });
+                    }
                     // Reduced threshold for ultra-smooth continuous updates
                     if ((_mapRotation - position.rotation).abs() > 0.2 ||
                         (_currentZoom - position.zoom).abs() > 0.05) {
@@ -1440,7 +1748,9 @@ out skel qt;
             children: [
               TileLayer(
                 urlTemplate: _tileTemplateFor(_mapStyle),
-                subdomains: _mapStyle == MapStyle.topo ? const ['a','b','c'] : const <String>[],
+                subdomains: (_mapStyle == MapStyle.topo || _mapStyle == MapStyle.dark || _mapStyle == MapStyle.streetHD) 
+                    ? const ['a','b','c'] 
+                    : const <String>[],
                 userAgentPackageName: 'com.example.campus_navigation',
                 tileBuilder: (context, tileWidget, tile) {
                   // Fallback visual to mitigate 'map data not available' blank tiles
@@ -1473,69 +1783,47 @@ out skel qt;
                 ),
               MarkerLayer(markers: _buildMarkers()),
             ],
+                    ),
                   ),
                 ),
           
                 if (!_isNavigating) _buildSearchBar(),
+          if (!_isNavigating) _buildLayersButton(),
           if (!_isNavigating) _buildCategoryFilter(),
           if (!_isNavigating) _buildCompassButton(),
-          if (!_isNavigating) _build2D3DToggle(),
-          _buildMyLocationButton(), // Keep location button always
-          if (!_isNavigating) _buildRefreshButton(),
-          // Layers button removed per new UI spec
+          _buildMyLocationButton(),
+          // OSM refresh happens automatically in background - no button needed
           // Favorites overlay removed: dedicated screen now handles favorites
           // if (!_isNavigating && _selectedNavIndex == 1) _buildFavoritesPanel(),
           if (!_isNavigating && _selectedNavIndex == 3) _buildSettingsPanel(),
           if (_isNavigating) _buildNavigationHUD(),
           
-          // Loading indicator - non-blocking, positioned at bottom
-          if (_loadingOSMData)
-            Positioned(
-              bottom: 100,
-              left: 0,
-              right: 0,
-              child: Center(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                  decoration: BoxDecoration(
-                    color: Colors.black87,
-                    borderRadius: BorderRadius.circular(30),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: const [
-                      SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                      ),
-                      SizedBox(width: 12),
-                      Text(
-                        'Loading campus data...',
-                        style: TextStyle(color: Colors.white, fontSize: 14),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
+          // OSM data loads silently in background for smooth UX
           
+          if (!_isNavigating) _buildEventsFAB(),
           if (!_isNavigating) _buildDirectionsFAB(),
           
           // Search results
           if (_showSearchResults) _buildSearchResults(),
           
-          // Selected building info (only show if no active route)
-          if (_selectedBuilding != null && _routePolyline.isEmpty) 
-            _buildBuildingInfo(),
+          // Selected building info - now handled by BuildingDetailSheet dialog
+          // Old _buildBuildingInfo() removed to prevent duplicate sheet
           
           // Deprecated route info card replaced by navigation HUD
+          
+          // Bottom Navigation Bar (floating)
+          if (!_isNavigating)
+            const Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: ModernNavBar(currentIndex: 0),
+            ),
               ],
             ),
           );
         },
       ),
-      bottomNavigationBar: _isNavigating ? null : _buildBottomNavBar(),
     );
   }
 
@@ -1621,57 +1909,402 @@ out skel qt;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Positioned(
       top: MediaQuery.of(context).padding.top + 16,
-      left: 16,
-      right: 80, // Give more space for buttons on right
-      child: Container(
-        decoration: BoxDecoration(
-          color: AppColors.cardBackground(context),
-          borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.1),
-              blurRadius: 10,
-              offset: const Offset(0, 3),
+      left: 60,
+      right: 60,
+      child: Hero(
+        tag: 'search_bar',
+        child: GestureDetector(
+          onTap: () async {
+            final result = await Navigator.push<CampusBuilding>(
+              context,
+              PageRouteBuilder(
+                pageBuilder: (context, animation, secondaryAnimation) => const SearchScreen(),
+                transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                  return FadeTransition(opacity: animation, child: child);
+                },
+                transitionDuration: const Duration(milliseconds: 300),
+              ),
+            );
+            if (result != null) {
+              setState(() {
+                _selectedBuilding = result;
+              });
+              _mapController.move(result.coordinates, 18);
+            }
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              color: isDark 
+                  ? Colors.grey[900]?.withOpacity(0.95) 
+                  : Colors.white.withOpacity(0.95),
+              borderRadius: BorderRadius.circular(28),
+              border: Border.all(
+                color: isDark 
+                    ? Colors.white.withOpacity(0.1) 
+                    : Colors.black.withOpacity(0.08),
+                width: 1,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(isDark ? 0.3 : 0.1),
+                  blurRadius: 16,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
-          ],
-        ),
-        child: TextField(
-          controller: _searchController,
-          decoration: InputDecoration(
-            hintText: 'Search campus buildings...',
-            hintStyle: GoogleFonts.notoSans(color: AppColors.grey),
-            prefixIcon: const Icon(Icons.search, color: AppColors.primary),
-            suffixIcon: _searchController.text.isNotEmpty
-                ? IconButton(
-                    icon: const Icon(Icons.clear, color: AppColors.grey),
-                    onPressed: () {
-                      _searchController.clear();
-                      setState(() {
-                        _showSearchResults = false;
-                        _filteredBuildings = [];
-                      });
-                    },
-                  )
-                : IconButton(
-                    icon: const Icon(Icons.tune, color: AppColors.primary),
-                    tooltip: 'Open full search',
-                    onPressed: () async {
-                      final result = await Navigator.push<CampusBuilding>(
-                        context,
-                        AppRoutes.fadeRoute(const SearchScreen()),
-                      );
-                      if (result != null) {
-                        setState(() {
-                          _selectedBuilding = result;
-                        });
-                        _mapController.move(result.coordinates, 18);
-                      }
-                    },
+            child: Row(
+              children: [
+                Icon(
+                  Icons.search_rounded,
+                  color: AppColors.primary,
+                  size: 20,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Where to?',
+                    style: GoogleFonts.notoSans(
+                      color: AppColors.grey,
+                      fontSize: 14,
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
-            border: InputBorder.none,
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 14,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLayersButton() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final screenHeight = MediaQuery.of(context).size.height;
+    final centerOffset = screenHeight / 2 + 170;
+    
+    return Positioned(
+      bottom: centerOffset,
+      right: 16,
+      child: SafeArea(
+        child: _SmoothLayersButton(
+          isDark: isDark,
+          onTap: () {
+            showModalBottomSheet(
+              context: context,
+              backgroundColor: Colors.transparent,
+              isScrollControlled: true,
+              enableDrag: true,
+              isDismissible: true,
+              useSafeArea: true,
+              transitionAnimationController: AnimationController(
+                vsync: Navigator.of(context),
+                duration: const Duration(milliseconds: 450),
+              )..forward(),
+              builder: (context) => DraggableScrollableSheet(
+                initialChildSize: 0.65,
+                minChildSize: 0.3,
+                maxChildSize: 0.92,
+                snap: true,
+                snapSizes: const [0.3, 0.65, 0.92],
+                expand: false,
+                shouldCloseOnMinExtent: true,
+                builder: (context, scrollController) => TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0.0, end: 1.0),
+                  duration: const Duration(milliseconds: 500),
+                  curve: const Cubic(0.19, 1.0, 0.22, 1.0), // Silky smooth easing
+                  builder: (context, animValue, child) => Transform.translate(
+                    offset: Offset(0, 100 * (1 - animValue)),
+                    child: Transform.scale(
+                      scale: 0.90 + (0.10 * animValue),
+                      child: Opacity(
+                        opacity: animValue,
+                        child: child,
+                      ),
+                    ),
+                  ),
+                  child: Container(
+                  margin: const EdgeInsets.fromLTRB(12, 0, 12, 24),
+                  decoration: BoxDecoration(
+                    color: isDark ? Colors.grey[900] : Colors.white,
+                    borderRadius: BorderRadius.circular(32),
+                    border: Border.all(
+                      color: AppColors.borderAdaptive(context).withOpacity(0.15),
+                      width: 1,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.3),
+                        blurRadius: 40,
+                        offset: const Offset(0, -10),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    children: [
+                      // Enhanced drag handle
+                      GestureDetector(
+                        onVerticalDragEnd: (details) {
+                          if (details.primaryVelocity != null && details.primaryVelocity! > 500) {
+                            Navigator.pop(context);
+                          }
+                        },
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          color: Colors.transparent,
+                          child: Center(
+                            child: TweenAnimationBuilder<double>(
+                              tween: Tween(begin: 0.0, end: 1.0),
+                              duration: const Duration(milliseconds: 600),
+                              curve: Curves.easeOutCubic,
+                              builder: (context, value, child) {
+                                return Container(
+                                  width: 36 + (8 * value),
+                                  height: 5,
+                                  decoration: BoxDecoration(
+                                    color: AppColors.grey.withOpacity(0.4 + (0.2 * value)),
+                                    borderRadius: BorderRadius.circular(3),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 44,
+                              height: 44,
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [
+                                    const Color(0xFF4CAF50).withOpacity(0.15),
+                                    const Color(0xFF2196F3).withOpacity(0.15),
+                                  ],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Stack(
+                                alignment: Alignment.center,
+                                children: [
+                                  Positioned(
+                                    top: 10,
+                                    left: 10,
+                                    child: Icon(
+                                      Icons.square_rounded,
+                                      color: const Color(0xFF4CAF50),
+                                      size: 12,
+                                    ),
+                                  ),
+                                  Positioned(
+                                    top: 16,
+                                    left: 16,
+                                    child: Icon(
+                                      Icons.square_rounded,
+                                      color: const Color(0xFF2196F3),
+                                      size: 12,
+                                    ),
+                                  ),
+                                  Positioned(
+                                    top: 22,
+                                    left: 22,
+                                    child: Icon(
+                                      Icons.square_rounded,
+                                      color: const Color(0xFF9C27B0),
+                                      size: 12,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Text(
+                                'Map Styles',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.textPrimaryAdaptive(context),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Expanded(
+                        child: ListView(
+                          controller: scrollController,
+                          physics: const BouncingScrollPhysics(
+                            parent: AlwaysScrollableScrollPhysics(),
+                          ),
+                          padding: const EdgeInsets.fromLTRB(20, 0, 20, 30),
+                          children: [
+                            _buildMapStyleCard(MapStyle.standard, 'Standard', 'Default street map', Icons.map_rounded, const Color(0xFF4CAF50)),
+                            const SizedBox(height: 12),
+                            _buildMapStyleCard(MapStyle.satellite, 'Satellite', 'High-res aerial view', Icons.satellite_alt_rounded, const Color(0xFF2196F3)),
+                            const SizedBox(height: 12),
+                            _buildMapStyleCard(MapStyle.satelliteHybrid, 'Satellite + Labels', 'Aerial with street names', Icons.layers_rounded, const Color(0xFF9C27B0)),
+                            const SizedBox(height: 12),
+                            _buildMapStyleCard(MapStyle.terrain3d, '3D Terrain', 'Elevation & landforms', Icons.view_in_ar_rounded, const Color(0xFFFF9800)),
+                            const SizedBox(height: 12),
+                            _buildMapStyleCard(MapStyle.topo, 'Topographic', 'Detailed contour lines', Icons.terrain_rounded, const Color(0xFF795548)),
+                            const SizedBox(height: 12),
+                            _buildMapStyleCard(MapStyle.dark, 'Dark Mode', 'Night-friendly map', Icons.dark_mode_rounded, const Color(0xFF424242)),
+                            const SizedBox(height: 12),
+                            _buildMapStyleCard(MapStyle.streetHD, 'Street HD', 'Ultra-clear street view', Icons.hd_rounded, const Color(0xFFE91E63)),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMapStyleCard(MapStyle style, String title, String subtitle, IconData icon, Color color) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isSelected = _mapStyle == style;
+
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.0, end: 1.0),
+      duration: const Duration(milliseconds: 400),
+      curve: const Cubic(0.25, 0.8, 0.25, 1.0),
+      builder: (context, value, child) {
+        return Transform.translate(
+          offset: Offset(0, 10 * (1 - value)),
+          child: Transform.scale(
+            scale: 0.96 + (0.04 * value),
+            child: Opacity(opacity: value, child: child),
+          ),
+        );
+      },
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () {
+            setState(() {
+              _mapStyle = style;
+            });
+            Future.delayed(const Duration(milliseconds: 150), () {
+              Navigator.pop(context);
+            });
+          },
+          splashColor: color.withOpacity(0.1),
+          highlightColor: color.withOpacity(0.05),
+          borderRadius: BorderRadius.circular(18),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOutCubic,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: isSelected
+                  ? color.withOpacity(0.12)
+                  : (isDark ? Colors.grey[850] : AppColors.ash),
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(
+                color: isSelected
+                    ? color
+                    : (isDark ? Colors.white.withOpacity(0.1) : Colors.black.withOpacity(0.05)),
+                width: isSelected ? 2 : 1,
+              ),
+              boxShadow: isSelected
+                  ? [
+                      BoxShadow(
+                        color: color.withOpacity(0.25),
+                        blurRadius: 20,
+                        offset: const Offset(0, 4),
+                        spreadRadius: 0,
+                      ),
+                      BoxShadow(
+                        color: color.withOpacity(0.1),
+                        blurRadius: 30,
+                        offset: const Offset(0, 8),
+                        spreadRadius: 2,
+                      ),
+                    ]
+                  : null,
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 52,
+                  height: 52,
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: color.withOpacity(0.3),
+                      width: 1.5,
+                    ),
+                  ),
+                  child: Icon(
+                    icon,
+                    color: color,
+                    size: 26,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: GoogleFonts.poppins(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: isSelected ? color : AppColors.textPrimaryAdaptive(context),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        subtitle,
+                        style: GoogleFonts.notoSans(
+                          fontSize: 13,
+                          color: AppColors.grey,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+                if (isSelected)
+                  Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: color,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: color.withOpacity(0.4),
+                          blurRadius: 8,
+                        ),
+                      ],
+                    ),
+                    child: const Icon(
+                      Icons.check_rounded,
+                      color: Colors.white,
+                      size: 20,
+                    ),
+                  ),
+              ],
             ),
           ),
         ),
@@ -1685,14 +2318,14 @@ out skel qt;
       left: 0,
       right: 0,
       child: SizedBox(
-        height: 58,
+        height: 48,
         child: ListView(
           scrollDirection: Axis.horizontal,
           padding: const EdgeInsets.symmetric(horizontal: 16),
           physics: const BouncingScrollPhysics(),
           children: [
-            _buildModernCategoryChip('All', null, Icons.explore_rounded),
-            const SizedBox(width: 10),
+            _buildModernCategoryChip('All', null, Icons.apps_rounded),
+            const SizedBox(width: 8),
             ...BuildingCategory.values.where((category) {
               final buildingsToCheck = _osmBuildings.isNotEmpty ? _osmBuildings : campusBuildings;
               return buildingsToCheck.any((b) => b.category == category);
@@ -1700,7 +2333,7 @@ out skel qt;
               final buildingsToCheck = _osmBuildings.isNotEmpty ? _osmBuildings : campusBuildings;
               final building = buildingsToCheck.firstWhere((b) => b.category == category);
               return Padding(
-                padding: const EdgeInsets.only(right: 10),
+                padding: const EdgeInsets.only(right: 8),
                 child: _buildModernCategoryChip(
                   building.categoryName,
                   category,
@@ -1730,75 +2363,115 @@ out skel qt;
   String _tileTemplateFor(MapStyle style) {
     switch (style) {
       case MapStyle.satellite:
-        // Google's high-quality satellite imagery (best available)
-        // Fallback to Esri World Imagery if Google is unavailable
+        // Google high-quality satellite imagery
         return 'https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}';
+      case MapStyle.satelliteHybrid:
+        // Satellite with street labels overlay
+        return 'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}';
+      case MapStyle.terrain3d:
+        // Google Terrain with 3D elevation data
+        return 'https://mt1.google.com/vt/lyrs=p&x={x}&y={y}&z={z}';
       case MapStyle.topo:
+        // OpenTopoMap - detailed topographic
         return 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png';
+      case MapStyle.dark:
+        // Dark theme map from CartoDB
+        return 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png';
+      case MapStyle.streetHD:
+        // High-definition street map from Stadia
+        return 'https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}.png';
       case MapStyle.standard:
+        // Standard OpenStreetMap
         return 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
     }
   }
 
   Widget _buildModernCategoryChip(String label, BuildingCategory? category, IconData icon) {
     final isSelected = _selectedCategory == category;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final chipColor = category != null ? _getCategoryColor(category) : AppColors.primary;
     
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 250),
-      curve: Curves.easeOutCubic,
-      child: Material(
-        elevation: isSelected ? 8 : 3,
-        shadowColor: isSelected ? AppColors.primary.withOpacity(0.4) : Colors.black.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(28),
-        color: isSelected 
-            ? AppColors.primary 
-            : (isDark ? AppColors.darkCard : Colors.white),
-        child: InkWell(
-          onTap: () {
-            setState(() {
-              _selectedCategory = _selectedCategory == category ? null : category;
-            });
-          },
-          borderRadius: BorderRadius.circular(28),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  icon,
-                  size: 20,
-                  color: isSelected ? Colors.white : AppColors.primary,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  label,
-                  style: GoogleFonts.notoSans(
-                    color: isSelected ? Colors.white : AppColors.textPrimaryAdaptive(context),
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14,
+    return TweenAnimationBuilder<double>(
+      duration: const Duration(milliseconds: 280),
+      curve: Curves.easeOutQuart,
+      tween: Tween(begin: 0.0, end: isSelected ? 1.0 : 0.0),
+      builder: (context, value, child) {
+        return Transform.scale(
+          scale: 1.0 - (value * 0.02),
+          child: Material(
+            elevation: isSelected ? 6 : 2,
+            shadowColor: isSelected ? chipColor.withOpacity(0.4) : chipColor.withOpacity(0.15),
+            borderRadius: BorderRadius.circular(24),
+            color: isSelected 
+                ? chipColor 
+                : chipColor.withOpacity(0.15),
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(24),
+                border: isSelected 
+                    ? null 
+                    : Border.all(
+                        color: chipColor.withOpacity(0.3),
+                        width: 1.5,
+                      ),
+              ),
+              child: InkWell(
+                onTap: () {
+                  setState(() {
+                    _selectedCategory = _selectedCategory == category ? null : category;
+                  });
+                },
+                borderRadius: BorderRadius.circular(24),
+                splashColor: chipColor.withOpacity(0.2),
+                highlightColor: chipColor.withOpacity(0.1),
+                child: AnimatedPadding(
+                  duration: const Duration(milliseconds: 280),
+                  curve: Curves.easeOutQuart,
+                  padding: EdgeInsets.symmetric(
+                    horizontal: isSelected ? 16 : 14, 
+                    vertical: isSelected ? 10 : 8
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        icon,
+                        size: isSelected ? 21 : 20,
+                        color: isSelected ? Colors.white : chipColor,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        label,
+                        style: GoogleFonts.notoSans(
+                          color: isSelected ? Colors.white : chipColor,
+                          fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ],
+              ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
   Widget _buildMyLocationButton() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final screenHeight = MediaQuery.of(context).size.height;
+    final centerOffset = screenHeight / 2 - 10;
+    
     return Positioned(
-      bottom: 240,
+      bottom: centerOffset,
       right: 16,
       child: AnimatedScale(
         scale: _locBtnScale,
         duration: const Duration(milliseconds: 140),
         curve: Curves.easeOut,
         child: Material(
-          elevation: 8,
+          elevation: 6,
           shape: const CircleBorder(),
           color: AppColors.cardBackground(context),
           shadowColor: Colors.black.withOpacity(isDark ? 0.5 : 0.15),
@@ -1820,7 +2493,12 @@ out skel qt;
               height: 56,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                border: Border.all(color: AppColors.borderAdaptive(context).withOpacity(0.5)),
+                border: Border.all(
+                  color: isDark
+                      ? Colors.white.withOpacity(0.1)
+                      : Colors.black.withOpacity(0.08),
+                  width: 1,
+                ),
               ),
               child: const Icon(Icons.my_location_rounded, color: AppColors.primary, size: 26),
             ),
@@ -1832,59 +2510,111 @@ out skel qt;
 
   Widget _buildCompassButton() {
     final isRotated = _mapRotation.abs() > 0.1;
+    final isActive = _is3DCompassMode;
+    final screenHeight = MediaQuery.of(context).size.height;
+    final centerOffset = screenHeight / 2 + 80;
     
     return Positioned(
-      bottom: 380,
+      bottom: centerOffset,
       right: 16,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        curve: Curves.easeOut,
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOutCubic,
         child: Material(
-          elevation: isRotated ? 6 : 4,
+          elevation: isActive ? 8 : (isRotated ? 6 : 4),
           shape: const CircleBorder(),
-          color: AppColors.cardBackground(context),
+          color: isActive
+              ? const Color(0xFFFF5722).withOpacity(0.15)
+              : AppColors.cardBackground(context),
           child: InkWell(
             customBorder: const CircleBorder(),
-            onTap: () {
-              // Smooth rotation back to north with animation
-              setState(() {
-                _mapRotation = 0.0;
-              });
-              _mapController.rotate(0.0);
-            },
-            child: Container(
-              width: 56,
-              height: 56,
+            onTap: _isRecentering ? null : _recenterAndTilt3D,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 250),
+              curve: Curves.easeOutCubic,
+              width: 48,
+              height: 48,
               padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: isActive
+                    ? Border.all(color: const Color(0xFFFF5722), width: 2)
+                    : null,
+              ),
               child: Stack(
                 children: [
                   // Rotating compass icon
                   Center(
-                    child: Transform.rotate(
-                      angle: -_mapRotation * 3.14159 / 180,
-                      child: Icon(
-                        Icons.navigation,
-                        color: isRotated ? AppColors.primary : AppColors.grey,
-                        size: 36,
-                      ),
+                    child: TweenAnimationBuilder<double>(
+                      tween: Tween(begin: 0, end: _isRecentering ? 1 : 0),
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.easeOut,
+                      builder: (context, value, child) {
+                        return Transform.rotate(
+                          angle: (-_mapRotation * 3.14159 / 180) + (value * 3.14159 * 2),
+                          child: ShaderMask(
+                            shaderCallback: (bounds) => LinearGradient(
+                              colors: [
+                                const Color(0xFFFF5722),
+                                const Color(0xFFFF9800),
+                              ],
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                            ).createShader(bounds),
+                            child: Icon(
+                              Icons.navigation_rounded,
+                              color: Colors.white,
+                              size: 28,
+                            ),
+                          ),
+                        );
+                      },
                     ),
                   ),
-                  // North indicator (stays fixed)
-                  Positioned(
-                    top: 4,
-                    left: 0,
-                    right: 0,
-                    child: Center(
-                      child: Text(
-                        'N',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: isRotated ? AppColors.error : AppColors.grey,
+                  // 3D indicator badge
+                  if (isActive)
+                    Positioned(
+                      bottom: 0,
+                      right: 0,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFF5722),
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFFFF5722).withOpacity(0.4),
+                              blurRadius: 8,
+                            ),
+                          ],
+                        ),
+                        child: const Text(
+                          '3D',
+                          style: TextStyle(
+                            fontSize: 8,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
                         ),
                       ),
                     ),
-                  ),
+                  // North indicator (stays fixed)
+                  if (!isActive)
+                    Positioned(
+                      top: 4,
+                      left: 0,
+                      right: 0,
+                      child: Center(
+                        child: Text(
+                          'N',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: isRotated ? AppColors.error : AppColors.grey,
+                          ),
+                        ),
+                      ),
+                    ),
                 ],
               ),
             ),
@@ -1943,76 +2673,6 @@ out skel qt;
     );
   }
 
-  Widget _build2D3DToggle() {
-    return Positioned(
-      bottom: 490,
-      right: 16,
-      child: AnimatedScale(
-        scale: _viewToggleScale,
-        duration: const Duration(milliseconds: 140),
-        curve: Curves.easeOut,
-        child: Material(
-          elevation: 4,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-          ),
-          color: _is3DView ? AppColors.primary : AppColors.cardBackground(context),
-          child: InkWell(
-            onTap: () {
-              setState(() {
-                _is3DView = !_is3DView;
-                if (_is3DView) {
-                  // 3D View: Switch to high-quality satellite imagery for building inspection
-                  // Zoom in closer to see building details and real dimensions
-                  final target = _currentLocation ?? _mapController.camera.center;
-                  _mapStyle = MapStyle.satellite; // Switch to satellite for 3D
-                  _mapController.move(target, (_currentZoom + 1.5).clamp(17.0, 20.0));
-                  // Apply heading-based rotation for perspective
-                  _mapController.rotate(_userHeading);
-                } else {
-                  // 2D View: Return to standard map for navigation clarity
-                  // Users can still rotate/zoom freely in 2D mode
-                  final target = _currentLocation ?? _mapController.camera.center;
-                  _mapStyle = MapStyle.standard; // Switch to standard for 2D
-                  _mapController.move(target, (_currentZoom - 1.5).clamp(14.0, 18.0));
-                  // Reset rotation to north-up for 2D clarity
-                  _mapController.rotate(0);
-                }
-                _viewToggleScale = 0.85;
-              });
-              Future.delayed(const Duration(milliseconds: 160), () {
-                if (mounted) setState(() => _viewToggleScale = 1.0);
-              });
-            },
-            child: SizedBox(
-              width: 48,
-              height: 48,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    _is3DView ? Icons.threed_rotation : Icons.map,
-                    color: _is3DView ? Colors.white : AppColors.primary,
-                    size: 20,
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    _is3DView ? '3D' : '2D',
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                      color: _is3DView ? Colors.white : AppColors.primary,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildRefreshButton() {
     return Positioned(
       bottom: 320,
@@ -2058,9 +2718,30 @@ out skel qt;
     );
   }
 
+  Widget _buildEventsFAB() {
+    return Positioned(
+      bottom: 210,
+      right: 16,
+      child: FloatingActionButton(
+        heroTag: 'events',
+        backgroundColor: const Color(0xFFE91E63),
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const EventsScreen(),
+            ),
+          );
+        },
+        tooltip: 'Campus Events',
+        child: const Icon(Icons.event_rounded, color: Colors.white),
+      ),
+    );
+  }
+
   Widget _buildDirectionsFAB() {
     return Positioned(
-      bottom: 100,
+      bottom: 140,
       right: 16,
       child: FloatingActionButton(
         heroTag: 'directions',
@@ -2225,7 +2906,10 @@ out skel qt;
                         ],
                       ],
                     ),
-                    onTap: () => _showBuildingSheet(building),
+                    onTap: () {
+                      setState(() => _showSearchResults = false);
+                      _showBuildingSheet(building, fromSearch: true);
+                    },
                   );
                 },
               ),
@@ -2349,7 +3033,12 @@ out skel qt;
                       ),
                     ),
                     OutlinedButton.icon(
-                      onPressed: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Share coming soon'))),
+                      onPressed: () => showAnimatedSuccess(
+                        context,
+                        'Share coming soon',
+                        icon: Icons.share_rounded,
+                        iconColor: AppColors.primary,
+                      ),
                       icon: const Icon(Icons.share),
                       label: const Text('Share'),
                       style: OutlinedButton.styleFrom(
@@ -2396,6 +3085,7 @@ out skel qt;
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+          constraints: const BoxConstraints(minHeight: 60),
           decoration: BoxDecoration(
             color: AppColors.cardBackground(context),
             borderRadius: BorderRadius.circular(32),
@@ -2415,10 +3105,10 @@ out skel qt;
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              _navItem(Icons.home_rounded, 'Home', 0),
-              _navItem(Icons.star_rounded, 'Favorites', 1),
-              _navItem(Icons.workspace_premium_rounded, 'Pro', 2),
-              _navItem(Icons.person_rounded, 'Profile', 3),
+              _navItem(Icons.explore_outlined, 'Explore', 0),
+              _navItem(Icons.favorite_border_rounded, 'Favorites', 1),
+              _navItem(Icons.diamond_outlined, 'Premium', 2),
+              _navItem(Icons.person_outline_rounded, 'Profile', 3),
             ],
           ),
         ),
@@ -2667,189 +3357,91 @@ out skel qt;
     });
   }
 
-  void _showBuildingSheet(CampusBuilding building) async {
+  void _showBuildingSheet(CampusBuilding building, {bool fromSearch = false}) async {
     _addToRecent(building);
-    setState(() => _selectedBuilding = building);
-    final isFav = _favorites.any((b) => b.name == building.name);
-    final distance = _currentLocation != null
-        ? const Distance().distance(_currentLocation!, building.coordinates)
-        : null;
-    // Precompute precise ETAs via OSRM in background for all modes
-    final start = _currentLocation ?? _campusCenter;
-    _precomputeEtas(start, building.coordinates);
-    await Future.delayed(const Duration(milliseconds: 90));
-    showModalBottomSheet(
+    setState(() {
+      _selectedBuilding = building;
+      if (fromSearch) {
+        _showTempMarker = true;
+        _tempMarkerBuilding = building;
+      }
+    });
+    
+    // Move map to building location
+    _mapController.move(building.coordinates, 18.0);
+    
+    // Animate temporary marker if from search
+    if (fromSearch) {
+      _tempMarkerController?.reset();
+      _tempMarkerController?.forward();
+      // Hide temporary marker after 3 seconds
+      Future.delayed(const Duration(seconds: 3), () {
+        if (mounted) {
+          setState(() {
+            _showTempMarker = false;
+            _tempMarkerBuilding = null;
+          });
+        }
+      });
+    }
+    
+    showDialog(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
+      barrierColor: Colors.transparent,
+      barrierDismissible: false,
+      useSafeArea: false,
       builder: (ctx) {
-        return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 10),
-          child: DraggableScrollableSheet(
-          expand: false,
-            initialChildSize: 0.40,
-            minChildSize: 0.30,
-            maxChildSize: 0.85,
-            builder: (context, scrollController) {
-              return SingleChildScrollView(
-                controller: scrollController,
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // handle bar
-                    Center(
-                      child: Container(
-                        width: 40,
-                        height: 4,
-                        margin: const EdgeInsets.only(bottom: 12),
-                        decoration: BoxDecoration(
-                          color: AppColors.lightGrey,
-                          borderRadius: BorderRadius.circular(2),
-                        ),
-                      ),
-                    ),
-                    Row(
-                      children: [
-                        Container(
-                          width: 52,
-                          height: 52,
-                          decoration: BoxDecoration(
-                            color: _getCategoryColor(building.category).withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: Center(
-                            child: Icon(_getCategoryIcon(building.category), color: _getCategoryColor(building.category), size: 26),
-                          ),
-                        ),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(building.name, style: GoogleFonts.notoSans(fontSize: 18, fontWeight: FontWeight.bold)),
-                              const SizedBox(height: 6),
-                              Row(
-                                children: [
-                                  Text(building.categoryName, style: GoogleFonts.notoSans(fontSize: 12, color: AppColors.grey)),
-                                  if (distance != null) ...[
-                                    const SizedBox(width: 6),
-                                    const Icon(Icons.place, size: 12, color: AppColors.primary),
-                                    const SizedBox(width: 2),
-                                    Text(_formatDistance(distance), style: GoogleFonts.notoSans(fontSize: 12, color: AppColors.primary)),
-                                  ],
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                        IconButton(
-                          icon: Icon(isFav ? Icons.star : Icons.star_border, color: isFav ? Colors.amber : AppColors.grey),
-                          onPressed: () {
-                            _toggleFavorite(building);
-                            Navigator.pop(context);
-                            _showBuildingSheet(building);
-                          },
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    if (building.description != null)
-                      Text(building.description!, style: GoogleFonts.notoSans(fontSize: 14, color: AppColors.darkGrey)),
-                    const SizedBox(height: 18),
-                    // Transport selector with quick ETAs
-                    _buildTransportSelector(building, distance),
-                    const SizedBox(height: 16),
-                    Wrap(
-                      spacing: 12,
-                      runSpacing: 12,
-                      children: [
-                        ElevatedButton.icon(
-                          onPressed: () async {
-                            Navigator.pop(context);
-                            await _calculateRoute(building);
-                          },
-                          icon: Icon(_getTransportIcon()),
-                          label: const Text('Directions'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primary,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                          ),
-                        ),
-                        OutlinedButton.icon(
-                          onPressed: () async {
-                            Navigator.pop(context);
-                            // compute and go to live navigation directly
-                            await _calculateRoute(building);
-                            if (!mounted || _routePolyline.isEmpty) return;
-                            await Navigator.of(context).push(MaterialPageRoute(
-                              builder: (_) => LiveNavigationScreen(
-                                routePoints: _routePolyline,
-                                destination: building.coordinates,
-                                transportMode: _transportMode,
-                              ),
-                            ));
-                          },
-                          icon: const Icon(Icons.play_arrow),
-                          label: const Text('Start'),
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                            side: const BorderSide(color: AppColors.primary),
-                            foregroundColor: AppColors.primary,
-                          ),
-                        ),
-                        OutlinedButton.icon(
-                          onPressed: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Share coming soon'))),
-                          icon: const Icon(Icons.share),
-                          label: const Text('Share'),
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                            side: const BorderSide(color: AppColors.primary),
-                            foregroundColor: AppColors.primary,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 22),
-                    if (building.openingHours != null) ...[
-                      Row(
-                        children: [
-                          const Icon(Icons.access_time, size: 18, color: AppColors.grey),
-                          const SizedBox(width: 8),
-                          Text(building.openingHours!, style: GoogleFonts.notoSans(fontSize: 13)),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                    ],
-                    if (building.amenities != null && building.amenities!.isNotEmpty) ...[
-                      Text('Amenities', style: GoogleFonts.notoSans(fontSize: 13, fontWeight: FontWeight.w600)),
-                      const SizedBox(height: 8),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: building.amenities!.map((a) => Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: AppColors.ash,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(a, style: GoogleFonts.notoSans(fontSize: 11, color: AppColors.darkGrey)),
-                        )).toList(),
-                      ),
-                      const SizedBox(height: 24),
-                    ],
-                  ],
-                ),
+        return BuildingDetailSheet(
+          building: building,
+          onClose: () {
+            Navigator.pop(ctx);
+            setState(() {
+              _selectedBuilding = null;
+              _showTempMarker = false;
+              _tempMarkerBuilding = null;
+            });
+          },
+          onStartNavigation: (building) async {
+            Navigator.pop(ctx);
+            await _calculateRoute(building);
+            if (!mounted || _routePolyline.isEmpty) return;
+            await Navigator.of(context).push(MaterialPageRoute(
+              builder: (_) => LiveNavigationScreen(
+                routePoints: _routePolyline,
+                destination: building.coordinates,
+                transportMode: _transportMode,
+              ),
+            ));
+          },
+          onGetDirections: (building) async {
+            Navigator.pop(ctx);
+            await _calculateRoute(building);
+          },
+          onShare: (building) {
+            Share.share(
+              'Check out ${building.name} on Campus Navigator!\nCategory: ${building.categoryName}',
+              subject: building.name,
+            );
+          },
+          onFavoriteToggle: (building, isFavorite) {
+            setState(() {
+              if (isFavorite) {
+                if (!_favorites.any((b) => b.name == building.name)) {
+                  _favorites.add(building);
+                }
+              } else {
+                _favorites.removeWhere((b) => b.name == building.name);
+              }
+            });
+            if (mounted) {
+              showAnimatedSuccess(
+                context,
+                isFavorite ? '${building.name} added to favorites' : '${building.name} removed from favorites',
+                icon: isFavorite ? Icons.favorite_rounded : Icons.heart_broken_rounded,
+                iconColor: isFavorite ? Colors.red : AppColors.grey,
               );
             }
-          ),
+          },
         );
       },
     );
@@ -3009,4 +3601,191 @@ class _ArrowPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_ArrowPainter oldDelegate) => false;
+}
+
+// Ultra-Smooth Layers Button with Advanced Animations
+class _SmoothLayersButton extends StatefulWidget {
+  final bool isDark;
+  final VoidCallback onTap;
+
+  const _SmoothLayersButton({
+    required this.isDark,
+    required this.onTap,
+  });
+
+  @override
+  State<_SmoothLayersButton> createState() => _SmoothLayersButtonState();
+}
+
+class _SmoothLayersButtonState extends State<_SmoothLayersButton>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+  late Animation<double> _glowAnimation;
+  bool _isPressed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 200),
+    );
+
+    _scaleAnimation = Tween<double>(
+      begin: 1.0,
+      end: 0.92,
+    ).animate(CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeOutCubic,
+    ));
+
+    _glowAnimation = Tween<double>(
+      begin: 1.0,
+      end: 1.3,
+    ).animate(CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeOutQuart,
+    ));
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: (_) {
+        setState(() => _isPressed = true);
+        _controller.forward();
+      },
+      onTapUp: (_) {
+        _controller.reverse();
+        Future.delayed(const Duration(milliseconds: 100), () {
+          if (mounted) {
+            setState(() => _isPressed = false);
+            widget.onTap();
+          }
+        });
+      },
+      onTapCancel: () {
+        _controller.reverse();
+        setState(() => _isPressed = false);
+      },
+      child: AnimatedBuilder(
+        animation: _controller,
+        builder: (context, child) {
+          return Transform.scale(
+            scale: _scaleAnimation.value,
+            child: Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                color: widget.isDark
+                    ? Colors.grey[850]?.withOpacity(0.95)
+                    : Colors.white.withOpacity(0.95),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: widget.isDark
+                      ? Colors.white.withOpacity(0.12)
+                      : Colors.black.withOpacity(0.08),
+                  width: 1,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(widget.isDark ? 0.5 : 0.15),
+                    blurRadius: 20 * _glowAnimation.value,
+                    offset: const Offset(0, 4),
+                    spreadRadius: 0,
+                  ),
+                  BoxShadow(
+                    color: Colors.black.withOpacity(widget.isDark ? 0.3 : 0.08),
+                    blurRadius: 30 * _glowAnimation.value,
+                    offset: const Offset(0, 8),
+                    spreadRadius: -2,
+                  ),
+                ],
+              ),
+              child: Center(
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  curve: Curves.easeOutCubic,
+                  child: Icon(
+                    Icons.layers_rounded,
+                    color: _isPressed
+                        ? AppColors.primary
+                        : (widget.isDark
+                            ? Colors.white.withOpacity(0.9)
+                            : Colors.black.withOpacity(0.8)),
+                    size: 24,
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+// Animated Element Wrapper for Staggered Entrance Animations
+class _AnimatedElement extends StatelessWidget {
+  final Widget child;
+  final AnimationController? controller;
+  final int delay;
+
+  const _AnimatedElement({
+    required this.child,
+    this.controller,
+    this.delay = 0,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (controller == null) return child;
+
+    return AnimatedBuilder(
+      animation: controller!,
+      builder: (context, _) {
+        final fadeAnimation = Tween<double>(
+          begin: 0.0,
+          end: 1.0,
+        ).animate(CurvedAnimation(
+          parent: controller!,
+          curve: Curves.easeOut,
+        ));
+
+        final slideAnimation = Tween<Offset>(
+          begin: const Offset(0, 0.15),
+          end: Offset.zero,
+        ).animate(CurvedAnimation(
+          parent: controller!,
+          curve: Curves.easeOutCubic,
+        ));
+
+        final scaleAnimation = Tween<double>(
+          begin: 0.9,
+          end: 1.0,
+        ).animate(CurvedAnimation(
+          parent: controller!,
+          curve: Curves.easeOutBack,
+        ));
+
+        return FadeTransition(
+          opacity: fadeAnimation,
+          child: SlideTransition(
+            position: slideAnimation,
+            child: ScaleTransition(
+              scale: scaleAnimation,
+              child: child,
+            ),
+          ),
+        );
+      },
+    );
+  }
 }

@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:table_calendar/table_calendar.dart';
 import '../theme/app_theme.dart';
 import 'package:intl/intl.dart';
+import '../widgets/animated_success_card.dart';
 
 class EventsScreen extends StatefulWidget {
   const EventsScreen({super.key});
@@ -13,12 +16,13 @@ class EventsScreen extends StatefulWidget {
 class _EventsScreenState extends State<EventsScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final List<CampusEvent> _upcomingEvents = _sampleUpcomingEvents;
+  final List<CampusEvent> _activeEvents = _sampleActiveEvents;
   final List<CampusEvent> _pastEvents = _samplePastEvents;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
   }
 
   @override
@@ -62,7 +66,8 @@ class _EventsScreenState extends State<EventsScreen> with SingleTickerProviderSt
               ),
               tabs: const [
                 Tab(text: 'Upcoming'),
-                Tab(text: 'Past Events'),
+                Tab(text: 'Active'),
+                Tab(text: 'Past'),
               ],
             ),
           ),
@@ -71,16 +76,40 @@ class _EventsScreenState extends State<EventsScreen> with SingleTickerProviderSt
       body: TabBarView(
         controller: _tabController,
         children: [
-          _buildEventsList(_upcomingEvents, isUpcoming: true),
-          _buildEventsList(_pastEvents, isUpcoming: false),
+          _buildRefreshableEventsList(_upcomingEvents, eventType: 'upcoming'),
+          _buildRefreshableEventsList(_activeEvents, eventType: 'active'),
+          _buildRefreshableEventsList(_pastEvents, eventType: 'past'),
         ],
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _showAddEventDialog,
+        backgroundColor: AppColors.primary,
+        icon: const Icon(Icons.add_rounded, color: Colors.white),
+        label: Text(
+          'Add Event',
+          style: GoogleFonts.poppins(
+            color: Colors.white,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
       ),
     );
   }
 
-  Widget _buildEventsList(List<CampusEvent> events, {required bool isUpcoming}) {
+  Widget _buildRefreshableEventsList(List<CampusEvent> events, {required String eventType}) {
+    return RefreshIndicator(
+      onRefresh: () async {
+        await Future.delayed(const Duration(milliseconds: 1200));
+        if (mounted) setState(() {});
+      },
+      color: AppColors.primary,
+      child: _buildEventsList(events, eventType: eventType),
+    );
+  }
+
+  Widget _buildEventsList(List<CampusEvent> events, {required String eventType}) {
     if (events.isEmpty) {
-      return _buildEmptyState(isUpcoming);
+      return _buildEmptyState(eventType);
     }
 
     return ListView.builder(
@@ -88,13 +117,41 @@ class _EventsScreenState extends State<EventsScreen> with SingleTickerProviderSt
       itemCount: events.length,
       itemBuilder: (context, index) {
         final event = events[index];
-        return _buildEventCard(event, isUpcoming);
+        return _AnimatedEventCard(
+          event: event,
+          eventType: eventType,
+          index: index,
+        );
       },
     );
   }
 
-  Widget _buildEmptyState(bool isUpcoming) {
+  Widget _buildEmptyState(String eventType) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    String title, message;
+    IconData icon;
+    
+    switch (eventType) {
+      case 'upcoming':
+        title = 'No Upcoming Events';
+        message = 'Check back later for upcoming campus events and activities';
+        icon = Icons.event_available;
+        break;
+      case 'active':
+        title = 'No Active Events';
+        message = 'Active events happening now will appear here';
+        icon = Icons.event_note_rounded;
+        break;
+      case 'past':
+        title = 'No Past Events';
+        message = 'Past events will appear here once they\'re completed';
+        icon = Icons.history;
+        break;
+      default:
+        title = 'No Events';
+        message = 'No events to display';
+        icon = Icons.event;
+    }
     
     return Center(
       child: SingleChildScrollView(
@@ -110,14 +167,14 @@ class _EventsScreenState extends State<EventsScreen> with SingleTickerProviderSt
                 shape: BoxShape.circle,
               ),
               child: Icon(
-                isUpcoming ? Icons.event_available : Icons.history,
+                icon,
                 size: 60,
                 color: AppColors.primary.withOpacity(0.5),
               ),
             ),
             const SizedBox(height: 24),
             Text(
-              isUpcoming ? 'No Upcoming Events' : 'No Past Events',
+              title,
               style: GoogleFonts.notoSans(
                 fontSize: 22,
                 fontWeight: FontWeight.bold,
@@ -126,9 +183,7 @@ class _EventsScreenState extends State<EventsScreen> with SingleTickerProviderSt
             ),
             const SizedBox(height: 12),
             Text(
-              isUpcoming
-                  ? 'Check back later for upcoming campus events and activities'
-                  : 'Past events will appear here once they\'re completed',
+              message,
               textAlign: TextAlign.center,
               style: GoogleFonts.notoSans(
                 fontSize: 15,
@@ -142,7 +197,36 @@ class _EventsScreenState extends State<EventsScreen> with SingleTickerProviderSt
     );
   }
 
-  Widget _buildEventCard(CampusEvent event, bool isUpcoming) {
+  void _showAddEventDialog() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => _AddEventSheet(
+        onEventAdded: (CampusEvent event) {
+          setState(() {
+            // Add event to appropriate list
+            if (event.dateTime.isAfter(DateTime.now())) {
+              _upcomingEvents.insert(0, event);
+            } else {
+              _activeEvents.insert(0, event);
+            }
+          });
+        },
+      ),
+    );
+  }
+
+  void _showEventDetailSheet(BuildContext context, CampusEvent event) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => _EventDetailSheet(event: event),
+    );
+  }
+
+  Widget _buildEventCard(CampusEvent event, String eventType) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     
     return Container(
@@ -318,7 +402,7 @@ class _EventsScreenState extends State<EventsScreen> with SingleTickerProviderSt
                     ),
                     
                     // Action Buttons
-                    if (isUpcoming) ...[
+                    if (eventType == 'upcoming') ...[
                       const SizedBox(height: 16),
                       Row(
                         children: [
@@ -326,15 +410,11 @@ class _EventsScreenState extends State<EventsScreen> with SingleTickerProviderSt
                             child: OutlinedButton.icon(
                               onPressed: () {
                                 // TODO: Navigate to event location
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text('Navigating to ${event.location}'),
-                                    duration: const Duration(seconds: 2),
-                                    behavior: SnackBarBehavior.floating,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                  ),
+                                showAnimatedSuccess(
+                                  context,
+                                  'Navigating to ${event.location}',
+                                  icon: Icons.directions_rounded,
+                                  iconColor: AppColors.primary,
                                 );
                               },
                               icon: const Icon(Icons.directions, size: 18),
@@ -354,15 +434,11 @@ class _EventsScreenState extends State<EventsScreen> with SingleTickerProviderSt
                             child: ElevatedButton.icon(
                               onPressed: () {
                                 // TODO: RSVP functionality
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text('RSVP for ${event.title}'),
-                                    duration: const Duration(seconds: 2),
-                                    behavior: SnackBarBehavior.floating,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                  ),
+                                showAnimatedSuccess(
+                                  context,
+                                  'RSVP for ${event.title}',
+                                  icon: Icons.event_available_rounded,
+                                  iconColor: AppColors.success,
                                 );
                               },
                               icon: const Icon(Icons.check_circle, size: 18),
@@ -732,6 +808,29 @@ final List<CampusEvent> _sampleUpcomingEvents = [
   ),
 ];
 
+final List<CampusEvent> _sampleActiveEvents = [
+  CampusEvent(
+    title: 'Library Study Session',
+    description: 'Ongoing group study session at the library. Join fellow students for collaborative learning and exam preparation. Quiet zones available.',
+    dateTime: DateTime.now(),
+    location: 'Main Library - 2nd Floor',
+    category: 'Academic',
+    categoryColor: const Color(0xFF00BCD4),
+    categoryIcon: Icons.menu_book_rounded,
+    organizer: 'Library Services',
+  ),
+  CampusEvent(
+    title: 'Cafeteria Special Lunch',
+    description: 'Special international cuisine being served today. Multiple food stations featuring dishes from around the world. Limited time offer!',
+    dateTime: DateTime.now(),
+    location: 'Main Cafeteria',
+    category: 'Food',
+    categoryColor: const Color(0xFFFF5722),
+    categoryIcon: Icons.restaurant_rounded,
+    organizer: 'Catering Services',
+  ),
+];
+
 final List<CampusEvent> _samplePastEvents = [
   CampusEvent(
     title: 'Orientation Week 2024',
@@ -764,3 +863,1119 @@ final List<CampusEvent> _samplePastEvents = [
     organizer: 'Department of Computer Science',
   ),
 ];
+
+// Animated Event Card Widget
+class _AnimatedEventCard extends StatefulWidget {
+  final CampusEvent event;
+  final String eventType;
+  final int index;
+
+  const _AnimatedEventCard({
+    required this.event,
+    required this.eventType,
+    required this.index,
+  });
+
+  @override
+  State<_AnimatedEventCard> createState() => _AnimatedEventCardState();
+}
+
+class _AnimatedEventCardState extends State<_AnimatedEventCard> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+  late Animation<Offset> _slideAnimation;
+  double _pressScale = 1.0;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 400),
+      vsync: this,
+    );
+
+    _scaleAnimation = Tween<double>(begin: 0.9, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: Curves.easeOutBack,
+      ),
+    );
+
+    _slideAnimation = Tween<Offset>(
+      begin: const Offset(0.3, 0),
+      end: Offset.zero,
+    ).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: Curves.easeOutCubic,
+      ),
+    );
+
+    Future.delayed(Duration(milliseconds: 100 * widget.index), () {
+      if (mounted) _controller.forward();
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isActive = widget.eventType == 'active';
+
+    return FadeTransition(
+      opacity: _scaleAnimation,
+      child: SlideTransition(
+        position: _slideAnimation,
+        child: ScaleTransition(
+          scale: _scaleAnimation,
+          child: GestureDetector(
+            onTapDown: (_) => setState(() => _pressScale = 0.98),
+            onTapUp: (_) => setState(() => _pressScale = 1.0),
+            onTapCancel: () => setState(() => _pressScale = 1.0),
+            onTap: () {
+              showModalBottomSheet(
+                context: context,
+                backgroundColor: Colors.transparent,
+                isScrollControlled: true,
+                builder: (context) => _EventDetailSheet(event: widget.event),
+              );
+            },
+            child: AnimatedScale(
+              scale: _pressScale,
+              duration: const Duration(milliseconds: 100),
+              child: Container(
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: isDark ? AppColors.cardBackground(context) : Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  border: isActive ? Border.all(
+                    color: widget.event.categoryColor,
+                    width: 2,
+                  ) : null,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(isDark ? 0.3 : 0.08),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Header with category badge
+                    Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: widget.event.categoryColor.withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Icon(
+                              widget.event.categoryIcon,
+                              color: widget.event.categoryColor,
+                              size: 24,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  widget.event.title,
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 17,
+                                    fontWeight: FontWeight.bold,
+                                    color: isDark ? AppColors.white : AppColors.darkGrey,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  widget.event.category,
+                                  style: GoogleFonts.notoSans(
+                                    fontSize: 13,
+                                    color: widget.event.categoryColor,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          if (isActive)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFFF5722),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Text(
+                                'LIVE',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                    
+                    // Description
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Text(
+                        widget.event.description,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.notoSans(
+                          fontSize: 14,
+                          color: AppColors.grey,
+                          height: 1.5,
+                        ),
+                      ),
+                    ),
+                    
+                    const SizedBox(height: 16),
+                    
+                    // Footer with time and location
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? Colors.white.withOpacity(0.05)
+                            : AppColors.grey.withOpacity(0.05),
+                        borderRadius: const BorderRadius.only(
+                          bottomLeft: Radius.circular(20),
+                          bottomRight: Radius.circular(20),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.access_time_rounded,
+                            size: 16,
+                            color: AppColors.grey,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            DateFormat('MMM dd, yyyy • h:mm a').format(widget.event.dateTime),
+                            style: GoogleFonts.notoSans(
+                              fontSize: 13,
+                              color: AppColors.grey,
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Icon(
+                            Icons.location_on_rounded,
+                            size: 16,
+                            color: AppColors.grey,
+                          ),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              widget.event.location,
+                              style: GoogleFonts.notoSans(
+                                fontSize: 13,
+                                color: AppColors.grey,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// Add Event Sheet - Animated Bottom Sheet
+class _AddEventSheet extends StatefulWidget {
+  final Function(CampusEvent) onEventAdded;
+
+  const _AddEventSheet({required this.onEventAdded});
+
+  @override
+  State<_AddEventSheet> createState() => _AddEventSheetState();
+}
+
+class _AddEventSheetState extends State<_AddEventSheet> with SingleTickerProviderStateMixin {
+  final _titleController = TextEditingController();
+  final _descriptionController = TextEditingController();
+  final _locationController = TextEditingController();
+  DateTime _selectedDate = DateTime.now();
+  TimeOfDay _selectedTime = TimeOfDay.now();
+  String _selectedCategory = 'Academic';
+  Color _selectedCategoryColor = const Color(0xFF4CAF50);
+  IconData _selectedCategoryIcon = Icons.school_rounded;
+  
+  late AnimationController _controller;
+  late Animation<double> _slideAnimation;
+  
+  final Map<String, Map<String, dynamic>> _categories = {
+    'Academic': {'color': const Color(0xFF4CAF50), 'icon': Icons.school_rounded},
+    'Sports': {'color': const Color(0xFFFF9800), 'icon': Icons.sports_basketball_rounded},
+    'Cultural': {'color': const Color(0xFF9C27B0), 'icon': Icons.theater_comedy_rounded},
+    'Technology': {'color': const Color(0xFF2196F3), 'icon': Icons.computer_rounded},
+    'Social': {'color': const Color(0xFFE91E63), 'icon': Icons.group_rounded},
+    'Workshop': {'color': const Color(0xFF00BCD4), 'icon': Icons.build_rounded},
+  };
+  
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 400),
+      vsync: this,
+    );
+    
+    _slideAnimation = CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeOutCubic,
+    );
+    
+    _controller.forward();
+  }
+  
+  void _selectCategory(String category) {
+    setState(() {
+      _selectedCategory = category;
+      _selectedCategoryColor = _categories[category]!['color'];
+      _selectedCategoryIcon = _categories[category]!['icon'];
+    });
+  }
+  
+  void _submitEvent() {
+    if (_titleController.text.isEmpty) {
+      showAnimatedSuccess(
+        context,
+        'Please enter an event title',
+        icon: Icons.error_outline_rounded,
+        iconColor: AppColors.error,
+      );
+      return;
+    }
+    
+    final DateTime eventDateTime = DateTime(
+      _selectedDate.year,
+      _selectedDate.month,
+      _selectedDate.day,
+      _selectedTime.hour,
+      _selectedTime.minute,
+    );
+    
+    final newEvent = CampusEvent(
+      title: _titleController.text,
+      description: _descriptionController.text.isEmpty 
+          ? 'Join us for this exciting campus event!'
+          : _descriptionController.text,
+      dateTime: eventDateTime,
+      location: _locationController.text.isEmpty 
+          ? 'Campus Venue'
+          : _locationController.text,
+      category: _selectedCategory,
+      categoryColor: _selectedCategoryColor,
+      categoryIcon: _selectedCategoryIcon,
+      organizer: 'Student Activities',
+    );
+    
+    widget.onEventAdded(newEvent);
+    Navigator.pop(context);
+    
+    showAnimatedSuccess(
+      context,
+      'Event created successfully! 🎉',
+      icon: Icons.check_circle_rounded,
+      iconColor: AppColors.success,
+    );
+  }
+  
+  @override
+  void dispose() {
+    _controller.dispose();
+    _titleController.dispose();
+    _descriptionController.dispose();
+    _locationController.dispose();
+    super.dispose();
+  }
+  
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    return AnimatedBuilder(
+      animation: _slideAnimation,
+      builder: (context, child) {
+        return Transform.translate(
+          offset: Offset(0, (1 - _slideAnimation.value) * 100),
+          child: Opacity(
+            opacity: _slideAnimation.value,
+            child: child,
+          ),
+        );
+      },
+      child: DraggableScrollableSheet(
+        initialChildSize: 0.85,
+        minChildSize: 0.5,
+        maxChildSize: 0.95,
+        builder: (context, scrollController) => Container(
+          margin: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+            borderRadius: BorderRadius.circular(32),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.3),
+                blurRadius: 40,
+                offset: const Offset(0, -10),
+              ),
+            ],
+          ),
+          child: Column(
+            children: [
+              // Drag handle
+              const SizedBox(height: 12),
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.grey.withOpacity(0.3),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 20),
+              
+              // Content
+              Expanded(
+                child: ListView(
+                  controller: scrollController,
+                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+                  children: [
+                    // Header
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                AppColors.primary,
+                                AppColors.primary.withOpacity(0.7),
+                              ],
+                            ),
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: const Icon(
+                            Icons.add_circle_outline_rounded,
+                            color: Colors.white,
+                            size: 28,
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Create Event',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.bold,
+                                  color: isDark ? Colors.white : AppColors.darkGrey,
+                                ),
+                              ),
+                              Text(
+                                'Share your event with the campus',
+                                style: GoogleFonts.notoSans(
+                                  fontSize: 13,
+                                  color: AppColors.grey,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 32),
+                    
+                    // Event Title
+                    Text(
+                      'Event Title *',
+                      style: GoogleFonts.poppins(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: isDark ? Colors.white : AppColors.darkGrey,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: _titleController,
+                      decoration: InputDecoration(
+                        hintText: 'Enter event name',
+                        filled: true,
+                        fillColor: isDark 
+                            ? Colors.white.withOpacity(0.05)
+                            : AppColors.grey.withOpacity(0.05),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: BorderSide.none,
+                        ),
+                        prefixIcon: Icon(
+                          Icons.event_rounded,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    
+                    // Category Selection
+                    Text(
+                      'Category',
+                      style: GoogleFonts.poppins(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: isDark ? Colors.white : AppColors.darkGrey,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 10,
+                      runSpacing: 10,
+                      children: _categories.entries.map((entry) {
+                        final isSelected = _selectedCategory == entry.key;
+                        return GestureDetector(
+                          onTap: () => _selectCategory(entry.key),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 10,
+                            ),
+                            decoration: BoxDecoration(
+                              color: isSelected
+                                  ? entry.value['color'].withOpacity(0.15)
+                                  : isDark
+                                      ? Colors.white.withOpacity(0.05)
+                                      : AppColors.grey.withOpacity(0.05),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: isSelected
+                                    ? entry.value['color']
+                                    : Colors.transparent,
+                                width: 2,
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  entry.value['icon'],
+                                  size: 18,
+                                  color: isSelected
+                                      ? entry.value['color']
+                                      : AppColors.grey,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  entry.key,
+                                  style: GoogleFonts.notoSans(
+                                    fontSize: 13,
+                                    fontWeight: isSelected
+                                        ? FontWeight.w600
+                                        : FontWeight.normal,
+                                    color: isSelected
+                                        ? entry.value['color']
+                                        : AppColors.grey,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 24),
+                    
+                    // Date & Time Selection
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Date',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: isDark ? Colors.white : AppColors.darkGrey,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              GestureDetector(
+                                onTap: () async {
+                                  final DateTime? picked = await showDatePicker(
+                                    context: context,
+                                    initialDate: _selectedDate,
+                                    firstDate: DateTime.now(),
+                                    lastDate: DateTime.now().add(const Duration(days: 365)),
+                                    builder: (context, child) {
+                                      return Theme(
+                                        data: Theme.of(context).copyWith(
+                                          colorScheme: ColorScheme.light(
+                                            primary: AppColors.primary,
+                                            onPrimary: Colors.white,
+                                            surface: Colors.white,
+                                            onSurface: Colors.black,
+                                          ),
+                                        ),
+                                        child: child!,
+                                      );
+                                    },
+                                  );
+                                  if (picked != null) {
+                                    setState(() => _selectedDate = picked);
+                                  }
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.all(16),
+                                  decoration: BoxDecoration(
+                                    color: isDark
+                                        ? Colors.white.withOpacity(0.05)
+                                        : AppColors.grey.withOpacity(0.05),
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        Icons.calendar_today_rounded,
+                                        color: AppColors.primary,
+                                        size: 20,
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Text(
+                                        DateFormat('MMM dd, yyyy').format(_selectedDate),
+                                        style: GoogleFonts.notoSans(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w600,
+                                          color: isDark ? Colors.white : AppColors.darkGrey,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Time',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: isDark ? Colors.white : AppColors.darkGrey,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              GestureDetector(
+                                onTap: () async {
+                                  final TimeOfDay? picked = await showTimePicker(
+                                    context: context,
+                                    initialTime: _selectedTime,
+                                  );
+                                  if (picked != null) {
+                                    setState(() => _selectedTime = picked);
+                                  }
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.all(16),
+                                  decoration: BoxDecoration(
+                                    color: isDark
+                                        ? Colors.white.withOpacity(0.05)
+                                        : AppColors.grey.withOpacity(0.05),
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        Icons.access_time_rounded,
+                                        color: AppColors.primary,
+                                        size: 20,
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Text(
+                                        _selectedTime.format(context),
+                                        style: GoogleFonts.notoSans(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w600,
+                                          color: isDark ? Colors.white : AppColors.darkGrey,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+                    
+                    // Location
+                    Text(
+                      'Location',
+                      style: GoogleFonts.poppins(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: isDark ? Colors.white : AppColors.darkGrey,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: _locationController,
+                      decoration: InputDecoration(
+                        hintText: 'Enter event location',
+                        filled: true,
+                        fillColor: isDark
+                            ? Colors.white.withOpacity(0.05)
+                            : AppColors.grey.withOpacity(0.05),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: BorderSide.none,
+                        ),
+                        prefixIcon: Icon(
+                          Icons.location_on_rounded,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    
+                    // Description
+                    Text(
+                      'Description',
+                      style: GoogleFonts.poppins(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: isDark ? Colors.white : AppColors.darkGrey,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: _descriptionController,
+                      maxLines: 4,
+                      decoration: InputDecoration(
+                        hintText: 'Tell us about your event...',
+                        filled: true,
+                        fillColor: isDark
+                            ? Colors.white.withOpacity(0.05)
+                            : AppColors.grey.withOpacity(0.05),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 32),
+                    
+                    // Action Buttons
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () => Navigator.pop(context),
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              side: BorderSide(color: AppColors.grey),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                            ),
+                            child: Text(
+                              'Cancel',
+                              style: GoogleFonts.poppins(
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.grey,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          flex: 2,
+                          child: ElevatedButton(
+                            onPressed: _submitEvent,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primary,
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(Icons.check_circle_rounded, size: 20),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'Create Event',
+                                  style: GoogleFonts.poppins(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 15,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// Event Detail Sheet - Floating with margins
+class _EventDetailSheet extends StatefulWidget {
+  final CampusEvent event;
+
+  const _EventDetailSheet({required this.event});
+
+  @override
+  State<_EventDetailSheet> createState() => _EventDetailSheetState();
+}
+
+class _EventDetailSheetState extends State<_EventDetailSheet> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _slideAnimation;
+  bool _isRsvped = false;
+  int _rsvpCount = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _rsvpCount = (widget.event.title.hashCode % 50) + 10; // Mock count
+    
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 400),
+      vsync: this,
+    );
+
+    _slideAnimation = CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeOutCubic,
+    );
+
+    _controller.forward();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _handleRsvp() {
+    setState(() {
+      _isRsvped = !_isRsvped;
+      _rsvpCount += _isRsvped ? 1 : -1;
+    });
+    
+    showAnimatedSuccess(
+      context,
+      _isRsvped ? 'You\'re going! 🎉' : 'RSVP cancelled',
+      icon: _isRsvped ? Icons.check_circle_rounded : Icons.cancel_rounded,
+      iconColor: _isRsvped ? AppColors.success : AppColors.grey,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    return AnimatedBuilder(
+      animation: _slideAnimation,
+      builder: (context, child) {
+        return Transform.translate(
+          offset: Offset(0, (1 - _slideAnimation.value) * 100),
+          child: Opacity(
+            opacity: _slideAnimation.value,
+            child: child,
+          ),
+        );
+      },
+      child: DraggableScrollableSheet(
+        initialChildSize: 0.7,
+        minChildSize: 0.5,
+        maxChildSize: 0.9,
+        builder: (context, scrollController) => Container(
+          margin: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+            borderRadius: BorderRadius.circular(32),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.3),
+                blurRadius: 40,
+                offset: const Offset(0, -10),
+              ),
+            ],
+          ),
+          child: Column(
+            children: [
+              // Drag handle
+              const SizedBox(height: 12),
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.grey.withOpacity(0.3),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 20),
+              
+              // Content
+              Expanded(
+                child: ListView(
+                  controller: scrollController,
+                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+                  children: [
+                    // Category badge
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: widget.event.categoryColor.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: Icon(
+                            widget.event.categoryIcon,
+                            color: widget.event.categoryColor,
+                            size: 28,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                          decoration: BoxDecoration(
+                            color: widget.event.categoryColor.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            widget.event.category,
+                            style: GoogleFonts.poppins(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: widget.event.categoryColor,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    
+                    // Title
+                    Text(
+                      widget.event.title,
+                      style: GoogleFonts.poppins(
+                        fontSize: 26,
+                        fontWeight: FontWeight.bold,
+                        color: isDark ? Colors.white : AppColors.darkGrey,
+                        height: 1.3,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    
+                    // Date & Time
+                    _buildInfoRow(
+                      Icons.calendar_today_rounded,
+                      'Date & Time',
+                      DateFormat('EEEE, MMM dd, yyyy • h:mm a').format(widget.event.dateTime),
+                    ),
+                    const SizedBox(height: 16),
+                    
+                    // Location
+                    _buildInfoRow(
+                      Icons.location_on_rounded,
+                      'Location',
+                      widget.event.location,
+                    ),
+                    const SizedBox(height: 16),
+                    
+                    // Organizer
+                    _buildInfoRow(
+                      Icons.person_rounded,
+                      'Organizer',
+                      widget.event.organizer ?? 'Campus Activities',
+                    ),
+                    const SizedBox(height: 16),
+                    
+                    // RSVP Count
+                    _buildInfoRow(
+                      Icons.people_rounded,
+                      'Attendees',
+                      '$_rsvpCount people going',
+                    ),
+                    const SizedBox(height: 24),
+                    
+                    // Description
+                    Text(
+                      'About this event',
+                      style: GoogleFonts.poppins(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: isDark ? Colors.white : AppColors.darkGrey,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      widget.event.description,
+                      style: GoogleFonts.notoSans(
+                        fontSize: 15,
+                        color: AppColors.grey,
+                        height: 1.6,
+                      ),
+                    ),
+                    const SizedBox(height: 32),
+                    
+                    // Action Buttons
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: () {
+                              Navigator.pop(context);
+                              showAnimatedSuccess(
+                                context,
+                                'Navigating to ${widget.event.location}',
+                                icon: Icons.directions_rounded,
+                                iconColor: AppColors.primary,
+                              );
+                            },
+                            icon: const Icon(Icons.directions_rounded, size: 20),
+                            label: const Text('Directions'),
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              side: BorderSide(color: AppColors.primary),
+                              foregroundColor: AppColors.primary,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          flex: 2,
+                          child: ElevatedButton.icon(
+                            onPressed: _handleRsvp,
+                            icon: Icon(
+                              _isRsvped ? Icons.check_circle_rounded : Icons.event_available_rounded,
+                              size: 20,
+                            ),
+                            label: Text(_isRsvped ? 'You\'re Going!' : 'RSVP'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: _isRsvped ? AppColors.success : AppColors.primary,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInfoRow(IconData icon, String label, String value) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isDark 
+            ? Colors.white.withOpacity(0.05) 
+            : AppColors.grey.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, color: AppColors.primary, size: 20),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: GoogleFonts.notoSans(
+                    fontSize: 12,
+                    color: AppColors.grey,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  value,
+                  style: GoogleFonts.notoSans(
+                    fontSize: 14,
+                    color: isDark ? Colors.white : AppColors.darkGrey,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

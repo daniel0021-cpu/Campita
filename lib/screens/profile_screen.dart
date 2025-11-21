@@ -1,9 +1,12 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
 import '../utils/preferences_service.dart';
+import '../utils/app_routes.dart';
 import '../models/campus_building.dart';
+import '../widgets/modern_navbar.dart';
 import 'settings_screen.dart';
 import 'help_support_screen.dart';
 import 'privacy_policy_screen.dart';
@@ -39,13 +42,39 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Scaffold(
       backgroundColor: AppColors.ash,
       appBar: AppBar(
-        title: Text('Profile', style: AppTextStyles.heading2.copyWith(color: Colors.white)),
-        centerTitle: true,
+        backgroundColor: Colors.transparent,
         elevation: 0,
+        centerTitle: true,
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.person_rounded, color: AppColors.primary, size: 24),
+            const SizedBox(width: 8),
+            Text(
+              'Profile',
+              style: GoogleFonts.poppins(
+                fontSize: 20,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimaryAdaptive(context),
+              ),
+            ),
+          ],
+        ),
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
+      body: SafeArea(
+        child: RefreshIndicator(
+          onRefresh: () async {
+            await Future.delayed(const Duration(milliseconds: 1200));
+            if (mounted) {
+              await _loadRecents();
+              setState(() {});
+            }
+          },
+          color: AppColors.primary,
+          child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.all(16),
+            children: [
           _buildHeader(),
           const SizedBox(height: 20),
           _buildSectionHeader('Recent Searches'),
@@ -58,8 +87,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
             child: Text('Version 1.0.0', style: GoogleFonts.notoSans(fontSize: 12, color: AppColors.grey)),
           ),
           const SizedBox(height: 24),
-        ],
+            ],
+          ),
+        ),
       ),
+      bottomNavigationBar: const ModernNavBar(currentIndex: 3),
     );
   }
 
@@ -115,7 +147,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
               IconButton(
                 onPressed: () async {
-                  final updated = await Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfileEditScreen()));
+                  final updated = await Navigator.push(context, AppRoutes.slideRoute(const ProfileEditScreen()));
                   if (updated == true && mounted) setState(() {});
                 },
                 icon: const Icon(Icons.edit, color: AppColors.grey),
@@ -185,7 +217,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           'Unlock premium features',
           Icons.workspace_premium,
           () {
-            Navigator.push(context, MaterialPageRoute(builder: (_) => const SubscriptionScreen()));
+            Navigator.push(context, AppRoutes.slideRoute(const SubscriptionScreen()));
           },
           showProBadge: true,
         ),
@@ -196,7 +228,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           'App preferences and map options',
           Icons.settings_rounded,
           () {
-            Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen()));
+            Navigator.push(context, AppRoutes.slideRoute(const SettingsScreen()));
           },
         ),
         const SizedBox(height: 14),
@@ -205,7 +237,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           'FAQs and contact',
           Icons.help_outline_rounded,
           () {
-            Navigator.push(context, MaterialPageRoute(builder: (_) => const HelpSupportScreen()));
+            Navigator.push(context, AppRoutes.slideRoute(const HelpSupportScreen()));
           },
         ),
         const SizedBox(height: 14),
@@ -214,7 +246,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           'How we handle your data',
           Icons.privacy_tip_outlined,
           () {
-            Navigator.push(context, MaterialPageRoute(builder: (_) => const PrivacyPolicyScreen()));
+            Navigator.push(context, AppRoutes.slideRoute(const PrivacyPolicyScreen()));
           },
         ),
         const SizedBox(height: 14),
@@ -223,7 +255,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           'About this app',
           Icons.info_outline_rounded,
           () {
-            Navigator.push(context, MaterialPageRoute(builder: (_) => const AboutScreen()));
+            Navigator.push(context, AppRoutes.slideRoute(const AboutScreen()));
           },
         ),
       ],

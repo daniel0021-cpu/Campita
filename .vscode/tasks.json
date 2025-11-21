@@ -155,6 +155,20 @@
 				"$dart"
 			],
 			"group": "build"
+		},
+		{
+			"label": "Quick Build Web",
+			"type": "shell",
+			"command": "flutter",
+			"args": [
+				"build",
+				"web",
+				"--release",
+				"--no-tree-shake-icons",
+				"--no-wasm-dry-run"
+			],
+			"isBackground": false,
+			"group": "build"
 		}
 	]
 }

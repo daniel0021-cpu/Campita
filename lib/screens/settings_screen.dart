@@ -9,6 +9,7 @@ import 'navigation_mode_screen.dart';
 import 'user_guide_screen.dart';
 import '../utils/preferences_service.dart';
 import '../utils/app_settings.dart';
+import '../utils/app_routes.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -141,7 +142,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               icon: Icons.menu_book,
               title: 'User Guide',
               subtitle: 'Features & tips',
-              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const UserGuideScreen())),
+              onTap: () => Navigator.push(context, AppRoutes.slideRoute(const UserGuideScreen())),
               trailing: const Icon(Icons.chevron_right, color: AppColors.grey),
             ),
             _divider(),
@@ -149,7 +150,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               icon: Icons.help_outline,
               title: 'Help & Support',
               subtitle: 'FAQs & contact',
-              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const HelpSupportScreen())),
+              onTap: () => Navigator.push(context, AppRoutes.slideRoute(const HelpSupportScreen())),
               trailing: const Icon(Icons.chevron_right, color: AppColors.grey),
             ),
             _divider(),
@@ -157,7 +158,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               icon: Icons.privacy_tip_outlined,
               title: 'Privacy Policy',
               subtitle: 'Your data & rights',
-              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PrivacyPolicyScreen())),
+              onTap: () => Navigator.push(context, AppRoutes.slideRoute(const PrivacyPolicyScreen())),
               trailing: const Icon(Icons.chevron_right, color: AppColors.grey),
             ),
             _divider(),
@@ -165,7 +166,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               icon: Icons.info_outline,
               title: 'About',
               subtitle: 'App details',
-              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AboutScreen())),
+              onTap: () => Navigator.push(context, AppRoutes.slideRoute(const AboutScreen())),
               trailing: const Icon(Icons.chevron_right, color: AppColors.grey),
             ),
           ]),

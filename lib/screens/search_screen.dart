@@ -58,137 +58,203 @@ class _SearchScreenState extends State<SearchScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
-  backgroundColor: AppColors.ash,
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: AppColors.white),
-          onPressed: () => Navigator.pop(context),
+      backgroundColor: isDark ? AppColors.darkBackground : AppColors.ash,
+      body: SafeArea(
+        child: Column(
+          children: [
+            _buildSearchBar(),
+            Expanded(
+              child: _isSearching
+                  ? _buildSearchResults()
+                  : _buildSearchSuggestions(),
+            ),
+          ],
         ),
-        title: Text(
-          'Search Campus',
-          style: AppTextStyles.heading2.copyWith(color: AppColors.white),
-        ),
-        centerTitle: true,
-        elevation: 0,
-      ),
-      body: Column(
-        children: [
-          _buildSearchBar(),
-          Expanded(
-            child: _isSearching
-                ? _buildSearchResults()
-                : _buildSearchSuggestions(),
-          ),
-        ],
       ),
     );
   }
 
   Widget _buildSearchBar() {
-    return Container(
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Padding(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
+      child: Row(
+        children: [
+          IconButton(
+            icon: const Icon(Icons.arrow_back_ios_new),
+            onPressed: () => Navigator.pop(context),
+            color: isDark ? Colors.white : AppColors.darkGrey,
           ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Hero(
+              tag: 'search_bar',
+              child: Material(
+                color: Colors.transparent,
+                child: Container(
+              decoration: BoxDecoration(
+                color: isDark 
+                    ? Colors.grey[900]?.withOpacity(0.95) 
+                    : Colors.white,
+                borderRadius: BorderRadius.circular(50),
+                border: Border.all(
+                  color: isDark 
+                      ? Colors.white.withOpacity(0.1) 
+                      : Colors.black.withOpacity(0.08),
+                  width: 1,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(isDark ? 0.3 : 0.08),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: TextField(
+                controller: _searchController,
+                onChanged: _performSearch,
+                autofocus: true,
+                decoration: InputDecoration(
+                  hintText: 'Search buildings...',
+                  hintStyle: GoogleFonts.notoSans(
+                    fontSize: 15,
+                    color: AppColors.grey,
+                  ),
+                  prefixIcon: const Icon(Icons.search_rounded, color: AppColors.primary, size: 22),
+                  suffixIcon: _searchController.text.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.close_rounded, color: AppColors.grey, size: 20),
+                          onPressed: _clearSearch,
+                        )
+                      : null,
+                  border: InputBorder.none,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                ),
+                style: GoogleFonts.notoSans(
+                  fontSize: 15,
+                  color: isDark ? Colors.white : AppColors.darkGrey,
+                ),
+              ),
+            ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 16),
         ],
-      ),
-      child: Container(
-        decoration: BoxDecoration(
-    color: AppColors.ash,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: TextField(
-          controller: _searchController,
-          onChanged: _performSearch,
-          decoration: InputDecoration(
-            hintText: 'Search buildings, departments, facilities...',
-            hintStyle: GoogleFonts.notoSans(
-              fontSize: 14,
-              color: AppColors.grey,
-            ),
-            prefixIcon: const Icon(Icons.search_rounded, color: AppColors.primary),
-            suffixIcon: _searchController.text.isNotEmpty
-                ? IconButton(
-                    icon: const Icon(Icons.clear_rounded, color: AppColors.grey),
-                    onPressed: _clearSearch,
-                  )
-                : null,
-            border: InputBorder.none,
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 14,
-            ),
-          ),
-          style: GoogleFonts.notoSans(
-            fontSize: 15,
-            color: AppColors.darkGrey,
-          ),
-        ),
       ),
     );
   }
 
   Widget _buildSearchSuggestions() {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      physics: const ClampingScrollPhysics(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          const SizedBox(height: 8),
+          SizedBox(
+            height: 44,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              physics: const ClampingScrollPhysics(),
+              children: [
+                _buildCategoryChip('All'),
+                _buildCategoryChip('Academic'),
+                _buildCategoryChip('Administrative'),
+                _buildCategoryChip('Library'),
+                _buildCategoryChip('Dining'),
+                _buildCategoryChip('Sports'),
+                _buildCategoryChip('Banking'),
+                _buildCategoryChip('Student Services'),
+                _buildCategoryChip('Research'),
+                _buildCategoryChip('Health'),
+                _buildCategoryChip('Residential'),
+                _buildCategoryChip('Worship'),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
           if (_recentSearches.isNotEmpty) ...[
             _buildSectionHeader('Recent Searches'),
             ..._recentSearches.map((search) => _buildRecentSearchItem(search)),
             const SizedBox(height: 24),
+          ] else ...[
+            _buildEmptyRecentSearches(),
+            const SizedBox(height: 24),
           ],
           _buildSectionHeader('Popular Locations'),
           _buildQuickSearchCard(
-            Icons.local_library,
+            Icons.auto_stories_rounded,
             'University Library',
             'Main library with study areas',
+            const Color(0xFF9C27B0),
           ),
           _buildQuickSearchCard(
-            Icons.admin_panel_settings,
+            Icons.business_rounded,
             'Administrative Block',
             'Main administration offices',
+            const Color(0xFF607D8B),
           ),
           _buildQuickSearchCard(
-            Icons.restaurant,
+            Icons.restaurant_rounded,
             'Cafeteria',
             'Main dining facility',
+            const Color(0xFFE91E63),
           ),
           _buildQuickSearchCard(
-            Icons.science,
+            Icons.school_rounded,
             'Computer Lab',
             'Computer science facilities',
+            const Color(0xFFFF9800),
           ),
           _buildQuickSearchCard(
-            Icons.medical_services,
+            Icons.medical_services_rounded,
             'Medical Center',
             'Campus health services',
+            const Color(0xFFFF5722),
           ),
           _buildQuickSearchCard(
-            Icons.sports,
+            Icons.sports_soccer_rounded,
             'Sports Complex',
             'Athletic facilities and stadium',
+            const Color(0xFFF44336),
           ),
-          const SizedBox(height: 24),
-          _buildSectionHeader('Categories'),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              _buildCategoryChip('Academic Buildings'),
-              _buildCategoryChip('Hostels'),
-              _buildCategoryChip('Facilities'),
-              _buildCategoryChip('Departments'),
-              _buildCategoryChip('Services'),
-              _buildCategoryChip('Recreation'),
-            ],
+          _buildQuickSearchCard(
+            Icons.account_balance_rounded,
+            'Banking Services',
+            'Campus banking facilities',
+            const Color(0xFF4CAF50),
+          ),
+          _buildQuickSearchCard(
+            Icons.groups_rounded,
+            'Student Services',
+            'Student affairs and support',
+            const Color(0xFF00BCD4),
+          ),
+          _buildQuickSearchCard(
+            Icons.biotech_rounded,
+            'Research Labs',
+            'Research and innovation center',
+            const Color(0xFF3F51B5),
+          ),
+          _buildQuickSearchCard(
+            Icons.hotel_rounded,
+            'Student Hostels',
+            'Campus residential facilities',
+            const Color(0xFF795548),
+          ),
+          _buildQuickSearchCard(
+            Icons.church_rounded,
+            'Chapel',
+            'Campus worship center',
+            const Color(0xFF673AB7),
           ),
         ],
       ),
@@ -245,27 +311,40 @@ class _SearchScreenState extends State<SearchScreen> {
       );
     }
 
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: _searchResults.length,
-      itemBuilder: (context, index) {
-        final building = _searchResults[index];
-        return TweenAnimationBuilder<double>(
-          tween: Tween(begin: 0.0, end: 1.0),
-          duration: Duration(milliseconds: 300 + (index * 50)),
-          curve: Curves.easeOutCubic,
-          builder: (context, value, child) {
-            return Transform.translate(
-              offset: Offset(0, 20 * (1 - value)),
-              child: Opacity(
-                opacity: value,
-                child: child,
-              ),
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      physics: const ClampingScrollPhysics(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (_recentSearches.isNotEmpty) ...[
+            _buildSectionHeader('Recent Searches'),
+            ..._recentSearches.take(3).map((search) => _buildRecentSearchItem(search)),
+            const SizedBox(height: 16),
+            _buildSectionHeader('Results'),
+            const SizedBox(height: 4),
+          ],
+          ..._searchResults.asMap().entries.map((entry) {
+            final index = entry.key;
+            final building = entry.value;
+            return TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0.0, end: 1.0),
+              duration: Duration(milliseconds: 250 + (index * 35)),
+              curve: Curves.easeOutQuart,
+              builder: (context, value, child) {
+                return Transform.translate(
+                  offset: Offset(0, 15 * (1 - value)),
+                  child: Opacity(
+                    opacity: value.clamp(0.0, 1.0),
+                    child: RepaintBoundary(child: child),
+                  ),
+                );
+              },
+              child: _buildResultCard(building, index),
             );
-          },
-          child: _buildResultCard(building, index),
-        );
-      },
+          }),
+        ],
+      ),
     );
   }
 
@@ -283,29 +362,92 @@ class _SearchScreenState extends State<SearchScreen> {
     );
   }
 
+  Widget _buildEmptyRecentSearches() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      padding: const EdgeInsets.all(32),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.darkCard : Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(isDark ? 0.2 : 0.05),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Container(
+            width: 80,
+            height: 80,
+            decoration: BoxDecoration(
+              color: AppColors.primary.withOpacity(0.12),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.search_off_rounded,
+              size: 40,
+              color: AppColors.primary.withOpacity(0.6),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'No Recent Searches',
+            style: GoogleFonts.poppins(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: isDark ? Colors.white : AppColors.darkGrey,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Start searching for buildings and your recent searches will appear here',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.notoSans(
+              fontSize: 14,
+              color: isDark ? Colors.white70 : AppColors.grey,
+              height: 1.5,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildRecentSearchItem(String search) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? AppColors.darkCard : Colors.white,
         borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(isDark ? 0.2 : 0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: ListTile(
-        leading: const Icon(Icons.history_rounded, color: AppColors.grey),
+        leading: Icon(Icons.history_rounded, color: isDark ? Colors.white70 : AppColors.grey),
         title: Text(
           search,
           style: GoogleFonts.notoSans(
             fontSize: 14,
-            color: AppColors.darkGrey,
+            color: isDark ? Colors.white : AppColors.darkGrey,
           ),
         ),
         trailing: IconButton(
-          icon: const Icon(Icons.close_rounded, color: AppColors.grey, size: 20),
+          icon: Icon(Icons.close_rounded, color: isDark ? Colors.white54 : AppColors.grey, size: 18),
           onPressed: () {
             setState(() {
               _recentSearches.remove(search);
             });
           },
+          splashRadius: 20,
         ),
         onTap: () {
           _searchController.text = search;
@@ -315,15 +457,20 @@ class _SearchScreenState extends State<SearchScreen> {
     );
   }
 
-  Widget _buildQuickSearchCard(IconData icon, String title, String subtitle) {
+  Widget _buildQuickSearchCard(IconData icon, String title, String subtitle, Color color) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? AppColors.darkCard : Colors.white,
         borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: color.withOpacity(0.2),
+          width: 1,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: Colors.black.withOpacity(isDark ? 0.2 : 0.05),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -333,8 +480,9 @@ class _SearchScreenState extends State<SearchScreen> {
         color: Colors.transparent,
         child: InkWell(
           onTap: () {
-            // Navigate to location
-            Navigator.pop(context);
+            // Search for this location
+            _searchController.text = title;
+            _performSearch(title);
           },
           borderRadius: BorderRadius.circular(16),
           child: Padding(
@@ -345,10 +493,10 @@ class _SearchScreenState extends State<SearchScreen> {
                   width: 50,
                   height: 50,
                   decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.12),
+                    color: color.withOpacity(0.15),
                     borderRadius: BorderRadius.circular(14),
                   ),
-                  child: Icon(icon, color: AppColors.primary, size: 26),
+                  child: Icon(icon, color: color, size: 26),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
@@ -360,7 +508,7 @@ class _SearchScreenState extends State<SearchScreen> {
                         style: GoogleFonts.notoSans(
                           fontSize: 15,
                           fontWeight: FontWeight.w600,
-                          color: AppColors.darkGrey,
+                          color: isDark ? Colors.white : AppColors.darkGrey,
                         ),
                       ),
                       const SizedBox(height: 4),
@@ -368,13 +516,13 @@ class _SearchScreenState extends State<SearchScreen> {
                         subtitle,
                         style: GoogleFonts.notoSans(
                           fontSize: 13,
-                          color: AppColors.grey,
+                          color: isDark ? Colors.white70 : AppColors.grey,
                         ),
                       ),
                     ],
                   ),
                 ),
-                const Icon(Icons.arrow_forward_ios_rounded, size: 16, color: AppColors.grey),
+                Icon(Icons.arrow_forward_ios_rounded, size: 16, color: isDark ? Colors.white54 : AppColors.grey),
               ],
             ),
           ),
@@ -383,32 +531,132 @@ class _SearchScreenState extends State<SearchScreen> {
     );
   }
 
+  Map<String, dynamic> _getCategoryInfo(String label) {
+    switch (label) {
+      case 'All':
+        return {'icon': Icons.apps_rounded, 'color': AppColors.primary};
+      case 'Academic Buildings':
+        return {'icon': Icons.menu_book_rounded, 'color': AppColors.academic};
+      case 'Hostels':
+        return {'icon': Icons.hotel_rounded, 'color': const Color(0xFFE91E63)};
+      case 'Facilities':
+        return {'icon': Icons.business_rounded, 'color': const Color(0xFF9C27B0)};
+      case 'Departments':
+        return {'icon': Icons.account_balance_rounded, 'color': const Color(0xFF2196F3)};
+      case 'Services':
+        return {'icon': Icons.groups_rounded, 'color': const Color(0xFFFF9800)};
+      case 'Recreation':
+        return {'icon': Icons.sports_soccer_rounded, 'color': const Color(0xFF4CAF50)};
+      default:
+        return {'icon': Icons.category_rounded, 'color': AppColors.primary};
+    }
+  }
+
   Widget _buildCategoryChip(String label) {
-    return InkWell(
-      onTap: () {
-        _searchController.text = label;
-        _performSearch(label);
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
-        ),
-        child: Text(
-          label,
-          style: GoogleFonts.notoSans(
-            fontSize: 13,
-            color: AppColors.primary,
-            fontWeight: FontWeight.w500,
+    final info = _getCategoryInfo(label);
+    final color = info['color'] as Color;
+    final icon = info['icon'] as IconData;
+    
+    return Container(
+      margin: const EdgeInsets.only(right: 8),
+      child: Material(
+        color: color.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(50),
+        child: InkWell(
+          onTap: () {
+            if (label == 'All') {
+              _searchController.clear();
+              setState(() {
+                _searchResults = [];
+                _isSearching = false;
+              });
+            } else {
+              _searchController.text = label;
+              _performSearch(label);
+            }
+          },
+          borderRadius: BorderRadius.circular(50),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, color: color, size: 18),
+                const SizedBox(width: 6),
+                Text(
+                  label,
+                  style: GoogleFonts.notoSans(
+                    fontSize: 13,
+                    color: color,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 
+  IconData _getCategoryIconForBuilding(BuildingCategory category) {
+    switch (category) {
+      case BuildingCategory.academic:
+        return Icons.school_rounded;
+      case BuildingCategory.administrative:
+        return Icons.business_rounded;
+      case BuildingCategory.library:
+        return Icons.auto_stories_rounded;
+      case BuildingCategory.dining:
+        return Icons.restaurant_rounded;
+      case BuildingCategory.banking:
+        return Icons.account_balance_rounded;
+      case BuildingCategory.sports:
+        return Icons.sports_soccer_rounded;
+      case BuildingCategory.student_services:
+        return Icons.groups_rounded;
+      case BuildingCategory.research:
+        return Icons.biotech_rounded;
+      case BuildingCategory.health:
+        return Icons.medical_services_rounded;
+      case BuildingCategory.residential:
+        return Icons.hotel_rounded;
+      case BuildingCategory.worship:
+        return Icons.church_rounded;
+    }
+  }
+
+  Color _getCategoryColorForBuilding(BuildingCategory category) {
+    switch (category) {
+      case BuildingCategory.academic:
+        return AppColors.academic;
+      case BuildingCategory.residential:
+        return const Color(0xFFE91E63);
+      case BuildingCategory.administrative:
+        return const Color(0xFF9C27B0);
+      case BuildingCategory.library:
+        return const Color(0xFF2196F3);
+      case BuildingCategory.student_services:
+        return const Color(0xFFFF9800);
+      case BuildingCategory.sports:
+        return const Color(0xFF4CAF50);
+      case BuildingCategory.dining:
+        return const Color(0xFFFF5722);
+      case BuildingCategory.health:
+        return const Color(0xFFF44336);
+      case BuildingCategory.banking:
+        return const Color(0xFF00BCD4);
+      case BuildingCategory.research:
+        return const Color(0xFF673AB7);
+      case BuildingCategory.worship:
+        return const Color(0xFF795548);
+    }
+  }
+
   Widget _buildResultCard(CampusBuilding building, int index) {
+    final categoryColor = _getCategoryColorForBuilding(building.category);
+    final categoryIcon = _getCategoryIconForBuilding(building.category);
+    
     return Hero(
       tag: 'building-${building.name}-$index',
       child: Material(
@@ -439,14 +687,14 @@ class _SearchScreenState extends State<SearchScreen> {
                     width: 56,
                     height: 56,
                     decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [AppColors.primary, AppColors.primary.withValues(alpha: 0.8)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
+                      color: categoryColor.withOpacity(0.15),
                       borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: categoryColor.withOpacity(0.3),
+                        width: 1.5,
+                      ),
                     ),
-                    child: const Icon(Icons.location_city_rounded, color: Colors.white, size: 28),
+                    child: Icon(categoryIcon, color: categoryColor, size: 28),
                   ),
                   const SizedBox(width: 16),
                   Expanded(
@@ -462,17 +710,29 @@ class _SearchScreenState extends State<SearchScreen> {
                           ),
                         ),
                         const SizedBox(height: 4),
-                        Text(
-                          building.categoryName,
-                          style: GoogleFonts.notoSans(
-                            fontSize: 13,
-                            color: AppColors.grey,
-                          ),
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: categoryColor.withOpacity(0.12),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                building.categoryName,
+                                style: GoogleFonts.notoSans(
+                                  fontSize: 11,
+                                  color: categoryColor,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
                   ),
-                  const Icon(Icons.arrow_forward_ios_rounded, size: 18, color: AppColors.primary),
+                  Icon(Icons.arrow_forward_ios_rounded, size: 18, color: categoryColor),
                 ],
               ),
             ),

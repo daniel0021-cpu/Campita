@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
+import '../widgets/animated_success_card.dart';
 
 class DeveloperLoginScreen extends StatefulWidget {
   const DeveloperLoginScreen({super.key});
@@ -320,10 +321,11 @@ class _DeveloperLoginScreenState extends State<DeveloperLoginScreen> {
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Password reset functionality coming soon'),
-                ),
+              showAnimatedSuccess(
+                context,
+                'Password reset functionality coming soon',
+                icon: Icons.lock_reset_rounded,
+                iconColor: AppColors.primary,
               );
             },
             child: const Text('Verify'),

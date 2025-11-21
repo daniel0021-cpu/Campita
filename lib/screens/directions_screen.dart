@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:geolocator/geolocator.dart';
 import '../models/campus_building.dart';
 import '../theme/app_theme.dart';
+import '../widgets/animated_success_card.dart';
 
 class DirectionsScreen extends StatefulWidget {
   const DirectionsScreen({super.key});
@@ -14,23 +17,89 @@ class _DirectionsScreenState extends State<DirectionsScreen> {
   CampusBuilding? _startLocation;
   CampusBuilding? _endLocation;
   String _transportMode = 'foot'; // foot, bicycle, car, bus
+  bool _useCurrentLocation = true;
+  Position? _currentPosition;
+  bool _loadingLocation = false;
+  
+  @override
+  void initState() {
+    super.initState();
+    _loadCurrentLocation();
+  }
+  
+  Future<void> _loadCurrentLocation() async {
+    setState(() => _loadingLocation = true);
+    try {
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      
+      if (permission == LocationPermission.whileInUse ||
+          permission == LocationPermission.always) {
+        final position = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high,
+          timeLimit: const Duration(seconds: 5),
+        );
+        if (mounted) {
+          setState(() {
+            _currentPosition = position;
+            _loadingLocation = false;
+          });
+        }
+      } else {
+        if (mounted) {
+          setState(() => _loadingLocation = false);
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _loadingLocation = false);
+      }
+    }
+  }
 
   void _navigateWithDirections() {
-    if (_startLocation == null || _endLocation == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please select both start and end locations'),
-          backgroundColor: Colors.orange,
-        ),
+    if (!_useCurrentLocation && _startLocation == null) {
+      showAnimatedSuccess(
+        context,
+        'Please select a start location or use current location',
+        icon: Icons.error_outline_rounded,
+        iconColor: Colors.orange,
       );
       return;
     }
+    
+    if (_endLocation == null) {
+      showAnimatedSuccess(
+        context,
+        'Please select a destination',
+        icon: Icons.error_outline_rounded,
+        iconColor: Colors.orange,
+      );
+      return;
+    }
+    
+    if (_useCurrentLocation && _currentPosition == null) {
+      showAnimatedSuccess(
+        context,
+        'Getting your location...',
+        icon: Icons.location_searching,
+        iconColor: AppColors.primary,
+      );
+      _loadCurrentLocation();
+      return;
+    }
 
+    HapticFeedback.mediumImpact();
+    
     // Return to map and let it calculate the route
     Navigator.pop(context, {
-      'start': _startLocation,
+      'start': _useCurrentLocation ? null : _startLocation,
       'end': _endLocation,
       'transportMode': _transportMode,
+      'useCurrentLocation': _useCurrentLocation,
+      'currentPosition': _currentPosition,
     });
   }
 
@@ -73,6 +142,7 @@ class _DirectionsScreenState extends State<DirectionsScreen> {
               style: AppTextStyles.caption.copyWith(
                 color: isSelected ? AppColors.white : AppColors.textSecondary,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                decoration: TextDecoration.none,
               ),
             ),
           ],
@@ -97,14 +167,76 @@ class _DirectionsScreenState extends State<DirectionsScreen> {
             child: ListView(
               padding: const EdgeInsets.all(16),
               children: [
-                // Start Location Card
-                _buildLocationCard(
-                  icon: Icons.my_location,
-                  title: 'Start Location',
-                  selectedBuilding: _startLocation,
-                  onTap: () => _selectLocation(true),
-                  color: AppColors.success,
+                // Current Location Toggle
+                Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: _useCurrentLocation ? AppColors.primary : Colors.transparent,
+                      width: 2,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.my_location,
+                        color: AppColors.primary,
+                        size: 24,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Use Current Location',
+                              style: AppTextStyles.bodyMedium.copyWith(
+                                fontWeight: FontWeight.w600,
+                                decoration: TextDecoration.none,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              _loadingLocation
+                                  ? 'Getting location...'
+                                  : _currentPosition != null
+                                      ? 'Location ready'
+                                      : 'Tap to enable',
+                              style: AppTextStyles.caption.copyWith(
+                                color: AppColors.grey,
+                                decoration: TextDecoration.none,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Switch(
+                        value: _useCurrentLocation,
+                        activeColor: AppColors.primary,
+                        onChanged: (value) {
+                          setState(() => _useCurrentLocation = value);
+                          if (value && _currentPosition == null) {
+                            _loadCurrentLocation();
+                          }
+                          HapticFeedback.selectionClick();
+                        },
+                      ),
+                    ],
+                  ),
                 ),
+                
+                // Start Location Card (only if not using current location)
+                if (!_useCurrentLocation)
+                  _buildLocationCard(
+                    icon: Icons.location_on_outlined,
+                    title: 'Start Location',
+                    selectedBuilding: _startLocation,
+                    onTap: () => _selectLocation(true),
+                    color: AppColors.success,
+                  ),
                 
                 // Swap Button
                 Center(
@@ -295,6 +427,7 @@ class _DirectionsScreenState extends State<DirectionsScreen> {
                       title,
                       style: AppTextStyles.caption.copyWith(
                         color: AppColors.grey,
+                        decoration: TextDecoration.none,
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -305,6 +438,7 @@ class _DirectionsScreenState extends State<DirectionsScreen> {
                         color: selectedBuilding != null
                             ? AppColors.textPrimary
                             : AppColors.grey,
+                        decoration: TextDecoration.none,
                       ),
                     ),
                     if (selectedBuilding != null) ...[
@@ -313,13 +447,17 @@ class _DirectionsScreenState extends State<DirectionsScreen> {
                         children: [
                           Text(
                             selectedBuilding.categoryIcon,
-                            style: const TextStyle(fontSize: 12),
+                            style: const TextStyle(
+                              fontSize: 12,
+                              decoration: TextDecoration.none,
+                            ),
                           ),
                           const SizedBox(width: 4),
                           Text(
                             selectedBuilding.categoryName,
                             style: AppTextStyles.caption.copyWith(
                               color: AppColors.grey,
+                              decoration: TextDecoration.none,
                             ),
                           ),
                         ],
@@ -349,6 +487,7 @@ class _DirectionsScreenState extends State<DirectionsScreen> {
           '$label: ',
           style: AppTextStyles.bodySmall.copyWith(
             color: AppColors.grey,
+            decoration: TextDecoration.none,
           ),
         ),
         Expanded(
@@ -356,6 +495,7 @@ class _DirectionsScreenState extends State<DirectionsScreen> {
             value,
             style: AppTextStyles.bodySmall.copyWith(
               fontWeight: FontWeight.w600,
+              decoration: TextDecoration.none,
             ),
             overflow: TextOverflow.ellipsis,
           ),
@@ -556,11 +696,14 @@ class _LocationSelectionSheetState extends State<_LocationSelectionSheet> {
                           building.name,
                           style: AppTextStyles.bodyMedium.copyWith(
                             fontWeight: FontWeight.w600,
+                            decoration: TextDecoration.none,
                           ),
                         ),
                         subtitle: Text(
                           building.categoryName,
-                          style: AppTextStyles.caption,
+                          style: AppTextStyles.caption.copyWith(
+                            decoration: TextDecoration.none,
+                          ),
                         ),
                         trailing: isSelected
                             ? Icon(Icons.check_circle, color: AppColors.primary)

@@ -4,6 +4,7 @@ import '../theme/app_theme.dart';
 import '../utils/preferences_service.dart';
 import '../models/campus_building.dart';
 import 'enhanced_campus_map.dart';
+import '../widgets/animated_success_card.dart';
 
 class RecentSearchesScreen extends StatefulWidget {
   const RecentSearchesScreen({super.key});
@@ -59,8 +60,11 @@ class _RecentSearchesScreenState extends State<RecentSearchesScreen> {
       await _prefs.saveRecentSearches([]);
       setState(() => _recentSearches = []);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('All searches cleared')),
+        showAnimatedSuccess(
+          context,
+          'All searches cleared',
+          icon: Icons.check_circle_rounded,
+          iconColor: AppColors.success,
         );
       }
     }
@@ -71,8 +75,11 @@ class _RecentSearchesScreenState extends State<RecentSearchesScreen> {
     await _prefs.saveRecentSearches(updatedList);
     setState(() => _recentSearches = updatedList);
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Removed "$search"')),
+      showAnimatedSuccess(
+        context,
+        'Removed "$search"',
+        icon: Icons.delete_outline_rounded,
+        iconColor: AppColors.error,
       );
     }
   }
