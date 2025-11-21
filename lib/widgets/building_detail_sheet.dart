@@ -417,6 +417,7 @@ class _BuildingDetailSheetState extends State<BuildingDetailSheet>
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
                   color: isDark ? Colors.white : AppColors.darkGrey,
+                  decoration: TextDecoration.none, // Remove yellow underline
                 ),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,

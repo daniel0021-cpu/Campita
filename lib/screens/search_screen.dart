@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
 import '../models/campus_building.dart';
-import 'premium_profile_screen.dart';
+import '../screens/premium_profile_screen.dart';
 
 class SearchScreen extends StatefulWidget {
   const SearchScreen({super.key});
@@ -55,6 +55,17 @@ class _SearchScreenState extends State<SearchScreen> {
       _searchResults = [];
       _isSearching = false;
     });
+  }
+
+  void _showVoiceSearchDialog() {
+    // TODO: Implement voice search dialog similar to home screen
+    // For now, show a snackbar
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Voice search - Say your destination'),
+        duration: Duration(seconds: 2),
+      ),
+    );
   }
 
   @override
@@ -140,12 +151,7 @@ class _SearchScreenState extends State<SearchScreen> {
                           size: 22,
                         ),
                         onPressed: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Voice search - Say your destination'),
-                              duration: Duration(seconds: 2),
-                            ),
-                          );
+                          _showVoiceSearchDialog();
                         },
                       ),
                       const SizedBox(width: 8),
@@ -185,11 +191,7 @@ class _SearchScreenState extends State<SearchScreen> {
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [AppColors.primary, Color(0xFF0052CC)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
+                color: isDark ? Colors.grey[800] : Colors.black,
                 shape: BoxShape.circle,
                 border: Border.all(
                   color: Colors.white,
@@ -197,7 +199,7 @@ class _SearchScreenState extends State<SearchScreen> {
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: AppColors.primary.withOpacity(0.3),
+                    color: Colors.black.withOpacity(0.2),
                     blurRadius: 8,
                     offset: const Offset(0, 2),
                   ),

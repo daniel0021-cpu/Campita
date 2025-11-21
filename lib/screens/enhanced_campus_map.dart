@@ -2172,16 +2172,26 @@ out skel qt;
 
   Widget _buildLayersButton() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final screenHeight = MediaQuery.of(context).size.height;
-    final centerOffset = screenHeight / 2 + 170;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isMobile = screenWidth < 600;
+    
+    // Adjust positioning to avoid category chips overlap
+    // Position higher up on screen, away from category chips area
+    final topPadding = MediaQuery.of(context).padding.top;
+    final categoryChipsBottom = topPadding + 100 + 48; // Category chips area
+    final buttonTop = categoryChipsBottom + 12; // 12px gap below category chips
+    final buttonSize = isMobile ? 48.0 : 52.0; // Smaller on mobile to prevent overlaps
     
     return Positioned(
-      bottom: centerOffset,
+      top: buttonTop,
       right: 16,
       child: SafeArea(
-        child: _SmoothLayersButton(
-          isDark: isDark,
-          onTap: () {
+        child: SizedBox(
+          width: buttonSize,
+          height: buttonSize,
+          child: _SmoothLayersButton(
+            isDark: isDark,
+            onTap: () {
             showModalBottomSheet(
               context: context,
               backgroundColor: Colors.transparent,
@@ -2360,6 +2370,7 @@ out skel qt;
               ),
             );
           },
+          ),
         ),
       ),
     );
@@ -2509,24 +2520,24 @@ out skel qt;
     final isMobile = screenWidth < 600;
     final topPadding = MediaQuery.of(context).padding.top;
     
-    // Calculate responsive top position
-    // Search bar is at topPadding + 16, with height ~50px
-    // We need clear spacing below it: topPadding + 16 + 50 + spacing
+    // Calculate responsive top position with CLEAR spacing
+    // Search bar: topPadding + 16 (top) + 56 (height) = topPadding + 72
+    // Add generous gap: 20-28px to prevent any overlap
     double topPosition;
     if (isMobile) {
       if (screenHeight < 700) {
-        // Small phones: search bar + 56px height + 12px spacing = 84px total from top
-        topPosition = topPadding + 84;
-      } else if (screenHeight < 800) {
-        // Regular phones: search bar + 56px height + 16px spacing = 88px total from top
-        topPosition = topPadding + 88;
-      } else {
-        // Large phones: search bar + 56px height + 20px spacing = 92px total from top
+        // Small phones: search bar bottom (72) + 20px gap
         topPosition = topPadding + 92;
+      } else if (screenHeight < 800) {
+        // Regular phones: search bar bottom (72) + 24px gap
+        topPosition = topPadding + 96;
+      } else {
+        // Large phones: search bar bottom (72) + 26px gap
+        topPosition = topPadding + 98;
       }
     } else {
-      // Tablets/Desktop: search bar + 56px height + 24px spacing = 96px total from top
-      topPosition = topPadding + 96;
+      // Tablets/Desktop: search bar bottom (72) + 28px gap
+      topPosition = topPadding + 100;
     }
     
     return Positioned(
