@@ -215,7 +215,7 @@ class _DirectionsScreenState extends State<DirectionsScreen> {
                       ),
                       Switch(
                         value: _useCurrentLocation,
-                        activeColor: AppColors.primary,
+                        activeThumbColor: AppColors.primary,
                         onChanged: (value) {
                           setState(() => _useCurrentLocation = value);
                           if (value && _currentPosition == null) {

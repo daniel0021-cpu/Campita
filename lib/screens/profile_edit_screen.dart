@@ -18,6 +18,12 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
   final _nameController = TextEditingController();
   final _levelController = TextEditingController();
   final _deptController = TextEditingController();
+  final _studentIdController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _phoneController = TextEditingController();
+  final _bioController = TextEditingController();
+  final _dormController = TextEditingController();
+  final _roomController = TextEditingController();
   Uint8List? _avatarBytes;
   final PreferencesService _prefs = PreferencesService();
   bool _loading = true;
@@ -33,6 +39,12 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
     _nameController.text = data['name'] ?? '';
     _levelController.text = data['level'] ?? '';
     _deptController.text = data['department'] ?? '';
+    _studentIdController.text = data['studentId'] ?? '';
+    _emailController.text = data['email'] ?? '';
+    _phoneController.text = data['phone'] ?? '';
+    _bioController.text = data['bio'] ?? '';
+    _dormController.text = data['dorm'] ?? '';
+    _roomController.text = data['room'] ?? '';
     final avatarBase64 = data['avatar'];
     if (avatarBase64 != null && avatarBase64.isNotEmpty) {
       try {
@@ -68,6 +80,12 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
       level: _levelController.text.trim(),
       department: _deptController.text.trim(),
       avatarBase64: avatarBase64,
+      studentId: _studentIdController.text.trim(),
+      email: _emailController.text.trim(),
+      phone: _phoneController.text.trim(),
+      bio: _bioController.text.trim(),
+      dorm: _dormController.text.trim(),
+      room: _roomController.text.trim(),
     );
     if (mounted) Navigator.pop(context, true);
   }
@@ -117,14 +135,32 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                     ),
                   ),
                   const SizedBox(height: 32),
-                  _fieldLabel('Name'),
-                  _textField(_nameController, 'Enter display name'),
+                  _fieldLabel('Full Name *'),
+                  _textField(_nameController, 'Enter your full name'),
                   const SizedBox(height: 20),
-                  _fieldLabel('Level'),
+                  _fieldLabel('Student ID'),
+                  _textField(_studentIdController, 'e.g. IGU/2021/0001', required: false),
+                  const SizedBox(height: 20),
+                  _fieldLabel('Level *'),
                   _textField(_levelController, 'e.g. 300 Level'),
                   const SizedBox(height: 20),
-                  _fieldLabel('Department'),
+                  _fieldLabel('Department *'),
                   _textField(_deptController, 'e.g. Computer Science'),
+                  const SizedBox(height: 20),
+                  _fieldLabel('Email Address'),
+                  _textField(_emailController, 'your.email@student.edu.ng', required: false, keyboardType: TextInputType.emailAddress),
+                  const SizedBox(height: 20),
+                  _fieldLabel('Phone Number'),
+                  _textField(_phoneController, '080XXXXXXXX', required: false, keyboardType: TextInputType.phone),
+                  const SizedBox(height: 20),
+                  _fieldLabel('Bio'),
+                  _textField(_bioController, 'Tell us about yourself...', required: false, maxLines: 3),
+                  const SizedBox(height: 20),
+                  _fieldLabel('Dormitory'),
+                  _textField(_dormController, 'e.g. Hall 1', required: false),
+                  const SizedBox(height: 20),
+                  _fieldLabel('Room Number'),
+                  _textField(_roomController, 'e.g. A204', required: false),
                   const SizedBox(height: 32),
                   SizedBox(
                     height: 54,
@@ -150,15 +186,23 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
         child: Text(text, style: GoogleFonts.notoSans(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.darkGrey)),
       );
 
-  Widget _textField(TextEditingController c, String hint) {
+  Widget _textField(
+    TextEditingController c,
+    String hint, {
+    bool required = true,
+    int maxLines = 1,
+    TextInputType keyboardType = TextInputType.text,
+  }) {
     return TextFormField(
       controller: c,
-      validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
+      validator: (v) => (required && (v == null || v.trim().isEmpty)) ? 'Required field' : null,
+      maxLines: maxLines,
+      keyboardType: keyboardType,
       decoration: InputDecoration(
         hintText: hint,
         filled: true,
         fillColor: AppColors.cardBackground(context),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+        contentPadding: EdgeInsets.symmetric(horizontal: 18, vertical: maxLines > 1 ? 16 : 16),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
           borderSide: BorderSide(color: AppColors.borderAdaptive(context)),

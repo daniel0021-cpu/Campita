@@ -4,11 +4,13 @@ import 'dart:convert';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_compass/flutter_compass.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
+import 'dart:html' as html;
 import 'package:google_fonts/google_fonts.dart';
 import 'package:share_plus/share_plus.dart';
 import '../models/campus_building.dart';
@@ -24,11 +26,11 @@ import 'events_screen.dart';
  import 'search_screen.dart';
  import 'subscription_screen.dart';
  import 'profile_screen.dart';
+ import 'premium_profile_screen.dart';
  import 'favorites_screen.dart';
  import '../utils/app_routes.dart';
  import '../widgets/modern_navbar.dart';
  import '../widgets/building_detail_sheet.dart';
- import '../widgets/map_layers_sheet.dart';
  import '../widgets/animated_success_card.dart';
  import '../models/map_style.dart';
 
@@ -39,7 +41,9 @@ class _Tuple {
 }
 
 class EnhancedCampusMap extends StatefulWidget {
-  const EnhancedCampusMap({super.key});
+  final CampusBuilding? selectedBuilding;
+  
+  const EnhancedCampusMap({super.key, this.selectedBuilding});
 
   @override
   State<EnhancedCampusMap> createState() => _EnhancedCampusMapState();
@@ -191,6 +195,17 @@ class _EnhancedCampusMapState extends State<EnhancedCampusMap> with TickerProvid
         setState(() => _userHeading = h);
       }
     });
+    
+    // Auto-show building sheet if coming from favorites
+    if (widget.selectedBuilding != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _mapController.move(widget.selectedBuilding!.coordinates, 18);
+          // Show sheet immediately without delay
+          _showBuildingSheet(widget.selectedBuilding!, fromSearch: true);
+        }
+      });
+    }
   }
   
   void _startStaggeredAnimations() {
@@ -1714,16 +1729,16 @@ out skel qt;
                 maxZoom: 20, // Higher zoom for detailed building inspection
                 minZoom: 13,
                 initialRotation: _mapRotation,
-                interactionOptions: InteractionOptions(
+                interactionOptions: const InteractionOptions(
                   flags: InteractiveFlag.all,
                   enableMultiFingerGestureRace: true,
                   rotationWinGestures: MultiFingerGesture.rotate,
                   pinchMoveWinGestures: MultiFingerGesture.pinchMove | MultiFingerGesture.pinchZoom,
-                  // Apple Maps-like ultra-smooth scrolling
-                  scrollWheelVelocity: 0.002, // Smoother mouse wheel
-                  rotationThreshold: 15.0, // Easier rotation
-                  pinchZoomThreshold: 0.4, // Smoother pinch zoom
-                  pinchMoveThreshold: 30.0,
+                  // Apple Maps-like ultra-smooth scrolling with momentum
+                  scrollWheelVelocity: 0.0015, // Buttery smooth mouse wheel
+                  rotationThreshold: 12.0, // Easier, more fluid rotation
+                  pinchZoomThreshold: 0.35, // Smoother, more responsive pinch zoom
+                  pinchMoveThreshold: 25.0, // Lower threshold for instant pan response
                 ),
                 // Continuous smooth updates for fluid Apple Maps feel
                 onPositionChanged: (position, hasGesture) {
@@ -1925,11 +1940,17 @@ out skel qt;
                 transitionDuration: const Duration(milliseconds: 300),
               ),
             );
-            if (result != null) {
-              setState(() {
-                _selectedBuilding = result;
-              });
+            if (result != null && mounted) {
+              // Smooth animation: move map to building location first
               _mapController.move(result.coordinates, 18);
+              
+              // Small delay for smooth map animation
+              await Future.delayed(const Duration(milliseconds: 400));
+              
+              if (!mounted) return;
+              
+              // Show building sheet with smooth animation
+              _showBuildingSheet(result, fromSearch: true);
             }
           },
           child: Container(
@@ -1971,10 +1992,131 @@ out skel qt;
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
+                const SizedBox(width: 8),
+                Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: () {
+                      HapticFeedback.mediumImpact();
+                      _showVoiceSearchDialog();
+                    },
+                    borderRadius: BorderRadius.circular(24),
+                    splashColor: AppColors.primary.withOpacity(0.2),
+                    highlightColor: AppColors.primary.withOpacity(0.1),
+                    child: Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            AppColors.primary.withOpacity(0.15),
+                            AppColors.primary.withOpacity(0.1),
+                          ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(24),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.primary.withOpacity(0.2),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Icon(
+                        Icons.mic_rounded,
+                        color: AppColors.primary,
+                        size: 20,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: () {
+                      HapticFeedback.lightImpact();
+                      Navigator.push(
+                        context,
+                        PageRouteBuilder(
+                          pageBuilder: (context, animation, secondaryAnimation) => 
+                              const PremiumProfileScreen(),
+                          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                            return FadeTransition(opacity: animation, child: child);
+                          },
+                          transitionDuration: const Duration(milliseconds: 300),
+                        ),
+                      );
+                    },
+                    borderRadius: BorderRadius.circular(20),
+                    splashColor: Colors.black.withOpacity(0.1),
+                    highlightColor: Colors.black.withOpacity(0.05),
+                    child: Container(
+                      width: 34,
+                      height: 34,
+                      decoration: BoxDecoration(
+                        color: isDark 
+                            ? Colors.grey[800]?.withOpacity(0.8)
+                            : Colors.black.withOpacity(0.85),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: isDark 
+                              ? Colors.white.withOpacity(0.1)
+                              : Colors.white.withOpacity(0.2),
+                          width: 1.5,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.15),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Icon(
+                        Icons.person_outline_rounded,
+                        color: Colors.white,
+                        size: 19,
+                      ),
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  void _showVoiceSearchDialog() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      barrierColor: Colors.black.withOpacity(0.7),
+      builder: (context) => _VoiceSearchDialog(
+        isDark: isDark,
+        onResult: (String result) async {
+          // Search for building matching the spoken text
+          final searchQuery = result.toLowerCase();
+          final matchingBuilding = campusBuildings.firstWhere(
+            (building) => building.name.toLowerCase().contains(searchQuery),
+            orElse: () => campusBuildings.first,
+          );
+          
+          // Smooth animation: move map first, then show sheet
+          _mapController.move(matchingBuilding.coordinates, 18);
+          
+          // Small delay for smooth map animation
+          await Future.delayed(const Duration(milliseconds: 400));
+          
+          if (!mounted) return;
+          
+          // Show building sheet with animation
+          _showBuildingSheet(matchingBuilding, fromSearch: true);
+        },
       ),
     );
   }
@@ -2314,7 +2456,7 @@ out skel qt;
 
   Widget _buildCategoryFilter() {
     return Positioned(
-      top: MediaQuery.of(context).padding.top + 80,
+      top: MediaQuery.of(context).padding.top + 96,
       left: 0,
       right: 0,
       child: SizedBox(
@@ -3732,7 +3874,8 @@ class _SmoothLayersButtonState extends State<_SmoothLayersButton>
   }
 }
 
-// Animated Element Wrapper for Staggered Entrance Animations
+// Animated Element Wrapper for Staggered Entrance Animations (Currently Unused)
+/* 
 class _AnimatedElement extends StatelessWidget {
   final Widget child;
   final AnimationController? controller;
@@ -3786,6 +3929,451 @@ class _AnimatedElement extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+*/
+
+// Apple Maps-style Voice Search Dialog with Speech Recognition
+class _VoiceSearchDialog extends StatefulWidget {
+  final bool isDark;
+  final Function(String) onResult;
+
+  const _VoiceSearchDialog({
+    required this.isDark,
+    required this.onResult,
+  });
+
+  @override
+  State<_VoiceSearchDialog> createState() => _VoiceSearchDialogState();
+}
+
+class _VoiceSearchDialogState extends State<_VoiceSearchDialog>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _pulseController;
+  late Animation<double> _pulseAnimation;
+  late Animation<double> _scaleAnimation;
+  String _listeningText = 'Initializing...';
+  String _spokenText = '';
+  bool _isListening = true;
+  html.SpeechRecognition? _recognition;
+  bool _speechAvailable = false;
+
+  @override
+  void initState() {
+    super.initState();
+    
+    _pulseController = AnimationController(
+      duration: const Duration(milliseconds: 1200),
+      vsync: this,
+    )..repeat(reverse: true);
+
+    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.3).animate(
+      CurvedAnimation(
+        parent: _pulseController,
+        curve: Curves.easeInOut,
+      ),
+    );
+
+    _scaleAnimation = Tween<double>(begin: 0.85, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _pulseController,
+        curve: const Cubic(0.34, 1.56, 0.64, 1.0),
+      ),
+    );
+
+    // Initialize web speech recognition
+    _initializeSpeech();
+  }
+
+  void _initializeSpeech() {
+    try {
+      // Create web Speech Recognition instance
+      _recognition = html.SpeechRecognition();
+      
+      if (_recognition == null) {
+        if (mounted) {
+          setState(() {
+            _listeningText = 'Speech not supported in browser';
+            _isListening = false;
+          });
+          Future.delayed(const Duration(seconds: 2), () {
+            if (mounted) Navigator.pop(context);
+          });
+        }
+        return;
+      }
+      
+      _recognition!.continuous = false;
+      _recognition!.interimResults = true;
+      _recognition!.lang = 'en-US';
+      
+      // Handle results
+      _recognition!.onResult.listen((event) {
+        final results = event.results;
+        if (results != null && results.length > 0) {
+          final result = results[results.length - 1];
+          if (result != null) {
+            final alternatives = result as List<dynamic>;
+            if (alternatives.isNotEmpty) {
+              final transcript = alternatives[0].transcript as String?;
+              final isFinal = result.isFinal ?? false;
+              
+              if (transcript != null && transcript.isNotEmpty && mounted) {
+                setState(() {
+                  _spokenText = transcript;
+                  if (isFinal) {
+                    _listeningText = 'Processing...';
+                    _isListening = false;
+                  } else {
+                    _listeningText = 'Listening...';
+                  }
+                });
+                
+                // If final result, process it
+                if (isFinal) {
+                  _finalizeSpeech();
+                }
+              }
+            }
+          }
+        }
+      });
+      
+      // Handle errors
+      _recognition!.onError.listen((error) {
+        debugPrint('Speech error: ${error.error}');
+        if (mounted) {
+          String message = 'Error occurred';
+          if (error.error == 'not-allowed' || error.error == 'service-not-allowed') {
+            message = 'Please allow microphone access';
+          } else if (error.error == 'network') {
+            message = 'Network error';
+          } else if (error.error == 'no-speech') {
+            message = 'No speech detected';
+          }
+          setState(() {
+            _listeningText = message;
+            _isListening = false;
+          });
+          Future.delayed(const Duration(seconds: 2), () {
+            if (mounted) Navigator.pop(context);
+          });
+        }
+      });
+      
+      // Handle end
+      _recognition!.onEnd.listen((_) {
+        debugPrint('Speech recognition ended');
+        if (mounted && _spokenText.isEmpty) {
+          setState(() {
+            _listeningText = 'No speech detected';
+            _isListening = false;
+          });
+          Future.delayed(const Duration(seconds: 1), () {
+            if (mounted) Navigator.pop(context);
+          });
+        }
+      });
+      
+      _speechAvailable = true;
+      _startListening();
+      
+    } catch (e) {
+      debugPrint('Speech initialization error: $e');
+      if (mounted) {
+        setState(() {
+          _listeningText = 'Speech not available';
+          _isListening = false;
+        });
+        Future.delayed(const Duration(seconds: 2), () {
+          if (mounted) Navigator.pop(context);
+        });
+      }
+    }
+  }
+
+  void _startListening() async {
+    if (!_speechAvailable || _recognition == null) return;
+    
+    HapticFeedback.mediumImpact();
+    
+    setState(() {
+      _listeningText = 'Listening...';
+      _spokenText = '';
+    });
+
+    await Future.delayed(const Duration(milliseconds: 500));
+    if (!mounted) return;
+
+    setState(() {
+      _listeningText = 'Speak now...';
+    });
+
+    try {
+      // Start web speech recognition
+      _recognition!.start();
+    } catch (e) {
+      debugPrint('Error starting speech recognition: $e');
+      if (mounted) {
+        setState(() {
+          _listeningText = 'Failed to start';
+          _isListening = false;
+        });
+        Future.delayed(const Duration(seconds: 1), () {
+          if (mounted) Navigator.pop(context);
+        });
+      }
+    }
+  }
+
+  void _finalizeSpeech() async {
+    if (_spokenText.isEmpty) {
+      Navigator.pop(context);
+      return;
+    }
+
+    setState(() {
+      _listeningText = 'Processing...';
+      _isListening = false;
+    });
+
+    HapticFeedback.lightImpact();
+
+    // Small delay for visual feedback
+    await Future.delayed(const Duration(milliseconds: 500));
+    if (!mounted) return;
+    
+    Navigator.pop(context);
+    widget.onResult(_spokenText);
+  }
+
+  @override
+  void dispose() {
+    try {
+      _recognition?.stop();
+    } catch (e) {
+      debugPrint('Error stopping speech recognition: $e');
+    }
+    _pulseController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      duration: const Duration(milliseconds: 400),
+      tween: Tween(begin: 0.0, end: 1.0),
+      curve: const Cubic(0.34, 1.56, 0.64, 1.0),
+      builder: (context, animValue, child) {
+        return Transform.scale(
+          scale: 0.8 + (0.2 * animValue),
+          child: Opacity(
+            opacity: animValue,
+            child: child,
+          ),
+        );
+      },
+      child: Dialog(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 360),
+          padding: const EdgeInsets.all(40),
+          decoration: BoxDecoration(
+            color: widget.isDark ? const Color(0xFF1C1C1E) : Colors.white,
+            borderRadius: BorderRadius.circular(32),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.3),
+                blurRadius: 40,
+                offset: const Offset(0, 20),
+              ),
+              BoxShadow(
+                color: AppColors.primary.withOpacity(0.1),
+                blurRadius: 20,
+                offset: const Offset(0, 10),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Animated Microphone with Pulsing Circles
+              Stack(
+                alignment: Alignment.center,
+                children: [
+                  // Outer pulsing circles
+                  if (_isListening) ...[
+                    AnimatedBuilder(
+                      animation: _pulseAnimation,
+                      builder: (context, child) {
+                        return Container(
+                          width: 140 * _pulseAnimation.value,
+                          height: 140 * _pulseAnimation.value,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: AppColors.primary.withOpacity(
+                              0.1 / _pulseAnimation.value,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                    AnimatedBuilder(
+                      animation: _pulseAnimation,
+                      builder: (context, child) {
+                        return Container(
+                          width: 110 * _pulseAnimation.value,
+                          height: 110 * _pulseAnimation.value,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: AppColors.primary.withOpacity(
+                              0.15 / _pulseAnimation.value,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                  // Main microphone container
+                  AnimatedBuilder(
+                    animation: _scaleAnimation,
+                    builder: (context, child) {
+                      return Transform.scale(
+                        scale: _isListening ? _scaleAnimation.value : 1.0,
+                        child: Container(
+                          width: 90,
+                          height: 90,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: _isListening
+                                  ? [
+                                      AppColors.primary,
+                                      const Color(0xFF0052CC),
+                                    ]
+                                  : [
+                                      AppColors.success,
+                                      AppColors.success.withOpacity(0.8),
+                                    ],
+                            ),
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: (_isListening
+                                        ? AppColors.primary
+                                        : AppColors.success)
+                                    .withOpacity(0.4),
+                                blurRadius: 20,
+                                offset: const Offset(0, 8),
+                              ),
+                            ],
+                          ),
+                          child: Icon(
+                            _isListening ? Icons.mic_rounded : Icons.check_rounded,
+                            color: Colors.white,
+                            size: 42,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
+              
+              const SizedBox(height: 32),
+              
+              // Listening text
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 300),
+                child: Text(
+                  _listeningText,
+                  key: ValueKey(_listeningText),
+                  style: GoogleFonts.poppins(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w600,
+                    color: widget.isDark ? Colors.white : const Color(0xFF1C1C1E),
+                    letterSpacing: -0.5,
+                  ),
+                ),
+              ),
+              
+              const SizedBox(height: 12),
+              
+              // Spoken text or instruction
+              AnimatedSize(
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeOut,
+                child: _spokenText.isEmpty
+                    ? Text(
+                        'Say your destination',
+                        style: GoogleFonts.notoSans(
+                          fontSize: 15,
+                          color: widget.isDark
+                              ? Colors.grey[400]
+                              : const Color(0xFF8E8E93),
+                          fontWeight: FontWeight.w400,
+                        ),
+                      )
+                    : Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 12,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Text(
+                          '"$_spokenText"',
+                          style: GoogleFonts.notoSans(
+                            fontSize: 16,
+                            color: AppColors.primary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+              ),
+              
+              const SizedBox(height: 32),
+              
+              // Cancel button
+              Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () {
+                    HapticFeedback.lightImpact();
+                    Navigator.pop(context);
+                  },
+                  borderRadius: BorderRadius.circular(16),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 28,
+                      vertical: 14,
+                    ),
+                    decoration: BoxDecoration(
+                      color: widget.isDark
+                          ? Colors.white.withOpacity(0.1)
+                          : const Color(0xFFF2F2F7),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Text(
+                      'Cancel',
+                      style: GoogleFonts.notoSans(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: widget.isDark ? Colors.white : AppColors.primary,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

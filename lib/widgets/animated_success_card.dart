@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'dart:ui' as ui;
-import 'dart:math' as math;
 import '../theme/app_theme.dart';
 
 /// Shows an animated success card with custom curved background

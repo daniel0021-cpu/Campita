@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:table_calendar/table_calendar.dart';
 import '../theme/app_theme.dart';
 import 'package:intl/intl.dart';
 import '../widgets/animated_success_card.dart';
@@ -202,6 +200,10 @@ class _EventsScreenState extends State<EventsScreen> with SingleTickerProviderSt
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
+      transitionAnimationController: AnimationController(
+        duration: const Duration(milliseconds: 500),
+        vsync: this,
+      )..forward(),
       builder: (context) => _AddEventSheet(
         onEventAdded: (CampusEvent event) {
           setState(() {
@@ -474,6 +476,10 @@ class _EventsScreenState extends State<EventsScreen> with SingleTickerProviderSt
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
+      transitionAnimationController: AnimationController(
+        duration: const Duration(milliseconds: 500),
+        vsync: Navigator.of(context),
+      )..forward(),
       builder: (context) => DraggableScrollableSheet(
         initialChildSize: 0.7,
         minChildSize: 0.5,
@@ -1127,6 +1133,8 @@ class _AddEventSheetState extends State<_AddEventSheet> with SingleTickerProvide
   
   late AnimationController _controller;
   late Animation<double> _slideAnimation;
+  late Animation<double> _scaleAnimation;
+  late Animation<double> _fadeAnimation;
   
   final Map<String, Map<String, dynamic>> _categories = {
     'Academic': {'color': const Color(0xFF4CAF50), 'icon': Icons.school_rounded},
@@ -1141,13 +1149,27 @@ class _AddEventSheetState extends State<_AddEventSheet> with SingleTickerProvide
   void initState() {
     super.initState();
     _controller = AnimationController(
-      duration: const Duration(milliseconds: 400),
+      duration: const Duration(milliseconds: 600),
       vsync: this,
     );
     
     _slideAnimation = CurvedAnimation(
       parent: _controller,
-      curve: Curves.easeOutCubic,
+      curve: const Cubic(0.19, 1.0, 0.22, 1.0), // Smooth deceleration
+    );
+    
+    _scaleAnimation = Tween<double>(begin: 0.9, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: const Cubic(0.34, 1.56, 0.64, 1.0), // Spring bounce
+      ),
+    );
+    
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: const Interval(0.0, 0.5, curve: Curves.easeOut),
+      ),
     );
     
     _controller.forward();
@@ -1220,13 +1242,16 @@ class _AddEventSheetState extends State<_AddEventSheet> with SingleTickerProvide
     final isDark = Theme.of(context).brightness == Brightness.dark;
     
     return AnimatedBuilder(
-      animation: _slideAnimation,
+      animation: _controller,
       builder: (context, child) {
         return Transform.translate(
-          offset: Offset(0, (1 - _slideAnimation.value) * 100),
-          child: Opacity(
-            opacity: _slideAnimation.value,
-            child: child,
+          offset: Offset(0, (1 - _slideAnimation.value) * 150),
+          child: Transform.scale(
+            scale: _scaleAnimation.value,
+            child: Opacity(
+              opacity: _fadeAnimation.value,
+              child: child,
+            ),
           ),
         );
       },
@@ -1677,6 +1702,8 @@ class _EventDetailSheet extends StatefulWidget {
 class _EventDetailSheetState extends State<_EventDetailSheet> with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _slideAnimation;
+  late Animation<double> _scaleAnimation;
+  late Animation<double> _fadeAnimation;
   bool _isRsvped = false;
   int _rsvpCount = 0;
 
@@ -1686,13 +1713,27 @@ class _EventDetailSheetState extends State<_EventDetailSheet> with SingleTickerP
     _rsvpCount = (widget.event.title.hashCode % 50) + 10; // Mock count
     
     _controller = AnimationController(
-      duration: const Duration(milliseconds: 400),
+      duration: const Duration(milliseconds: 600),
       vsync: this,
     );
 
     _slideAnimation = CurvedAnimation(
       parent: _controller,
-      curve: Curves.easeOutCubic,
+      curve: const Cubic(0.19, 1.0, 0.22, 1.0), // Smooth deceleration
+    );
+    
+    _scaleAnimation = Tween<double>(begin: 0.92, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: const Cubic(0.34, 1.56, 0.64, 1.0), // Spring bounce
+      ),
+    );
+    
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: const Interval(0.0, 0.6, curve: Curves.easeOut),
+      ),
     );
 
     _controller.forward();
@@ -1723,13 +1764,17 @@ class _EventDetailSheetState extends State<_EventDetailSheet> with SingleTickerP
     final isDark = Theme.of(context).brightness == Brightness.dark;
     
     return AnimatedBuilder(
-      animation: _slideAnimation,
+      animation: _controller,
       builder: (context, child) {
         return Transform.translate(
-          offset: Offset(0, (1 - _slideAnimation.value) * 100),
-          child: Opacity(
-            opacity: _slideAnimation.value,
-            child: child,
+          offset: Offset(0, (1 - _slideAnimation.value) * 150),
+          child: Transform.scale(
+            scale: _scaleAnimation.value,
+            alignment: Alignment.bottomCenter,
+            child: Opacity(
+              opacity: _fadeAnimation.value,
+              child: child,
+            ),
           ),
         );
       },

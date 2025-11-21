@@ -4,7 +4,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:audioplayers/audioplayers.dart';
 import '../widgets/expanding_dots_indicator.dart';
-import '../theme/app_theme.dart';
 import 'enhanced_campus_map.dart';
 
 class OnboardingScreen extends StatefulWidget {

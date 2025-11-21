@@ -9,10 +9,8 @@ import '../theme/app_theme.dart';
 import '../widgets/modern_navbar.dart';
 import '../utils/preferences_service.dart';
 import '../utils/app_settings.dart';
-import '../utils/app_routes.dart';
 import '../utils/page_transitions.dart';
 import 'favorites_screen.dart';
-import 'subscription_screen.dart';
 import 'profile_edit_screen.dart';
 
 /// Premium Profile Screen with Buttery Smooth Animations
@@ -47,9 +45,9 @@ class _PremiumProfileScreenState extends State<PremiumProfileScreen>
   String? _avatarBase64;
   
   // Stats
-  int _buildingsVisited = 12;
-  int _stepsOnCampus = 8547;
-  int _savedLocations = 5;
+  final int _buildingsVisited = 12;
+  final int _stepsOnCampus = 8547;
+  final int _savedLocations = 5;
   
   // Settings
   bool _notificationsEnabled = true;
@@ -86,7 +84,7 @@ class _PremiumProfileScreenState extends State<PremiumProfileScreen>
     // Continuous wave animation
     _waveController = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 4),
+      duration: const Duration(seconds: 8),
     )..repeat();
     
     // Sheet slide up with ripple
@@ -236,10 +234,9 @@ class _PremiumProfileScreenState extends State<PremiumProfileScreen>
           child: SafeArea(
             bottom: false,
             child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 20),
+              padding: const EdgeInsets.symmetric(vertical: 12),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
-                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                 
                 // Avatar with scale animation
@@ -248,7 +245,7 @@ class _PremiumProfileScreenState extends State<PremiumProfileScreen>
                   child: _buildAvatar(),
                 ),
                 
-                const SizedBox(height: 20),
+                const SizedBox(height: 12),
                 
                 // Name and role
                 Text(
@@ -270,7 +267,7 @@ class _PremiumProfileScreenState extends State<PremiumProfileScreen>
                   ),
                 ),
                 
-                const SizedBox(height: 30),
+                const SizedBox(height: 16),
                 
                 // Quick stats row
                 _buildStatsRow(),
@@ -407,34 +404,59 @@ class _PremiumProfileScreenState extends State<PremiumProfileScreen>
       child: Stack(
         children: [
           // Wavy top edge
-          AnimatedBuilder(
-            animation: _waveController,
-            builder: (context, child) {
-              return CustomPaint(
-                size: const Size(double.infinity, 40),
-                painter: _WavePainter(
-                  animation: _waveController.value,
-                  scrollOffset: _scrollOffset,
-                ),
-              );
-            },
+          RepaintBoundary(
+            child: AnimatedBuilder(
+              animation: _waveController,
+              builder: (context, child) {
+                return CustomPaint(
+                  size: const Size(double.infinity, 40),
+                  painter: _WavePainter(
+                    animation: _waveController.value,
+                    scrollOffset: _scrollOffset,
+                  ),
+                );
+              },
+            ),
           ),
           
-          // Sheet content
+          // Sheet content with curved arcs
           Container(
             margin: const EdgeInsets.only(top: 30),
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.only(
+              borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(30),
                 topRight: Radius.circular(30),
               ),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.primary.withOpacity(0.08),
+                  blurRadius: 30,
+                  offset: const Offset(0, -5),
+                ),
+              ],
             ),
-            child: Column(
+            child: Stack(
               children: [
-                const SizedBox(height: 24),
-                _buildSheetContent(),
-                SizedBox(height: MediaQuery.of(context).padding.bottom + 80),
+                // Curved arcs decoration at bottom
+                Positioned(
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  child: CustomPaint(
+                    size: Size(MediaQuery.of(context).size.width, 120),
+                    painter: _BottomArcsPainter(),
+                  ),
+                ),
+                
+                // Main content
+                Column(
+                  children: [
+                    const SizedBox(height: 24),
+                    _buildSheetContent(),
+                    SizedBox(height: MediaQuery.of(context).padding.bottom + 100),
+                  ],
+                ),
               ],
             ),
           ),
@@ -544,6 +566,74 @@ class _PremiumProfileScreenState extends State<PremiumProfileScreen>
           ),
           
           const SizedBox(height: 32),
+          _buildSectionTitle('Campus Features'),
+          const SizedBox(height: 16),
+          
+          _buildMenuItem(
+            'My Private Places',
+            'Save places with reminders',
+            CupertinoIcons.map_pin_ellipse,
+            () {
+              _handleHaptic();
+              _showComingSoon();
+            },
+          ),
+          _buildMenuItem(
+            'Class Schedule',
+            'Sync your class timetable',
+            CupertinoIcons.calendar,
+            () {
+              _handleHaptic();
+              _showComingSoon();
+            },
+          ),
+          _buildMenuItem(
+            'Shuttle Tracking',
+            'Track campus shuttle buses',
+            CupertinoIcons.car_fill,
+            () {
+              _handleHaptic();
+              _showComingSoon();
+            },
+          ),
+          _buildMenuItem(
+            'Parking Preferences',
+            'Set preferred parking spots',
+            CupertinoIcons.car_detailed,
+            () {
+              _handleHaptic();
+              _showComingSoon();
+            },
+          ),
+          _buildMenuItem(
+            'Cafeteria Menu',
+            'Daily meal notifications',
+            CupertinoIcons.bag_fill,
+            () {
+              _handleHaptic();
+              _showComingSoon();
+            },
+          ),
+          _buildMenuItem(
+            'Study Rooms',
+            'Book study spaces',
+            CupertinoIcons.book_fill,
+            () {
+              _handleHaptic();
+              _showComingSoon();
+            },
+          ),
+          _buildMenuItem(
+            'Rate Campita',
+            'Share your feedback',
+            CupertinoIcons.star_fill,
+            () {
+              _handleHaptic();
+              _showComingSoon();
+            },
+          ),
+          
+          const SizedBox(height: 32),
           _buildSectionTitle('About'),
           const SizedBox(height: 16),
           
@@ -582,15 +672,43 @@ class _PremiumProfileScreenState extends State<PremiumProfileScreen>
   Widget _buildSectionTitle(String title) {
     return Padding(
       padding: const EdgeInsets.only(left: 4),
-      child: Text(
-        title,
-        style: GoogleFonts.poppins(
-          fontSize: 18,
-          fontWeight: FontWeight.bold,
-          color: const Color(0xFF111827),
-          letterSpacing: -0.3,
-          decoration: TextDecoration.none,
-        ),
+      child: Row(
+        children: [
+          Container(
+            width: 4,
+            height: 22,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  AppColors.primary,
+                  AppColors.primary.withOpacity(0.6),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const SizedBox(width: 12),
+          ShaderMask(
+            shaderCallback: (bounds) => LinearGradient(
+              colors: [
+                const Color(0xFF111827),
+                const Color(0xFF374151),
+              ],
+            ).createShader(bounds),
+            child: Text(
+              title,
+              style: GoogleFonts.poppins(
+                fontSize: 19,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+                letterSpacing: -0.5,
+                decoration: TextDecoration.none,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -602,47 +720,73 @@ class _PremiumProfileScreenState extends State<PremiumProfileScreen>
         color: Colors.transparent,
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(24),
-          splashColor: AppColors.primary.withOpacity(0.1),
-          highlightColor: AppColors.primary.withOpacity(0.05),
+          borderRadius: BorderRadius.circular(20),
+          splashColor: AppColors.primary.withOpacity(0.15),
+          highlightColor: AppColors.primary.withOpacity(0.08),
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
             decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(24),
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Colors.white,
+                  const Color(0xFFFAFAFA),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(20),
               border: Border.all(
                 color: const Color(0xFFE5E7EB),
-                width: 1,
+                width: 1.5,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.03),
-                  blurRadius: 10,
-                  offset: const Offset(0, 2),
+                  color: AppColors.primary.withOpacity(0.04),
+                  blurRadius: 15,
+                  offset: const Offset(0, 3),
+                ),
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.02),
+                  blurRadius: 8,
+                  offset: const Offset(0, 1),
                 ),
               ],
             ),
             child: Row(
               children: [
                 Container(
-                  width: 52,
-                  height: 52,
+                  width: 50,
+                  height: 50,
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                       colors: [
-                        AppColors.primary.withOpacity(0.15),
-                        AppColors.primary.withOpacity(0.08),
+                        AppColors.primary.withOpacity(0.2),
+                        AppColors.primary.withOpacity(0.12),
+                        const Color(0xFF60A5FA).withOpacity(0.1),
                       ],
                     ),
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(15),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.primary.withOpacity(0.15),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
                   ),
                   child: Center(
                     child: Icon(
                       icon,
                       color: AppColors.primary,
-                      size: 26,
+                      size: 24,
+                      shadows: [
+                        Shadow(
+                          color: AppColors.primary.withOpacity(0.3),
+                          blurRadius: 4,
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -767,7 +911,7 @@ class _PremiumProfileScreenState extends State<PremiumProfileScreen>
             scale: 0.85,
             child: CupertinoSwitch(
               value: value,
-              activeColor: AppColors.primary,
+              activeTrackColor: AppColors.primary,
               onChanged: onChanged,
             ),
           ),
@@ -969,6 +1113,105 @@ class _PremiumProfileScreenState extends State<PremiumProfileScreen>
       ),
     );
   }
+}
+
+/// Custom painter for beautiful bottom arcs decoration
+class _BottomArcsPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    // Large arc on the left
+    final paint1 = Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [
+          AppColors.primary.withOpacity(0.05),
+          AppColors.primary.withOpacity(0.02),
+        ],
+      ).createShader(Rect.fromLTWH(0, 0, size.width * 0.6, size.height))
+      ..style = PaintingStyle.fill;
+    
+    final path1 = Path();
+    path1.moveTo(0, size.height * 0.3);
+    path1.quadraticBezierTo(
+      size.width * 0.25,
+      size.height * 0.15,
+      size.width * 0.4,
+      size.height * 0.5,
+    );
+    path1.quadraticBezierTo(
+      size.width * 0.5,
+      size.height * 0.75,
+      size.width * 0.3,
+      size.height,
+    );
+    path1.lineTo(0, size.height);
+    path1.close();
+    canvas.drawPath(path1, paint1);
+    
+    // Medium arc on the right
+    final paint2 = Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.topRight,
+        end: Alignment.bottomLeft,
+        colors: [
+          const Color(0xFF60A5FA).withOpacity(0.06),
+          const Color(0xFF60A5FA).withOpacity(0.02),
+        ],
+      ).createShader(Rect.fromLTWH(size.width * 0.5, 0, size.width * 0.5, size.height))
+      ..style = PaintingStyle.fill;
+    
+    final path2 = Path();
+    path2.moveTo(size.width, size.height * 0.2);
+    path2.quadraticBezierTo(
+      size.width * 0.75,
+      size.height * 0.4,
+      size.width * 0.7,
+      size.height * 0.65,
+    );
+    path2.quadraticBezierTo(
+      size.width * 0.65,
+      size.height * 0.9,
+      size.width * 0.8,
+      size.height,
+    );
+    path2.lineTo(size.width, size.height);
+    path2.close();
+    canvas.drawPath(path2, paint2);
+    
+    // Small accent arc in the center
+    final paint3 = Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [
+          AppColors.primary.withOpacity(0.03),
+          Colors.transparent,
+        ],
+      ).createShader(Rect.fromLTWH(size.width * 0.3, 0, size.width * 0.4, size.height))
+      ..style = PaintingStyle.fill;
+    
+    final path3 = Path();
+    path3.moveTo(size.width * 0.4, size.height * 0.5);
+    path3.quadraticBezierTo(
+      size.width * 0.5,
+      size.height * 0.3,
+      size.width * 0.6,
+      size.height * 0.5,
+    );
+    path3.quadraticBezierTo(
+      size.width * 0.55,
+      size.height * 0.8,
+      size.width * 0.5,
+      size.height,
+    );
+    path3.lineTo(size.width * 0.4, size.height);
+    path3.close();
+    canvas.drawPath(path3, paint3);
+  }
+  
+  @override
+  bool shouldRepaint(_BottomArcsPainter oldDelegate) => false;
 }
 
 /// Custom painter for buttery smooth animated waves

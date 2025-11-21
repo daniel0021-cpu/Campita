@@ -1,13 +1,11 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
 import '../models/campus_building.dart';
 import '../utils/favorites_service.dart';
 import '../utils/app_routes.dart';
 import '../widgets/modern_navbar.dart';
-import '../widgets/building_detail_sheet.dart';
 import 'enhanced_campus_map.dart';
 import '../widgets/animated_success_card.dart';
 import '../utils/page_transitions.dart';
@@ -54,17 +52,17 @@ class _FavoritesScreenState extends State<FavoritesScreen> with SingleTickerProv
   Widget _buildCurvedHeaderCard() {
     return Container(
       decoration: BoxDecoration(
-        gradient: LinearGradient(
+        gradient: const LinearGradient(
           colors: [
-            AppColors.primary,
-            AppColors.primary.withOpacity(0.85),
+            Color(0xFFE91E63), // Pink for love/heart theme
+            Color(0xFFC2185B), // Darker pink
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         boxShadow: [
           BoxShadow(
-            color: AppColors.primary.withOpacity(0.3),
+            color: const Color(0xFFE91E63).withOpacity(0.4),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),
@@ -75,11 +73,11 @@ class _FavoritesScreenState extends State<FavoritesScreen> with SingleTickerProv
         child: Container(
           height: 180,
           padding: const EdgeInsets.fromLTRB(24, 40, 24, 40),
-          decoration: BoxDecoration(
+          decoration: const BoxDecoration(
             gradient: LinearGradient(
               colors: [
-                AppColors.primary,
-                AppColors.primary.withOpacity(0.9),
+                Color(0xFFE91E63), // Pink/heart color
+                Color(0xFFC2185B), // Darker pink for depth
               ],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
@@ -383,22 +381,51 @@ class _FavoritesScreenState extends State<FavoritesScreen> with SingleTickerProv
   }
 
   Widget _buildFavoriteCard(CampusBuilding building, bool isPinned) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Hero(
       tag: 'building_${building.name}',
       child: Container(
         margin: const EdgeInsets.only(bottom: 16),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
+          gradient: LinearGradient(
+            colors: isDark
+                ? [
+                    Colors.grey[850]!,
+                    Colors.grey[900]!,
+                  ]
+                : [
+                    Colors.white,
+                    const Color(0xFFFAFAFA),
+                  ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(24),
           border: isPinned
-              ? Border.all(color: AppColors.primary.withOpacity(0.3), width: 2)
-              : null,
+              ? Border.all(
+                  color: const Color(0xFFE91E63).withOpacity(0.4),
+                  width: 2,
+                )
+              : Border.all(
+                  color: isDark
+                      ? Colors.white.withOpacity(0.1)
+                      : Colors.black.withOpacity(0.05),
+                  width: 1,
+                ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.08),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
+              color: Colors.black.withOpacity(isDark ? 0.3 : 0.08),
+              blurRadius: 16,
+              offset: const Offset(0, 6),
+              spreadRadius: 2,
             ),
+            if (isPinned)
+              BoxShadow(
+                color: const Color(0xFFE91E63).withOpacity(0.2),
+                blurRadius: 20,
+                offset: const Offset(0, 4),
+                spreadRadius: 1,
+              ),
           ],
         ),
         child: Material(
@@ -407,51 +434,77 @@ class _FavoritesScreenState extends State<FavoritesScreen> with SingleTickerProv
             onTap: () {
               _showBuildingDetails(building);
             },
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(24),
             child: Padding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(20),
               child: Row(
                 children: [
                 Stack(
                   children: [
                     Container(
-                      width: 60,
-                      height: 60,
+                      width: 64,
+                      height: 64,
                       decoration: BoxDecoration(
-                        color: _getCategoryColor(building.category).withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(12),
+                        gradient: LinearGradient(
+                          colors: [
+                            _getCategoryColor(building.category).withOpacity(0.2),
+                            _getCategoryColor(building.category).withOpacity(0.1),
+                          ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(18),
                         border: Border.all(
                           color: _getCategoryColor(building.category).withOpacity(0.3),
-                          width: 1.5,
+                          width: 2,
                         ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: _getCategoryColor(building.category).withOpacity(0.15),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
                       ),
                       child: Icon(
                         _getCategoryIcon(building.category),
                         color: _getCategoryColor(building.category),
-                        size: 30,
+                        size: 32,
                       ),
                     ),
                     if (isPinned)
                       Positioned(
-                        top: -4,
-                        right: -4,
+                        top: -6,
+                        right: -6,
                         child: Container(
-                          padding: const EdgeInsets.all(4),
+                          padding: const EdgeInsets.all(6),
                           decoration: BoxDecoration(
-                            color: AppColors.primary,
+                            gradient: const LinearGradient(
+                              colors: [
+                                Color(0xFFE91E63),
+                                Color(0xFFC2185B),
+                              ],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
                             shape: BoxShape.circle,
                             boxShadow: [
                               BoxShadow(
-                                color: AppColors.primary.withOpacity(0.3),
-                                blurRadius: 8,
+                                color: const Color(0xFFE91E63).withOpacity(0.5),
+                                blurRadius: 12,
                                 spreadRadius: 2,
+                                offset: const Offset(0, 2),
                               ),
                             ],
+                            border: Border.all(
+                              color: Colors.white,
+                              width: 2,
+                            ),
                           ),
                           child: const Icon(
                             Icons.push_pin,
                             color: Colors.white,
-                            size: 12,
+                            size: 14,
                           ),
                         ),
                       ),
@@ -496,31 +549,13 @@ class _FavoritesScreenState extends State<FavoritesScreen> with SingleTickerProv
   }
 
   void _showBuildingDetails(CampusBuilding building) {
-    // Navigate to map screen with smooth transition
-    Navigator.push(
+    // Navigate to map screen with building data - map will handle showing sheet
+    Navigator.pushReplacement(
       context,
-      PageTransitions.fadeRoute(const EnhancedCampusMap()),
-    ).then((_) {
-      // After navigation, show building detail sheet with delay for smooth appearance
-      Future.delayed(const Duration(milliseconds: 300), () {
-        if (mounted) {
-          showDialog(
-            context: context,
-            barrierColor: Colors.transparent,
-            builder: (context) => BuildingDetailSheet(
-              building: building,
-              onClose: () => Navigator.pop(context),
-              onFavoriteToggle: (bldg, isFavorite) async {
-                if (!isFavorite) {
-                  await _favService.removeFavorite(bldg.name);
-                  await _loadFavorites();
-                }
-              },
-            ),
-          );
-        }
-      });
-    });
+      PageTransitions.fadeRoute(
+        EnhancedCampusMap(selectedBuilding: building),
+      ),
+    );
   }
 
   IconData _getCategoryIcon(BuildingCategory category) {
@@ -578,7 +613,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> with SingleTickerProv
   }
 }
 
-// Custom clipper for dripping chocolate/milk effect from bottom
+// Custom clipper with beautiful arcs on both sides at the bottom
 class CurvedBottomClipper extends CustomClipper<Path> {
   @override
   Path getClip(Size size) {
@@ -586,40 +621,46 @@ class CurvedBottomClipper extends CustomClipper<Path> {
     
     // Start from top-left
     path.moveTo(0, 0);
-    path.lineTo(0, size.height - 60);
     
-    // Create dripping effect (like melting chocolate)
-    // First drip
-    path.quadraticBezierTo(
-      size.width * 0.15, size.height - 50,
-      size.width * 0.2, size.height - 40,
-    );
-    
-    // Second drip (longer)
-    path.quadraticBezierTo(
-      size.width * 0.3, size.height - 20,
-      size.width * 0.4, size.height - 10,
-    );
-    
-    // Third drip (deepest)
-    path.quadraticBezierTo(
-      size.width * 0.5, size.height + 5,
-      size.width * 0.6, size.height - 5,
-    );
-    
-    // Fourth drip
-    path.quadraticBezierTo(
-      size.width * 0.7, size.height - 25,
-      size.width * 0.8, size.height - 35,
-    );
-    
-    // Final drip
-    path.quadraticBezierTo(
-      size.width * 0.9, size.height - 55,
-      size.width, size.height - 65,
-    );
-    
+    // Right side straight down
     path.lineTo(size.width, 0);
+    path.lineTo(size.width, size.height - 50);
+    
+    // Right side arc (curves inward)
+    path.quadraticBezierTo(
+      size.width - 30, size.height - 35,
+      size.width - 50, size.height - 20,
+    );
+    
+    // Create flowing bottom curve with multiple waves
+    path.quadraticBezierTo(
+      size.width * 0.85, size.height - 10,
+      size.width * 0.75, size.height - 15,
+    );
+    
+    path.quadraticBezierTo(
+      size.width * 0.65, size.height - 20,
+      size.width * 0.5, size.height,
+    );
+    
+    path.quadraticBezierTo(
+      size.width * 0.35, size.height - 20,
+      size.width * 0.25, size.height - 15,
+    );
+    
+    path.quadraticBezierTo(
+      size.width * 0.15, size.height - 10,
+      50, size.height - 20,
+    );
+    
+    // Left side arc (curves inward)
+    path.quadraticBezierTo(
+      30, size.height - 35,
+      0, size.height - 50,
+    );
+    
+    // Close path
+    path.lineTo(0, 0);
     path.close();
     return path;
   }

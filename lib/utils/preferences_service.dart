@@ -12,6 +12,12 @@ class PreferencesKeys {
   static const userLevel = 'user_level';
   static const userDepartment = 'user_department';
   static const userAvatar = 'user_avatar_base64';
+  static const userStudentId = 'user_student_id';
+  static const userEmail = 'user_email';
+  static const userPhone = 'user_phone';
+  static const userBio = 'user_bio';
+  static const userDorm = 'user_dorm';
+  static const userRoom = 'user_room';
 }
 
 class PreferencesService {
@@ -92,12 +98,24 @@ class PreferencesService {
     String? level,
     String? department,
     String? avatarBase64,
+    String? studentId,
+    String? email,
+    String? phone,
+    String? bio,
+    String? dorm,
+    String? room,
   }) async {
     final p = await _prefs;
     if (name != null) await p.setString(PreferencesKeys.userName, name);
     if (level != null) await p.setString(PreferencesKeys.userLevel, level);
     if (department != null) await p.setString(PreferencesKeys.userDepartment, department);
     if (avatarBase64 != null) await p.setString(PreferencesKeys.userAvatar, avatarBase64);
+    if (studentId != null) await p.setString(PreferencesKeys.userStudentId, studentId);
+    if (email != null) await p.setString(PreferencesKeys.userEmail, email);
+    if (phone != null) await p.setString(PreferencesKeys.userPhone, phone);
+    if (bio != null) await p.setString(PreferencesKeys.userBio, bio);
+    if (dorm != null) await p.setString(PreferencesKeys.userDorm, dorm);
+    if (room != null) await p.setString(PreferencesKeys.userRoom, room);
   }
 
   Future<Map<String, String?>> loadProfileData() async {
@@ -107,6 +125,12 @@ class PreferencesService {
       'level': p.getString(PreferencesKeys.userLevel),
       'department': p.getString(PreferencesKeys.userDepartment),
       'avatar': p.getString(PreferencesKeys.userAvatar),
+      'studentId': p.getString(PreferencesKeys.userStudentId),
+      'email': p.getString(PreferencesKeys.userEmail),
+      'phone': p.getString(PreferencesKeys.userPhone),
+      'bio': p.getString(PreferencesKeys.userBio),
+      'dorm': p.getString(PreferencesKeys.userDorm),
+      'room': p.getString(PreferencesKeys.userRoom),
     };
   }
 }

@@ -11,6 +11,13 @@ class CampusEvent {
   final String? imageUrl;
   final bool isUpcoming;
   final List<String> attendees;
+  final String? contactEmail;
+  final String? contactPhone;
+  final int? maxAttendees;
+  final bool requiresRSVP;
+  final String? eventLink;
+  final List<String> tags;
+  final bool isFeatured;
 
   const CampusEvent({
     required this.id,
@@ -25,6 +32,13 @@ class CampusEvent {
     this.imageUrl,
     required this.isUpcoming,
     this.attendees = const [],
+    this.contactEmail,
+    this.contactPhone,
+    this.maxAttendees,
+    this.requiresRSVP = false,
+    this.eventLink,
+    this.tags = const [],
+    this.isFeatured = false,
   });
 
   bool get isToday {
@@ -63,6 +77,13 @@ class CampusEvent {
         'imageUrl': imageUrl,
         'isUpcoming': isUpcoming,
         'attendees': attendees,
+        'contactEmail': contactEmail,
+        'contactPhone': contactPhone,
+        'maxAttendees': maxAttendees,
+        'requiresRSVP': requiresRSVP,
+        'eventLink': eventLink,
+        'tags': tags,
+        'isFeatured': isFeatured,
       };
 
   factory CampusEvent.fromJson(Map<String, dynamic> json) => CampusEvent(
@@ -78,6 +99,13 @@ class CampusEvent {
         imageUrl: json['imageUrl'] as String?,
         isUpcoming: json['isUpcoming'] as bool,
         attendees: (json['attendees'] as List<dynamic>?)?.map((e) => e as String).toList() ?? [],
+        contactEmail: json['contactEmail'] as String?,
+        contactPhone: json['contactPhone'] as String?,
+        maxAttendees: json['maxAttendees'] as int?,
+        requiresRSVP: json['requiresRSVP'] as bool? ?? false,
+        eventLink: json['eventLink'] as String?,
+        tags: (json['tags'] as List<dynamic>?)?.map((e) => e as String).toList() ?? [],
+        isFeatured: json['isFeatured'] as bool? ?? false,
       );
 }
 
@@ -95,6 +123,10 @@ final List<CampusEvent> sampleEvents = [
     organizer: 'Academic Affairs',
     isUpcoming: true,
     attendees: [],
+    contactEmail: 'academics@iuokada.edu.ng',
+    requiresRSVP: false,
+    tags: ['exam', 'academics', '200-level'],
+    isFeatured: true,
   ),
   CampusEvent(
     id: '2',

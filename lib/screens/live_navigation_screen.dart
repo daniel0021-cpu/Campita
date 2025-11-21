@@ -6,7 +6,6 @@ import 'package:geolocator/geolocator.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:just_audio/just_audio.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:share_plus/share_plus.dart';
 import '../theme/app_theme.dart';
 import '../models/campus_building.dart';
@@ -46,7 +45,7 @@ class _LiveNavigationScreenState extends State<LiveNavigationScreen>
   bool _is3DView = false;
   bool _ttsEnabled = false;
   String _nextInstruction = '';
-  int _currentRouteIndex = 0;
+  final int _currentRouteIndex = 0;
   Timer? _instructionTimer;
   
   // Building info sheet
@@ -61,7 +60,7 @@ class _LiveNavigationScreenState extends State<LiveNavigationScreen>
   String _currentSong = '';
   String _currentArtist = '';
   List<Map<String, String>> _searchResults = [];
-  String _currentLocationName = 'Your Location';
+  final String _currentLocationName = 'Your Location';
   bool _isNearDestination = false;
   
   // Arrival state

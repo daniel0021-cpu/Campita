@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
 import '../models/campus_building.dart';
+import '../models/campus_event.dart';
 import 'enhanced_campus_map.dart';
 import 'favorites_screen.dart';
 import 'profile_screen.dart';
@@ -70,7 +72,11 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
           children: [
             // Welcome Card
             _buildWelcomeCard(),
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
+
+            // Live Events Banner
+            _buildLiveEventsBanner(),
+            const SizedBox(height: 20),
 
             // Stats Overview
             _buildStatsSection(),
@@ -78,7 +84,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
 
             // Events Button
             _buildEventsButton(),
-            const SizedBox(height: 24),
+            const SizedBox(height: 28),
 
             // Quick Access
             Text(
@@ -89,7 +95,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                 color: AppColors.textPrimary,
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 20),
             _buildQuickAccessGrid(),
             const SizedBox(height: 24),
 
@@ -213,6 +219,146 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
             Icons.map_outlined,
             size: 80,
             color: Colors.white24,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLiveEventsBanner() {
+    // Get live events (happening now)
+    final liveEvents = sampleEvents.where((e) => e.isHappening).toList();
+    
+    if (liveEvents.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    
+    final event = liveEvents.first;
+    
+    return Container(
+      margin: const EdgeInsets.only(bottom: 4),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFFFF6B6B), Color(0xFFFF8E53)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFFFF6B6B).withOpacity(0.4),
+            blurRadius: 16,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.25),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(
+              CupertinoIcons.flame_fill,
+              color: Colors.white,
+              size: 28,
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.3),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        'LIVE NOW',
+                        style: GoogleFonts.poppins(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Text(
+                        event.title,
+                        style: GoogleFonts.poppins(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    const Icon(
+                      CupertinoIcons.location_solid,
+                      color: Colors.white,
+                      size: 14,
+                    ),
+                    const SizedBox(width: 4),
+                    Flexible(
+                      child: Text(
+                        event.venue,
+                        style: GoogleFonts.openSans(
+                          fontSize: 13,
+                          color: Colors.white.withOpacity(0.95),
+                          fontWeight: FontWeight.w600,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    const Icon(
+                      CupertinoIcons.clock_fill,
+                      color: Colors.white,
+                      size: 14,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      event.timeRangeFormatted,
+                      style: GoogleFonts.openSans(
+                        fontSize: 13,
+                        color: Colors.white.withOpacity(0.95),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.25),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(
+              CupertinoIcons.arrow_right,
+              color: Colors.white,
+              size: 20,
+            ),
           ),
         ],
       ),
