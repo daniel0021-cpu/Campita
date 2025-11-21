@@ -13,15 +13,31 @@ import 'package:latlong2/latlong.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Optimize system UI for performance
   SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
   ]);
+  
+  // Enable smooth animations on all platforms
+  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+    statusBarColor: Colors.transparent,
+    statusBarIconBrightness: Brightness.dark,
+    systemNavigationBarColor: Colors.transparent,
+    systemNavigationBarIconBrightness: Brightness.dark,
+  ));
+  
   runApp(const CampusNavigationApp());
 }
 
 class CampusNavigationApp extends StatelessWidget {
   const CampusNavigationApp({super.key});
+
+  Future<bool> _checkOnboarding() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool('onboarding_completed') ?? false;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -67,7 +83,18 @@ class CampusNavigationApp extends StatelessWidget {
             ),
             useMaterial3: true,
           ),
-          home: const SplashScreen(),
+          home: FutureBuilder<bool>(
+            future: _checkOnboarding(),
+            builder: (context, snapshot) {
+              // Don't show loading - HTML splash handles it
+              if (!snapshot.hasData) {
+                return const SizedBox.shrink();
+              }
+              return snapshot.data == true 
+                ? const EnhancedCampusMap() 
+                : const OnboardingScreen();
+            },
+          ),
         );
       },
     );
@@ -100,7 +127,8 @@ class _SplashScreenState extends State<SplashScreen>
         .animate(_controller);
     _controller.forward();
 
-    Future.delayed(const Duration(milliseconds: 2600), () async {
+    // Show splash for 2 seconds total
+    Future.delayed(const Duration(milliseconds: 2000), () async {
       if (mounted) {
         // Check if onboarding completed
         final prefs = await SharedPreferences.getInstance();
@@ -111,20 +139,10 @@ class _SplashScreenState extends State<SplashScreen>
         Navigator.of(context).pushReplacement(
           PageRouteBuilder(
             pageBuilder: (context, animation, secondaryAnimation) => nextScreen,
-            transitionDuration: const Duration(milliseconds: 150),
+            transitionDuration: const Duration(milliseconds: 300),
             transitionsBuilder: (context, animation, secondaryAnimation, child) {
-              // Start with almost full opacity to prevent grey screen
-              var fadeAnimation = Tween<double>(begin: 0.95, end: 1.0).animate(
-                CurvedAnimation(
-                  parent: animation,
-                  curve: Curves.easeOut,
-                ),
-              );
-
-              return FadeTransition(
-                opacity: fadeAnimation,
-                child: child,
-              );
+              // Instant transition - no fade to prevent blue screen
+              return child;
             },
           ),
         );
@@ -140,44 +158,49 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.primary,
-      body: Center(
-        child: FadeTransition(
-          opacity: _fadeAnimation,
-          child: ScaleTransition(
-            scale: _scaleAnimation,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  width: 110,
-                  height: 110,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.15),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Center(
-                    child: Icon(Icons.location_on, size: 72, color: Colors.white),
-                  ),
+    return Container(
+      color: AppColors.primary,
+      child: Scaffold(
+        backgroundColor: AppColors.primary,
+        body: SafeArea(
+          child: Center(
+            child: FadeTransition(
+              opacity: _fadeAnimation,
+              child: ScaleTransition(
+                scale: _scaleAnimation,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      width: 110,
+                      height: 110,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.15),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Center(
+                        child: Icon(Icons.location_on, size: 72, color: Colors.white),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    Text(
+                      'Igbinedion University',
+                      style: AppTextStyles.heading1.copyWith(color: AppColors.white),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Campus Navigation',
+                      style: AppTextStyles.heading3.copyWith(color: AppColors.white.withValues(alpha: 0.9)),
+                    ),
+                    const SizedBox(height: 24),
+                    const SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 24),
-                Text(
-                  'Igbinedion University',
-                  style: AppTextStyles.heading1.copyWith(color: AppColors.white),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  'Campus Navigation',
-                  style: AppTextStyles.heading3.copyWith(color: AppColors.white.withValues(alpha: 0.9)),
-                ),
-                const SizedBox(height: 24),
-                const SizedBox(
-                  width: 24,
-                  height: 24,
-                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                ),
-              ],
+              ),
             ),
           ),
         ),

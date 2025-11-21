@@ -191,7 +191,7 @@ class _BuildingDetailSheetState extends State<BuildingDetailSheet>
         onTap: _close,
         behavior: HitTestBehavior.opaque,
         child: Container(
-          color: Colors.black.withOpacity(0.4 * _animation.value),
+          color: Colors.black.withAlpha((102 * _animation.value).round()),
           child: GestureDetector(
             onTap: () {}, // Prevent tap through to background
             child: Align(
@@ -215,7 +215,7 @@ class _BuildingDetailSheetState extends State<BuildingDetailSheet>
                       borderRadius: BorderRadius.circular(32),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.3),
+                          color: Colors.black.withAlpha(77),
                           blurRadius: 30,
                           offset: const Offset(0, -10),
                           spreadRadius: 0,
@@ -237,8 +237,8 @@ class _BuildingDetailSheetState extends State<BuildingDetailSheet>
                           padding: const EdgeInsets.symmetric(vertical: 20),
                           decoration: BoxDecoration(
                             color: isDark 
-                                ? Colors.grey[800]?.withOpacity(0.3)
-                                : AppColors.grey.withOpacity(0.05),
+                                ? Colors.grey[800]?.withAlpha(77)
+                                : AppColors.grey.withAlpha(13),
                             borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
                           ),
                           child: Center(
@@ -247,8 +247,8 @@ class _BuildingDetailSheetState extends State<BuildingDetailSheet>
                               height: 6,
                               decoration: BoxDecoration(
                                 color: isDark 
-                                    ? Colors.white.withOpacity(0.6)
-                                    : AppColors.grey.withOpacity(0.7),
+                                    ? Colors.white.withAlpha(153)
+                                    : AppColors.grey.withAlpha(179),
                                 borderRadius: BorderRadius.circular(3),
                               ),
                             ),
@@ -258,7 +258,7 @@ class _BuildingDetailSheetState extends State<BuildingDetailSheet>
                       // Content
                       Expanded(
                         child: SingleChildScrollView(
-                          physics: const ClampingScrollPhysics(),
+                          physics: const BouncingScrollPhysics(),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -337,12 +337,12 @@ class _BuildingDetailSheetState extends State<BuildingDetailSheet>
                 decoration: BoxDecoration(
                   color: _currentImageIndex == index
                       ? Colors.white
-                      : Colors.white.withOpacity(0.4),
+                      : Colors.white.withAlpha(102),
                   borderRadius: BorderRadius.circular(4),
                   boxShadow: _currentImageIndex == index
                       ? [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.3),
+                            color: Colors.black.withAlpha(77),
                             blurRadius: 8,
                             offset: const Offset(0, 2),
                           ),
@@ -358,7 +358,7 @@ class _BuildingDetailSheetState extends State<BuildingDetailSheet>
           top: 16,
           right: 36,
           child: Material(
-            color: Colors.black.withOpacity(0.3),
+            color: Colors.black.withAlpha(77),
             borderRadius: BorderRadius.circular(50),
             child: InkWell(
               onTap: () async {
@@ -431,10 +431,10 @@ class _BuildingDetailSheetState extends State<BuildingDetailSheet>
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: categoryColor.withOpacity(0.15),
+                color: categoryColor.withAlpha(38),
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                  color: categoryColor.withOpacity(0.3),
+                  color: categoryColor.withAlpha(77),
                   width: 1,
                 ),
               ),
@@ -499,43 +499,107 @@ class _BuildingDetailSheetState extends State<BuildingDetailSheet>
   }
 
   Widget _buildPrimaryButton(String label, IconData icon, VoidCallback onTap) {
-    return Material(
-      color: AppColors.primary,
-      borderRadius: BorderRadius.circular(50),
-      elevation: 4,
-      shadowColor: AppColors.primary.withOpacity(0.4),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(50),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, color: Colors.white, size: 18),
-              const SizedBox(width: 6),
-              Flexible(
-                child: Text(
-                  label,
-                  style: GoogleFonts.notoSans(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
+    bool isStartButton = label == 'Start';
+    bool isLoadingLocation = false;
+    
+    return StatefulBuilder(
+      builder: (context, setState) {
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOutCubic,
+          child: Material(
+            color: AppColors.primary,
+            borderRadius: BorderRadius.circular(50),
+            elevation: isLoadingLocation ? 8 : 4,
+            shadowColor: AppColors.primary.withAlpha(isLoadingLocation ? 153 : 102),
+            child: InkWell(
+              onTap: isLoadingLocation ? null : () async {
+                if (isStartButton) {
+                  setState(() => isLoadingLocation = true);
+                  
+                  // Get location instantly with highest accuracy
+                  try {
+                    await Future.delayed(const Duration(milliseconds: 50)); // Minimal delay for animation
+                    onTap();
+                  } finally {
+                    if (context.mounted) {
+                      setState(() => isLoadingLocation = false);
+                    }
+                  }
+                } else {
+                  onTap();
+                }
+              },
+              borderRadius: BorderRadius.circular(50),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
+                child: isLoadingLocation
+                    ? Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Flexible(
+                            child: TweenAnimationBuilder<double>(
+                              duration: const Duration(milliseconds: 800),
+                              tween: Tween(begin: 0.0, end: 1.0),
+                              curve: Curves.easeInOut,
+                              builder: (context, value, child) {
+                                return Opacity(
+                                  opacity: 0.5 + (value * 0.5),
+                                  child: Text(
+                                    'Getting location...',
+                                    style: GoogleFonts.notoSans(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.white,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        ],
+                      )
+                    : Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(icon, color: Colors.white, size: 18),
+                          const SizedBox(width: 6),
+                          Flexible(
+                            child: Text(
+                              label,
+                              style: GoogleFonts.notoSans(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
               ),
-            ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
   Widget _buildSecondaryButton(String label, IconData icon, VoidCallback onTap) {
     return Material(
-      color: AppColors.primary.withOpacity(0.12),
+      color: AppColors.primary.withAlpha(31),
       borderRadius: BorderRadius.circular(50),
       child: InkWell(
         onTap: onTap,
@@ -568,7 +632,7 @@ class _BuildingDetailSheetState extends State<BuildingDetailSheet>
 
   Widget _buildIconButton(IconData icon, VoidCallback onTap) {
     return Material(
-      color: AppColors.grey.withOpacity(0.15),
+      color: AppColors.grey.withAlpha(38),
       borderRadius: BorderRadius.circular(50),
       child: InkWell(
         onTap: onTap,
@@ -613,10 +677,10 @@ class _BuildingDetailSheetState extends State<BuildingDetailSheet>
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
+        color: color.withAlpha(31),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: color.withOpacity(0.3),
+          color: color.withAlpha(77),
           width: 1,
         ),
       ),
@@ -638,7 +702,7 @@ class _BuildingDetailSheetState extends State<BuildingDetailSheet>
             mode,
             style: GoogleFonts.notoSans(
               fontSize: 11,
-              color: color.withOpacity(0.8),
+              color: color.withAlpha(204),
               decoration: TextDecoration.none,
             ),
             overflow: TextOverflow.ellipsis,
@@ -678,8 +742,8 @@ class _BuildingDetailSheetState extends State<BuildingDetailSheet>
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
                 color: isDark 
-                    ? Colors.grey[800]?.withOpacity(0.6)
-                    : AppColors.grey.withOpacity(0.12),
+                    ? Colors.grey[800]?.withAlpha(153)
+                    : AppColors.grey.withAlpha(31),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Row(
@@ -741,7 +805,7 @@ class _BuildingDetailSheetState extends State<BuildingDetailSheet>
                   width: 36,
                   height: 36,
                   decoration: BoxDecoration(
-                    color: (amenity['color'] as Color).withOpacity(0.12),
+                    color: (amenity['color'] as Color).withAlpha(31),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Icon(
@@ -796,13 +860,13 @@ class _BuildingDetailSheetState extends State<BuildingDetailSheet>
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: isDark 
-                ? Colors.grey[800]?.withOpacity(0.5)
-                : AppColors.primary.withOpacity(0.05),
+                ? Colors.grey[800]?.withAlpha(128)
+                : AppColors.primary.withAlpha(13),
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
               color: isDark
                   ? Colors.grey[700]!
-                  : AppColors.primary.withOpacity(0.15),
+                  : AppColors.primary.withAlpha(38),
               width: 1,
             ),
           ),
@@ -834,11 +898,11 @@ class _BuildingDetailSheetState extends State<BuildingDetailSheet>
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: isDark 
-            ? Colors.grey[800]?.withOpacity(0.5)
-            : color.withOpacity(0.08),
+            ? Colors.grey[800]?.withAlpha(128)
+            : color.withAlpha(20),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: color.withOpacity(0.3),
+          color: color.withAlpha(77),
           width: 1.5,
         ),
       ),
@@ -847,7 +911,7 @@ class _BuildingDetailSheetState extends State<BuildingDetailSheet>
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.15),
+              color: color.withAlpha(38),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(icon, size: 20, color: color),

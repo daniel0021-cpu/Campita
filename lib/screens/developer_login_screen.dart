@@ -87,7 +87,7 @@ class _DeveloperLoginScreenState extends State<DeveloperLoginScreen> {
                         Container(
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
-                            color: AppColors.primary.withOpacity(0.1),
+                            color: AppColors.primary.withAlpha(26),
                             borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
                           ),
                           child: Column(

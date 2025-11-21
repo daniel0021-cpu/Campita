@@ -1,5 +1,6 @@
 // Utility to fetch building data from OpenStreetMap
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 import '../models/campus_building.dart';
@@ -84,7 +85,7 @@ out tags;
         return buildings;
       }
     } catch (e) {
-      print('Error fetching OSM data: $e');
+      debugPrint('Error fetching OSM data: $e');
     }
     
     return [];
@@ -270,9 +271,10 @@ out tags;
         }
       }
     } catch (e) {
-      print('Error fetching building details: $e');
+      debugPrint('Error fetching building details: $e');
     }
     
     return null;
   }
 }
+

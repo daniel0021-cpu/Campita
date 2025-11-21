@@ -34,14 +34,186 @@
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png"/>
 
-  <!--Material Icons-->
-  <title>campus_navigation</title>
-  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <title>Campus Navigation</title>
+  
+  <!-- Preconnect to font resources for better performance -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  
+  <!-- Material Icons - load synchronously before app loads -->
+  <link href="https://fonts.googleapis.com/css2?family=Material+Icons&family=Material+Icons+Outlined&family=Material+Icons+Round&family=Material+Icons+Sharp&display=swap" rel="stylesheet">
+  
+  <!-- Google Fonts for fallback -->
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
   
   <link rel="manifest" href="manifest.json">
+  
+  <style>
+    /* Ensure icons render correctly while loading */
+    body {
+      font-family: 'Roboto', sans-serif;
+    }
+    
+    /* Material Icons font-face fallback */
+    @font-face {
+      font-family: 'Material Icons';
+      font-style: normal;
+      font-weight: 400;
+      src: url(https://fonts.gstatic.com/s/materialicons/v142/flUhRq6tzZclQEJ-Vdg-IuiaDsNc.woff2) format('woff2');
+    }
+
+    .material-icons {
+      font-family: 'Material Icons';
+      font-weight: normal;
+      font-style: normal;
+      font-size: 24px;
+      line-height: 1;
+      letter-spacing: normal;
+      text-transform: none;
+      display: inline-block;
+      white-space: nowrap;
+      word-wrap: normal;
+      direction: ltr;
+      -webkit-font-feature-settings: 'liga';
+      font-feature-settings: 'liga';
+      -webkit-font-smoothing: antialiased;
+    }
+    
+    /* Remove default Flutter splash screen */
+    body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+    }
+    
+    /* Custom loading screen that matches app splash */
+    .loading {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      background: #0366FC;
+      z-index: 9999;
+    }
+    
+    .loading-logo {
+      width: 110px;
+      height: 110px;
+      background: rgba(255,255,255,0.15);
+      border-radius: 50%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin-bottom: 24px;
+      animation: scaleIn 0.6s ease-out;
+    }
+    
+    .loading-icon {
+      width: 72px;
+      height: 72px;
+      fill: white;
+    }
+    
+    .loading-title {
+      font-family: 'Roboto', sans-serif;
+      font-size: 28px;
+      font-weight: 700;
+      color: white;
+      margin-bottom: 6px;
+      animation: fadeIn 0.8s ease-out 0.2s both;
+    }
+    
+    .loading-subtitle {
+      font-family: 'Roboto', sans-serif;
+      font-size: 18px;
+      font-weight: 400;
+      color: rgba(255,255,255,0.9);
+      margin-bottom: 24px;
+      animation: fadeIn 0.8s ease-out 0.4s both;
+    }
+    
+    .loading-spinner {
+      width: 24px;
+      height: 24px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-radius: 50%;
+      border-top-color: white;
+      animation: spin 1s linear infinite, fadeIn 0.8s ease-out 0.6s both;
+    }
+    
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    
+    @keyframes scaleIn {
+      from { transform: scale(0.85); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+    
+    /* Fade out loading screen smoothly */
+    .loading.fade-out {
+      opacity: 0;
+      transition: opacity 0.3s ease-out;
+    }
+  </style>
 </head>
 <body>
- <!--<script src="https://maps.goggleapis.com/maps/api/js?key="YOUR_API_KEY&libraries=places"></script>-->
-    <script src="main.dart.js" type="application/javascript" async></script>
+  <!-- Custom loading screen matching app splash -->
+  <div id="loading" class="loading">
+    <div class="loading-logo">
+      <svg class="loading-icon" viewBox="0 0 24 24" width="72" height="72" fill="white">
+        <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+      </svg>
+    </div>
+    <div class="loading-title">Igbinedion University</div>
+    <div class="loading-subtitle">Campus Navigation</div>
+    <div class="loading-spinner"></div>
+  </div>
+  
+  <script>
+    // Keep splash visible for 2 seconds minimum, then fade when Flutter renders
+    let splashMinTime = 2000;
+    let startTime = Date.now();
+    let flutterReady = false;
+    
+    window.addEventListener('flutter-first-frame', function() {
+      flutterReady = true;
+      hideLoadingIfReady();
+    });
+    
+    function hideLoadingIfReady() {
+      const elapsed = Date.now() - startTime;
+      const remaining = Math.max(0, splashMinTime - elapsed);
+      
+      setTimeout(function() {
+        const loading = document.getElementById('loading');
+        if (loading) {
+          loading.classList.add('fade-out');
+          setTimeout(function() {
+            loading.style.display = 'none';
+          }, 300);
+        }
+      }, remaining);
+    }
+    
+    // Ensure splash shows for at least 2 seconds
+    setTimeout(function() {
+      if (flutterReady) {
+        hideLoadingIfReady();
+      }
+    }, splashMinTime);
+  </script>
+  
+  <script src="main.dart.js" type="application/javascript"></script>
 </body>
 </html>

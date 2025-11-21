@@ -29,7 +29,7 @@ class SubscriptionScreenNew extends StatelessWidget {
             end: Alignment.bottomCenter,
             colors: [
               AppColors.primary,
-              AppColors.primary.withOpacity(0.8),
+              AppColors.primary.withAlpha(204),
             ],
           ),
         ),
@@ -69,7 +69,7 @@ class SubscriptionScreenNew extends StatelessWidget {
                       Container(
                         padding: const EdgeInsets.all(24),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
+                          color: Colors.white.withAlpha(51),
                           shape: BoxShape.circle,
                         ),
                         child: const Icon(
@@ -94,7 +94,7 @@ class SubscriptionScreenNew extends StatelessWidget {
                         'Get the most out of Campus Navigation',
                         style: GoogleFonts.notoSans(
                           fontSize: 16,
-                          color: Colors.white.withOpacity(0.9),
+                          color: Colors.white.withAlpha(230),
                         ),
                         textAlign: TextAlign.center,
                       ),
@@ -184,7 +184,7 @@ class SubscriptionScreenNew extends StatelessWidget {
                         'Contact: $supportEmail',
                         style: GoogleFonts.notoSans(
                           fontSize: 12,
-                          color: Colors.white.withOpacity(0.7),
+                          color: Colors.white.withAlpha(179),
                         ),
                       ),
                     ],
@@ -202,10 +202,10 @@ class SubscriptionScreenNew extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.15),
+        color: Colors.white.withAlpha(38),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: Colors.white.withOpacity(0.3),
+          color: Colors.white.withAlpha(77),
           width: 1,
         ),
       ),
@@ -214,7 +214,7 @@ class SubscriptionScreenNew extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
+              color: Colors.white.withAlpha(51),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(icon, color: Colors.white, size: 24),
@@ -237,7 +237,7 @@ class SubscriptionScreenNew extends StatelessWidget {
                   description,
                   style: GoogleFonts.notoSans(
                     fontSize: 13,
-                    color: Colors.white.withOpacity(0.8),
+                    color: Colors.white.withAlpha(204),
                   ),
                 ),
               ],
@@ -258,18 +258,18 @@ class SubscriptionScreenNew extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: recommended ? Colors.white : Colors.white.withOpacity(0.15),
+        color: recommended ? Colors.white : Colors.white.withAlpha(38),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: recommended
               ? Colors.white
-              : Colors.white.withOpacity(0.3),
+              : Colors.white.withAlpha(77),
           width: recommended ? 3 : 1,
         ),
         boxShadow: recommended
             ? [
                 BoxShadow(
-                  color: Colors.white.withOpacity(0.3),
+                  color: Colors.white.withAlpha(77),
                   blurRadius: 20,
                   offset: const Offset(0, 8),
                 ),
@@ -324,7 +324,7 @@ class SubscriptionScreenNew extends StatelessWidget {
                   fontSize: 14,
                   color: recommended
                       ? AppColors.textSecondary
-                      : Colors.white.withOpacity(0.8),
+                      : Colors.white.withAlpha(204),
                 ),
               ),
             ],
@@ -336,7 +336,7 @@ class SubscriptionScreenNew extends StatelessWidget {
               fontSize: 12,
               color: recommended
                   ? AppColors.textSecondary
-                  : Colors.white.withOpacity(0.7),
+                  : Colors.white.withAlpha(179),
             ),
           ),
         ],

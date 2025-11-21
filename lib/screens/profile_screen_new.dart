@@ -71,7 +71,7 @@ class ProfileScreenNew extends StatelessWidget {
           ),
           child: CircleAvatar(
             radius: 50,
-            backgroundColor: AppColors.primary.withOpacity(0.1),
+            backgroundColor: AppColors.primary.withAlpha(26),
             child: Icon(
               Icons.person,
               size: 50,
@@ -100,7 +100,7 @@ class ProfileScreenNew extends StatelessWidget {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           decoration: BoxDecoration(
-            color: AppColors.primary.withOpacity(0.1),
+            color: AppColors.primary.withAlpha(26),
             borderRadius: BorderRadius.circular(20),
           ),
           child: Text(
@@ -124,7 +124,7 @@ class ProfileScreenNew extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withAlpha(13),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -164,7 +164,7 @@ class ProfileScreenNew extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withAlpha(13),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),

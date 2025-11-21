@@ -158,7 +158,7 @@ class _AnimatedSuccessCardState extends State<_AnimatedSuccessCard>
                           colors: [
                             widget.iconColor ?? defaultIconColor,
                             (widget.iconColor ?? defaultIconColor)
-                                .withOpacity(0.7),
+                                .withAlpha(179),
                           ],
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
@@ -167,7 +167,7 @@ class _AnimatedSuccessCardState extends State<_AnimatedSuccessCard>
                         boxShadow: [
                           BoxShadow(
                             color: (widget.iconColor ?? defaultIconColor)
-                                .withOpacity(0.3),
+                                .withAlpha(77),
                             blurRadius: 12,
                             offset: const Offset(0, 4),
                           ),
@@ -186,6 +186,7 @@ class _AnimatedSuccessCardState extends State<_AnimatedSuccessCard>
                         widget.message,
                         style: AppTextStyles.notification.copyWith(
                           color: isDark ? Colors.white : Colors.black87,
+                          decoration: TextDecoration.none,
                         ),
                       ),
                     ),
@@ -213,12 +214,12 @@ class _CurvedBackgroundPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = color.withOpacity(isDark ? 0.95 : 0.98)
+      ..color = color.withAlpha(isDark ? 242 : 250)
       ..style = PaintingStyle.fill;
 
     // Draw shadow
     final shadowPaint = Paint()
-      ..color = Colors.black.withOpacity(0.1)
+      ..color = Colors.black.withAlpha(26)
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
 
     final shadowPath = Path()
@@ -253,8 +254,8 @@ class _CurvedBackgroundPainter extends CustomPainter {
     // Add subtle border
     final borderPaint = Paint()
       ..color = isDark
-          ? Colors.white.withOpacity(0.1)
-          : Colors.black.withOpacity(0.05)
+          ? Colors.white.withAlpha(26)
+          : Colors.black.withAlpha(13)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1;
 

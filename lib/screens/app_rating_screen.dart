@@ -101,13 +101,13 @@ class _AppRatingScreenState extends State<AppRatingScreen> with TickerProviderSt
           end: Alignment.bottomRight,
           colors: [
             AppColors.primary,
-            AppColors.primary.withOpacity(0.8),
+            AppColors.primary.withAlpha(204),
           ],
         ),
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: AppColors.primary.withOpacity(0.3),
+            color: AppColors.primary.withAlpha(77),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),
@@ -135,7 +135,7 @@ class _AppRatingScreenState extends State<AppRatingScreen> with TickerProviderSt
             textAlign: TextAlign.center,
             style: GoogleFonts.openSans(
               fontSize: 14,
-              color: Colors.white.withOpacity(0.9),
+              color: Colors.white.withAlpha(230),
               height: 1.5,
             ),
           ),
@@ -371,7 +371,7 @@ class _AppRatingScreenState extends State<AppRatingScreen> with TickerProviderSt
                 width: 80,
                 height: 80,
                 decoration: BoxDecoration(
-                  color: Colors.green.withOpacity(0.1),
+                  color: Colors.green.withAlpha(26),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(

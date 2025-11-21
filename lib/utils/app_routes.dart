@@ -38,7 +38,7 @@ class AppRoutes {
         return Transform(
           transform: Matrix4.identity()
             ..setEntry(3, 2, 0.001) // perspective
-            ..scale(0.92 + (0.08 * curvedAnimation.value)),
+            ..scale(0.92 + (0.08 * curvedAnimation.value), 0.92 + (0.08 * curvedAnimation.value), 1.0),
           alignment: Alignment.center,
           child: FadeTransition(
             opacity: curvedAnimation,
@@ -113,7 +113,7 @@ class AppRoutes {
         return Transform(
           transform: Matrix4.identity()
             ..setEntry(3, 2, 0.001)
-            ..scale(0.85 + (0.15 * curvedAnimation.value))
+            ..scale(0.85 + (0.15 * curvedAnimation.value), 0.85 + (0.15 * curvedAnimation.value), 1.0)
             ..rotateZ(0.1 * (1 - curvedAnimation.value)),
           alignment: Alignment.center,
           child: FadeTransition(
@@ -172,7 +172,7 @@ class AppRoutes {
               Transform(
                 transform: Matrix4.identity()
                   ..setEntry(3, 2, 0.001)
-                  ..scale(1.0 - (0.08 * secondaryCurvedAnimation.value)),
+                  ..scale(1.0 - (0.08 * secondaryCurvedAnimation.value), 1.0 - (0.08 * secondaryCurvedAnimation.value), 1.0),
                 alignment: Alignment.center,
                 child: Opacity(
                   opacity: 1.0 - (0.5 * secondaryCurvedAnimation.value),
@@ -195,3 +195,4 @@ class AppRoutes {
     );
   }
 }
+

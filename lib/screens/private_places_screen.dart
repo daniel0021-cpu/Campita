@@ -181,13 +181,13 @@ class _PrivatePlacesScreenState extends State<PrivatePlacesScreen> with TickerPr
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
                 color: place.isVisited
-                    ? Colors.green.withOpacity(0.3)
+                    ? Colors.green.withAlpha(77)
                     : const Color(0xFFE5E7EB),
                 width: 1.5,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.04),
+                  color: Colors.black.withAlpha(10),
                   blurRadius: 12,
                   offset: const Offset(0, 4),
                 ),
@@ -205,7 +205,7 @@ class _PrivatePlacesScreenState extends State<PrivatePlacesScreen> with TickerPr
                         gradient: LinearGradient(
                           colors: [
                             _getCategoryColor(place.category),
-                            _getCategoryColor(place.category).withOpacity(0.6),
+                            _getCategoryColor(place.category).withAlpha(153),
                           ],
                         ),
                         borderRadius: BorderRadius.circular(12),
@@ -245,7 +245,7 @@ class _PrivatePlacesScreenState extends State<PrivatePlacesScreen> with TickerPr
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
-                          color: Colors.green.withOpacity(0.1),
+                          color: Colors.green.withAlpha(26),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Row(
@@ -271,8 +271,8 @@ class _PrivatePlacesScreenState extends State<PrivatePlacesScreen> with TickerPr
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
                       color: isPast
-                          ? Colors.orange.withOpacity(0.1)
-                          : AppColors.primary.withOpacity(0.1),
+                          ? Colors.orange.withAlpha(26)
+                          : AppColors.primary.withAlpha(26),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Row(
@@ -325,7 +325,7 @@ class _PrivatePlacesScreenState extends State<PrivatePlacesScreen> with TickerPr
             width: 120,
             height: 120,
             decoration: BoxDecoration(
-              color: AppColors.primary.withOpacity(0.1),
+              color: AppColors.primary.withAlpha(26),
               shape: BoxShape.circle,
             ),
             child: const Icon(

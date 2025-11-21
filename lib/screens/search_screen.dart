@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
 import '../models/campus_building.dart';
@@ -58,12 +59,17 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   void _showVoiceSearchDialog() {
-    // TODO: Implement voice search dialog similar to home screen
-    // For now, show a snackbar
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Voice search - Say your destination'),
-        duration: Duration(seconds: 2),
+    HapticFeedback.mediumImpact();
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      barrierColor: Colors.black.withAlpha(179),
+      builder: (context) => _VoiceSearchDialogWidget(
+        onSpeechDetected: (text) {
+          // Auto-fill search field with detected speech
+          _searchController.text = text;
+          _performSearch(text);
+        },
       ),
     );
   }
@@ -108,18 +114,18 @@ class _SearchScreenState extends State<SearchScreen> {
                 child: Container(
               decoration: BoxDecoration(
                 color: isDark 
-                    ? Colors.grey[900]?.withOpacity(0.95) 
+                    ? Colors.grey[900]?.withAlpha(242) 
                     : Colors.white,
                 borderRadius: BorderRadius.circular(50),
                 border: Border.all(
                   color: isDark 
-                      ? Colors.white.withOpacity(0.1) 
-                      : Colors.black.withOpacity(0.08),
+                      ? Colors.white.withAlpha(26) 
+                      : Colors.black.withAlpha(20),
                   width: 1,
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(isDark ? 0.3 : 0.08),
+                    color: Colors.black.withAlpha(isDark ? 77 : 20),
                     blurRadius: 12,
                     offset: const Offset(0, 4),
                   ),
@@ -144,15 +150,36 @@ class _SearchScreenState extends State<SearchScreen> {
                           icon: const Icon(Icons.close_rounded, color: AppColors.grey, size: 20),
                           onPressed: _clearSearch,
                         ),
-                      IconButton(
-                        icon: Icon(
-                          Icons.mic_rounded,
-                          color: AppColors.primary,
-                          size: 22,
+                      Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: () {
+                            HapticFeedback.mediumImpact();
+                            _showVoiceSearchDialog();
+                          },
+                          borderRadius: BorderRadius.circular(24),
+                          splashColor: AppColors.primary.withAlpha(51),
+                          highlightColor: AppColors.primary.withAlpha(26),
+                          child: Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  AppColors.primary.withAlpha(38),
+                                  AppColors.primary.withAlpha(26),
+                                ],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              Icons.mic_rounded,
+                              color: AppColors.primary,
+                              size: 20,
+                            ),
+                          ),
                         ),
-                        onPressed: () {
-                          _showVoiceSearchDialog();
-                        },
                       ),
                       const SizedBox(width: 8),
                     ],
@@ -199,7 +226,7 @@ class _SearchScreenState extends State<SearchScreen> {
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.2),
+                    color: Colors.black.withAlpha(51),
                     blurRadius: 8,
                     offset: const Offset(0, 2),
                   ),
@@ -220,7 +247,7 @@ class _SearchScreenState extends State<SearchScreen> {
   Widget _buildSearchSuggestions() {
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      physics: const ClampingScrollPhysics(),
+      physics: const BouncingScrollPhysics(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -229,7 +256,7 @@ class _SearchScreenState extends State<SearchScreen> {
             height: 44,
             child: ListView(
               scrollDirection: Axis.horizontal,
-              physics: const ClampingScrollPhysics(),
+              physics: const BouncingScrollPhysics(),
               children: [
                 _buildCategoryChip('All'),
                 _buildCategoryChip('Academic'),
@@ -379,7 +406,7 @@ class _SearchScreenState extends State<SearchScreen> {
 
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      physics: const ClampingScrollPhysics(),
+      physics: const BouncingScrollPhysics(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -437,7 +464,7 @@ class _SearchScreenState extends State<SearchScreen> {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.2 : 0.05),
+            color: Colors.black.withAlpha(isDark ? 51 : 13),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -449,13 +476,13 @@ class _SearchScreenState extends State<SearchScreen> {
             width: 80,
             height: 80,
             decoration: BoxDecoration(
-              color: AppColors.primary.withOpacity(0.12),
+              color: AppColors.primary.withAlpha(31),
               shape: BoxShape.circle,
             ),
             child: Icon(
               Icons.search_off_rounded,
               size: 40,
-              color: AppColors.primary.withOpacity(0.6),
+              color: AppColors.primary.withAlpha(153),
             ),
           ),
           const SizedBox(height: 16),
@@ -491,7 +518,7 @@ class _SearchScreenState extends State<SearchScreen> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.2 : 0.05),
+            color: Colors.black.withAlpha(isDark ? 51 : 13),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -531,12 +558,12 @@ class _SearchScreenState extends State<SearchScreen> {
         color: isDark ? AppColors.darkCard : Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: color.withOpacity(0.2),
+          color: color.withAlpha(51),
           width: 1,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.2 : 0.05),
+            color: Colors.black.withAlpha(isDark ? 51 : 13),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -559,7 +586,7 @@ class _SearchScreenState extends State<SearchScreen> {
                   width: 50,
                   height: 50,
                   decoration: BoxDecoration(
-                    color: color.withOpacity(0.15),
+                    color: color.withAlpha(38),
                     borderRadius: BorderRadius.circular(14),
                   ),
                   child: Icon(icon, color: color, size: 26),
@@ -626,7 +653,7 @@ class _SearchScreenState extends State<SearchScreen> {
     return Container(
       margin: const EdgeInsets.only(right: 8),
       child: Material(
-        color: color.withOpacity(0.12),
+        color: color.withAlpha(31),
         borderRadius: BorderRadius.circular(50),
         child: InkWell(
           onTap: () {
@@ -753,10 +780,10 @@ class _SearchScreenState extends State<SearchScreen> {
                     width: 56,
                     height: 56,
                     decoration: BoxDecoration(
-                      color: categoryColor.withOpacity(0.15),
+                      color: categoryColor.withAlpha(38),
                       borderRadius: BorderRadius.circular(14),
                       border: Border.all(
-                        color: categoryColor.withOpacity(0.3),
+                        color: categoryColor.withAlpha(77),
                         width: 1.5,
                       ),
                     ),
@@ -781,7 +808,7 @@ class _SearchScreenState extends State<SearchScreen> {
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                               decoration: BoxDecoration(
-                                color: categoryColor.withOpacity(0.12),
+                                color: categoryColor.withAlpha(31),
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Text(
@@ -803,6 +830,190 @@ class _SearchScreenState extends State<SearchScreen> {
               ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+// Voice Search Dialog Widget
+class _VoiceSearchDialogWidget extends StatefulWidget {
+  final Function(String) onSpeechDetected;
+
+  const _VoiceSearchDialogWidget({
+    required this.onSpeechDetected,
+  });
+
+  @override
+  State<_VoiceSearchDialogWidget> createState() => _VoiceSearchDialogWidgetState();
+}
+
+class _VoiceSearchDialogWidgetState extends State<_VoiceSearchDialogWidget>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _pulseController;
+  late Animation<double> _pulseAnimation;
+  String _listeningText = 'Tap to speak...';
+  String _spokenText = '';
+  bool _isListening = false;
+  bool _hasError = false;
+
+  @override
+  void initState() {
+    super.initState();
+    
+    _pulseController = AnimationController(
+      duration: const Duration(milliseconds: 1200),
+      vsync: this,
+    )..repeat(reverse: true);
+
+    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.3).animate(
+      CurvedAnimation(
+        parent: _pulseController,
+        curve: Curves.easeInOut,
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _pulseController.dispose();
+    super.dispose();
+  }
+
+  void _startListening() {
+    setState(() {
+      _isListening = true;
+      _hasError = false;
+      _listeningText = 'Listening...';
+      _spokenText = '';
+    });
+
+    // Simulate speech detection (in web, you'd use actual speech recognition)
+    Future.delayed(const Duration(seconds: 3), () {
+      if (mounted && _isListening) {
+        // For demo, show error if no speech
+        setState(() {
+          _hasError = true;
+          _isListening = false;
+          _listeningText = 'No speech detected';
+        });
+      }
+    });
+  }
+
+  void _stopListening() {
+    setState(() {
+      _isListening = false;
+    });
+  }
+
+  void _retry() {
+    setState(() {
+      _hasError = false;
+      _listeningText = 'Tap to speak...';
+      _spokenText = '';
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      child: Container(
+        padding: const EdgeInsets.all(32),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Close button
+            Align(
+              alignment: Alignment.topRight,
+              child: IconButton(
+                icon: const Icon(Icons.close_rounded),
+                onPressed: () => Navigator.pop(context),
+                color: AppColors.grey,
+              ),
+            ),
+            
+            const SizedBox(height: 8),
+            
+            // Microphone animation
+            GestureDetector(
+              onTap: _hasError ? _retry : (_isListening ? _stopListening : _startListening),
+              child: AnimatedBuilder(
+                animation: _pulseAnimation,
+                builder: (context, child) {
+                  return Transform.scale(
+                    scale: _isListening ? _pulseAnimation.value : 1.0,
+                    child: Container(
+                      width: 120,
+                      height: 120,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: _hasError
+                              ? [
+                                  AppColors.error.withAlpha(51),
+                                  AppColors.error.withAlpha(13),
+                                ]
+                              : [
+                                  AppColors.primary.withAlpha(51),
+                                  AppColors.primary.withAlpha(13),
+                                ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Center(
+                        child: Icon(
+                          _hasError ? Icons.error_outline_rounded : Icons.mic_rounded,
+                          size: 56,
+                          color: _hasError ? AppColors.error : AppColors.primary,
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+            
+            const SizedBox(height: 24),
+            
+            // Status text
+            Text(
+              _listeningText,
+              style: GoogleFonts.poppins(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: _hasError ? AppColors.error : AppColors.textPrimary,
+              ),
+            ),
+            
+            const SizedBox(height: 8),
+            
+            if (_spokenText.isNotEmpty)
+              Text(
+                '"$_spokenText"',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.notoSans(
+                  fontSize: 16,
+                  color: AppColors.primary,
+                  fontStyle: FontStyle.italic,
+                ),
+              )
+            else
+              Text(
+                _hasError ? 'Tap to try again' : 'Say your destination',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.notoSans(
+                  fontSize: 14,
+                  color: AppColors.grey,
+                ),
+              ),
+          ],
         ),
       ),
     );

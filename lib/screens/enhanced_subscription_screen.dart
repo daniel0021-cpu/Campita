@@ -185,7 +185,7 @@ class _EnhancedSubscriptionScreenState extends State<EnhancedSubscriptionScreen>
       animation: _successController,
       builder: (context, child) {
         return Container(
-          color: Colors.black.withOpacity(_successFadeAnimation.value * 0.7),
+          color: Colors.black.withAlpha((179 * _successFadeAnimation.value).round()),
           child: Center(
             child: Transform.scale(
               scale: _successScaleAnimation.value,
@@ -201,7 +201,7 @@ class _EnhancedSubscriptionScreenState extends State<EnhancedSubscriptionScreen>
                   borderRadius: BorderRadius.circular(40),
                   boxShadow: [
                     BoxShadow(
-                      color: AppColors.primary.withOpacity(0.5),
+                      color: AppColors.primary.withAlpha(128),
                       blurRadius: 50,
                       spreadRadius: 10,
                     ),
@@ -214,7 +214,7 @@ class _EnhancedSubscriptionScreenState extends State<EnhancedSubscriptionScreen>
                       width: 100,
                       height: 100,
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.25),
+                        color: Colors.white.withAlpha(64),
                         shape: BoxShape.circle,
                       ),
                       child: const Icon(
@@ -237,7 +237,7 @@ class _EnhancedSubscriptionScreenState extends State<EnhancedSubscriptionScreen>
                       'You\'ve joined the elite club',
                       style: GoogleFonts.openSans(
                         fontSize: 16,
-                        color: Colors.white.withOpacity(0.95),
+                        color: Colors.white.withAlpha(242),
                       ),
                     ),
                   ],
@@ -267,7 +267,7 @@ class _EnhancedSubscriptionScreenState extends State<EnhancedSubscriptionScreen>
               borderRadius: BorderRadius.circular(24),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFFFFD700).withOpacity(0.5),
+                  color: const Color(0xFFFFD700).withAlpha(128),
                   blurRadius: 30,
                   offset: const Offset(0, 10),
                 ),
@@ -287,9 +287,9 @@ class _EnhancedSubscriptionScreenState extends State<EnhancedSubscriptionScreen>
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
                             colors: [
-                              Colors.white.withOpacity(0.0),
-                              Colors.white.withOpacity(0.4),
-                              Colors.white.withOpacity(0.0),
+                              Colors.white.withAlpha(0),
+                              Colors.white.withAlpha(102),
+                              Colors.white.withAlpha(0),
                             ],
                           ),
                         ),
@@ -305,7 +305,7 @@ class _EnhancedSubscriptionScreenState extends State<EnhancedSubscriptionScreen>
                         Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.3),
+                            color: Colors.white.withAlpha(77),
                             borderRadius: BorderRadius.circular(16),
                           ),
                           child: const Icon(
@@ -332,7 +332,7 @@ class _EnhancedSubscriptionScreenState extends State<EnhancedSubscriptionScreen>
                                 'Elite Campus Navigator',
                                 style: GoogleFonts.openSans(
                                   fontSize: 14,
-                                  color: Colors.white.withOpacity(0.95),
+                                  color: Colors.white.withAlpha(242),
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
@@ -372,7 +372,7 @@ class _EnhancedSubscriptionScreenState extends State<EnhancedSubscriptionScreen>
                   border: Border.all(color: const Color(0xFFE5E7EB)),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
+                      color: Colors.black.withAlpha(13),
                       blurRadius: 20,
                       offset: const Offset(0, 4),
                     ),
@@ -397,7 +397,7 @@ class _EnhancedSubscriptionScreenState extends State<EnhancedSubscriptionScreen>
                             vertical: 6,
                           ),
                           decoration: BoxDecoration(
-                            color: Colors.green.withOpacity(0.1),
+                            color: Colors.green.withAlpha(26),
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Row(
@@ -448,7 +448,7 @@ class _EnhancedSubscriptionScreenState extends State<EnhancedSubscriptionScreen>
                                 color: (percentage > 0.3
                                         ? AppColors.primary
                                         : Colors.orange)
-                                    .withOpacity(0.3),
+                                    .withAlpha(77),
                                 blurRadius: 8,
                               ),
                             ],
@@ -543,14 +543,14 @@ class _EnhancedSubscriptionScreenState extends State<EnhancedSubscriptionScreen>
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [AppColors.primary, AppColors.primary.withOpacity(0.8)],
+          colors: [AppColors.primary, AppColors.primary.withAlpha(204)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: AppColors.primary.withOpacity(0.3),
+            color: AppColors.primary.withAlpha(77),
             blurRadius: 20,
             offset: const Offset(0, 8),
           ),
@@ -578,7 +578,7 @@ class _EnhancedSubscriptionScreenState extends State<EnhancedSubscriptionScreen>
             textAlign: TextAlign.center,
             style: GoogleFonts.openSans(
               fontSize: 15,
-              color: Colors.white.withOpacity(0.95),
+              color: Colors.white.withAlpha(242),
             ),
           ),
         ],
@@ -634,8 +634,8 @@ class _EnhancedSubscriptionScreenState extends State<EnhancedSubscriptionScreen>
           boxShadow: [
             BoxShadow(
               color: isPopular
-                  ? AppColors.primary.withOpacity(0.2)
-                  : Colors.black.withOpacity(0.05),
+                  ? AppColors.primary.withAlpha(51)
+                  : Colors.black.withAlpha(13),
               blurRadius: isPopular ? 20 : 10,
               offset: const Offset(0, 4),
             ),
@@ -815,114 +815,6 @@ class _EnhancedSubscriptionScreenState extends State<EnhancedSubscriptionScreen>
                 ),
               )),
         ],
-      ),
-    );
-  }
-
-  void _handleSubscription(String planType) {
-    // Show payment integration coming soon dialog
-    showDialog(
-      context: context,
-      builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(24),
-        ),
-        child: Container(
-          padding: const EdgeInsets.all(28),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(24),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [AppColors.primary, Color(0xFF0052CC)],
-                  ),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.payment_rounded,
-                  size: 40,
-                  color: Colors.white,
-                ),
-              ),
-              const SizedBox(height: 20),
-              Text(
-                'Payment Integration',
-                textAlign: TextAlign.center,
-                style: GoogleFonts.poppins(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w700,
-                  color: const Color(0xFF1F2937),
-                ),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                'We are integrating a 3rd party payment solution very soon for you to make safe and secure payments.',
-                textAlign: TextAlign.center,
-                style: GoogleFonts.openSans(
-                  fontSize: 15,
-                  color: const Color(0xFF6B7280),
-                  height: 1.5,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(
-                      Icons.security_rounded,
-                      size: 18,
-                      color: AppColors.primary,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Your payments will be 100% secure',
-                      style: GoogleFonts.poppins(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.primary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () => Navigator.pop(context),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    elevation: 0,
-                  ),
-                  child: Text(
-                    'Got it!',
-                    style: GoogleFonts.poppins(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }

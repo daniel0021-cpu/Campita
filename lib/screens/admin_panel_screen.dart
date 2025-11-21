@@ -198,7 +198,7 @@ class _DashboardTab extends StatelessWidget {
                 final activity = activities[index];
                 return ListTile(
                   leading: CircleAvatar(
-                    backgroundColor: AppColors.primary.withOpacity(0.1),
+                    backgroundColor: AppColors.primary.withAlpha(26),
                     child: Icon(Icons.person, color: AppColors.primary),
                   ),
                   title: Text(activity['user']!),
@@ -512,7 +512,7 @@ class _RoutesTab extends StatelessWidget {
                       title: Text('${route['from']} → ${route['to']}'),
                       trailing: Chip(
                         label: Text('${route['count']} uses'),
-                        backgroundColor: AppColors.primary.withOpacity(0.1),
+                        backgroundColor: AppColors.primary.withAlpha(26),
                       ),
                     );
                   }),

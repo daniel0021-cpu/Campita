@@ -138,7 +138,7 @@ class TermsConditionsScreen extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withAlpha(13),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -152,7 +152,7 @@ class TermsConditionsScreen extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.1),
+                  color: AppColors.primary.withAlpha(26),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(

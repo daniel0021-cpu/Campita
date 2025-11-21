@@ -97,7 +97,7 @@ class _FavoritesScreenNewState extends State<FavoritesScreenNew> {
           Icon(
             Icons.favorite_border,
             size: 100,
-            color: AppColors.grey.withOpacity(0.5),
+            color: AppColors.grey.withAlpha(128),
           ),
           const SizedBox(height: 24),
           Text(
@@ -151,8 +151,8 @@ class _FavoritesScreenNewState extends State<FavoritesScreenNew> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.08),
-            blurRadius: 12,
+            color: Colors.black.withAlpha(20),
+            blurRadius: 10,
             offset: const Offset(0, 4),
           ),
         ],
@@ -177,8 +177,8 @@ class _FavoritesScreenNewState extends State<FavoritesScreenNew> {
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: _getCategoryColor(building.category).withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
+                        color: _getCategoryColor(building.category).withAlpha(26),
+                        borderRadius: BorderRadius.circular(8),
                       ),
                       child: Icon(
                         _getCategoryIcon(building.category),

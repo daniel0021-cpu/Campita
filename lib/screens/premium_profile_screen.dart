@@ -8,7 +8,6 @@ import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
 import '../widgets/modern_navbar.dart';
 import '../utils/preferences_service.dart';
-import '../utils/app_settings.dart';
 import '../utils/page_transitions.dart';
 import 'favorites_screen.dart';
 import 'profile_edit_screen.dart';
@@ -34,7 +33,6 @@ class _PremiumProfileScreenState extends State<PremiumProfileScreen>
   
   final ScrollController _scrollController = ScrollController();
   final PreferencesService _prefsService = PreferencesService();
-  final AppSettings _appSettings = AppSettings();
   
   bool _isRefreshing = false;
   double _scrollOffset = 0.0;
@@ -226,52 +224,59 @@ class _PremiumProfileScreenState extends State<PremiumProfileScreen>
               end: Alignment.bottomRight,
               colors: [
                 AppColors.primary,
-                AppColors.primary.withOpacity(0.8),
+                AppColors.primary.withAlpha(204),
                 const Color(0xFF60A5FA),
               ],
             ),
           ),
           child: SafeArea(
             bottom: false,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                
-                // Avatar with scale animation
-                ScaleTransition(
-                  scale: _avatarScaleAnimation,
-                  child: _buildAvatar(),
-                ),
-                
-                const SizedBox(height: 12),
-                
-                // Name and role
-                Text(
-                  _userName,
-                  style: GoogleFonts.poppins(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                    letterSpacing: -0.5,
+            child: SingleChildScrollView(
+              physics: const NeverScrollableScrollPhysics(),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                  
+                  // Avatar with scale animation
+                  ScaleTransition(
+                    scale: _avatarScaleAnimation,
+                    child: _buildAvatar(),
                   ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  _userRole,
-                  style: GoogleFonts.openSans(
-                    fontSize: 15,
-                    color: Colors.white.withOpacity(0.8),
-                    fontWeight: FontWeight.w500,
+                  
+                  const SizedBox(height: 10),
+                  
+                  // Name and role
+                  Text(
+                    _userName,
+                    style: GoogleFonts.poppins(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                      letterSpacing: -0.5,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                ),
-                
-                const SizedBox(height: 16),
-                
-                // Quick stats row
-                _buildStatsRow(),
-              ],
+                  const SizedBox(height: 4),
+                  Text(
+                    _userRole,
+                    style: GoogleFonts.openSans(
+                      fontSize: 13,
+                      color: Colors.white.withAlpha(204),
+                      fontWeight: FontWeight.w500,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  
+                  const SizedBox(height: 12),
+                  
+                  // Quick stats row
+                  _buildStatsRow(),
+                ],
+              ),
             ),
           ),
           ),
@@ -297,7 +302,7 @@ class _PremiumProfileScreenState extends State<PremiumProfileScreen>
         shape: BoxShape.circle,
         boxShadow: [
           BoxShadow(
-            color: AppColors.primary.withOpacity(0.4),
+            color: AppColors.primary.withAlpha(102),
             blurRadius: 30,
             spreadRadius: 5,
           ),
@@ -315,7 +320,7 @@ class _PremiumProfileScreenState extends State<PremiumProfileScreen>
         child: CircleAvatar(
           radius: 42,
           backgroundImage: avatarProvider,
-          backgroundColor: AppColors.primary.withOpacity(0.2),
+          backgroundColor: AppColors.primary.withAlpha(51),
         ),
       ),
     );
@@ -332,9 +337,11 @@ class _PremiumProfileScreenState extends State<PremiumProfileScreen>
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
-            _buildStatCard('Buildings\nVisited', _buildingsVisited, 0),
-            _buildStatCard('Steps on\nCampus', _stepsOnCampus, 1),
-            _buildStatCard('Saved\nLocations', _savedLocations, 2),
+            Flexible(child: _buildStatCard('Buildings\nVisited', _buildingsVisited, 0)),
+            const SizedBox(width: 8),
+            Flexible(child: _buildStatCard('Steps on\nCampus', _stepsOnCampus, 1)),
+            const SizedBox(width: 8),
+            Flexible(child: _buildStatCard('Saved\nLocations', _savedLocations, 2)),
           ],
         ),
       ),
@@ -359,13 +366,12 @@ class _PremiumProfileScreenState extends State<PremiumProfileScreen>
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
           child: Container(
-            width: 100,
             padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.15),
+              color: Colors.white.withAlpha(38),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: Colors.white.withOpacity(0.3),
+                color: Colors.white.withAlpha(77),
                 width: 1,
               ),
             ),
@@ -385,7 +391,7 @@ class _PremiumProfileScreenState extends State<PremiumProfileScreen>
                   textAlign: TextAlign.center,
                   style: GoogleFonts.openSans(
                     fontSize: 11,
-                    color: Colors.white.withOpacity(0.9),
+                    color: Colors.white.withAlpha(230),
                     height: 1.2,
                   ),
                 ),
@@ -430,7 +436,7 @@ class _PremiumProfileScreenState extends State<PremiumProfileScreen>
               ),
               boxShadow: [
                 BoxShadow(
-                  color: AppColors.primary.withOpacity(0.08),
+                  color: AppColors.primary.withAlpha(20),
                   blurRadius: 30,
                   offset: const Offset(0, -5),
                 ),
@@ -683,7 +689,7 @@ class _PremiumProfileScreenState extends State<PremiumProfileScreen>
                 end: Alignment.bottomCenter,
                 colors: [
                   AppColors.primary,
-                  AppColors.primary.withOpacity(0.6),
+                  AppColors.primary.withAlpha(153),
                 ],
               ),
               borderRadius: BorderRadius.circular(2),
@@ -721,8 +727,8 @@ class _PremiumProfileScreenState extends State<PremiumProfileScreen>
         child: InkWell(
           onTap: onTap,
           borderRadius: BorderRadius.circular(20),
-          splashColor: AppColors.primary.withOpacity(0.15),
-          highlightColor: AppColors.primary.withOpacity(0.08),
+          splashColor: AppColors.primary.withAlpha(38),
+          highlightColor: AppColors.primary.withAlpha(20),
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
             decoration: BoxDecoration(
@@ -741,12 +747,12 @@ class _PremiumProfileScreenState extends State<PremiumProfileScreen>
               ),
               boxShadow: [
                 BoxShadow(
-                  color: AppColors.primary.withOpacity(0.04),
+                  color: AppColors.primary.withAlpha(10),
                   blurRadius: 15,
                   offset: const Offset(0, 3),
                 ),
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.02),
+                  color: Colors.black.withAlpha(5),
                   blurRadius: 8,
                   offset: const Offset(0, 1),
                 ),
@@ -762,15 +768,15 @@ class _PremiumProfileScreenState extends State<PremiumProfileScreen>
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                       colors: [
-                        AppColors.primary.withOpacity(0.2),
-                        AppColors.primary.withOpacity(0.12),
-                        const Color(0xFF60A5FA).withOpacity(0.1),
+                        AppColors.primary.withAlpha(51),
+                        AppColors.primary.withAlpha(31),
+                        const Color(0xFF60A5FA).withAlpha(26),
                       ],
                     ),
                     borderRadius: BorderRadius.circular(15),
                     boxShadow: [
                       BoxShadow(
-                        color: AppColors.primary.withOpacity(0.15),
+                        color: AppColors.primary.withAlpha(38),
                         blurRadius: 8,
                         offset: const Offset(0, 2),
                       ),
@@ -783,7 +789,7 @@ class _PremiumProfileScreenState extends State<PremiumProfileScreen>
                       size: 24,
                       shadows: [
                         Shadow(
-                          color: AppColors.primary.withOpacity(0.3),
+                          color: AppColors.primary.withAlpha(77),
                           blurRadius: 4,
                         ),
                       ],
@@ -819,7 +825,7 @@ class _PremiumProfileScreenState extends State<PremiumProfileScreen>
                 Container(
                   padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(
-                    color: AppColors.primary.withOpacity(0.08),
+                    color: AppColors.primary.withAlpha(20),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Icon(
@@ -855,7 +861,7 @@ class _PremiumProfileScreenState extends State<PremiumProfileScreen>
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.03),
+            color: Colors.black.withAlpha(8),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -871,8 +877,8 @@ class _PremiumProfileScreenState extends State<PremiumProfileScreen>
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  AppColors.primary.withOpacity(0.15),
-                  AppColors.primary.withOpacity(0.08),
+                  AppColors.primary.withAlpha(38),
+                  AppColors.primary.withAlpha(20),
                 ],
               ),
               borderRadius: BorderRadius.circular(16),
@@ -948,7 +954,7 @@ class _PremiumProfileScreenState extends State<PremiumProfileScreen>
               ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.03),
+                  color: Colors.black.withAlpha(8),
                   blurRadius: 10,
                   offset: const Offset(0, 2),
                 ),
@@ -964,8 +970,8 @@ class _PremiumProfileScreenState extends State<PremiumProfileScreen>
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                     colors: [
-                      AppColors.primary.withOpacity(0.15),
-                      AppColors.primary.withOpacity(0.08),
+                      AppColors.primary.withAlpha(38),
+                      AppColors.primary.withAlpha(20),
                     ],
                   ),
                   borderRadius: BorderRadius.circular(16),
@@ -1004,7 +1010,7 @@ class _PremiumProfileScreenState extends State<PremiumProfileScreen>
               Container(
                 padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.08),
+                  color: AppColors.primary.withAlpha(20),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(
@@ -1039,7 +1045,7 @@ class _PremiumProfileScreenState extends State<PremiumProfileScreen>
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: Colors.grey.withOpacity(0.3),
+                  color: Colors.grey.withAlpha(77),
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -1125,8 +1131,8 @@ class _BottomArcsPainter extends CustomPainter {
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
         colors: [
-          AppColors.primary.withOpacity(0.05),
-          AppColors.primary.withOpacity(0.02),
+          AppColors.primary.withAlpha(13),
+          AppColors.primary.withAlpha(5),
         ],
       ).createShader(Rect.fromLTWH(0, 0, size.width * 0.6, size.height))
       ..style = PaintingStyle.fill;
@@ -1155,8 +1161,8 @@ class _BottomArcsPainter extends CustomPainter {
         begin: Alignment.topRight,
         end: Alignment.bottomLeft,
         colors: [
-          const Color(0xFF60A5FA).withOpacity(0.06),
-          const Color(0xFF60A5FA).withOpacity(0.02),
+          const Color(0xFF60A5FA).withAlpha(15),
+          const Color(0xFF60A5FA).withAlpha(5),
         ],
       ).createShader(Rect.fromLTWH(size.width * 0.5, 0, size.width * 0.5, size.height))
       ..style = PaintingStyle.fill;
@@ -1185,7 +1191,7 @@ class _BottomArcsPainter extends CustomPainter {
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
         colors: [
-          AppColors.primary.withOpacity(0.03),
+          AppColors.primary.withAlpha(8),
           Colors.transparent,
         ],
       ).createShader(Rect.fromLTWH(size.width * 0.3, 0, size.width * 0.4, size.height))

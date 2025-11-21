@@ -78,7 +78,7 @@ class _MapStyleCard extends StatelessWidget {
           border: Border.all(color: AppColors.borderAdaptive(context)),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(isDark ? 0.45 : 0.08),
+              color: Colors.black.withAlpha(isDark ? 115 : 20),
               blurRadius: 18,
               offset: const Offset(0, 8),
             ),
@@ -90,7 +90,7 @@ class _MapStyleCard extends StatelessWidget {
               width: 54,
               height: 54,
               decoration: BoxDecoration(
-                color: AppColors.primary.withOpacity(0.12),
+                color: AppColors.primary.withAlpha(31),
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Icon(option.icon, color: AppColors.primary, size: 30),

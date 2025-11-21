@@ -76,9 +76,9 @@ class AboutScreen extends StatelessWidget {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.08),
+                  color: AppColors.primary.withAlpha(20),
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: AppColors.primary.withOpacity(0.3)),
+                  border: Border.all(color: AppColors.primary.withAlpha(77)),
                 ),
                 child: Text(
                   'DEPLOY MARKER • ${DateTime.now().year}-${DateTime.now().month.toString().padLeft(2,'0')}-${DateTime.now().day.toString().padLeft(2,'0')} ${DateTime.now().hour.toString().padLeft(2,'0')}:${DateTime.now().minute.toString().padLeft(2,'0')}',
@@ -105,7 +105,7 @@ class AboutScreen extends StatelessWidget {
         border: Border.all(color: AppColors.borderAdaptive(context)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.45 : 0.08),
+            color: Colors.black.withAlpha(isDark ? 115 : 20),
             blurRadius: 22,
             offset: const Offset(0, 10),
           ),
@@ -117,7 +117,7 @@ class AboutScreen extends StatelessWidget {
             width: 92,
             height: 92,
             decoration: BoxDecoration(
-              color: AppColors.primary.withOpacity(0.12),
+              color: AppColors.primary.withAlpha(31),
               borderRadius: BorderRadius.circular(26),
             ),
             child: const Icon(Icons.explore, size: 50, color: AppColors.primary),
@@ -158,7 +158,7 @@ class AboutScreen extends StatelessWidget {
         border: Border.all(color: AppColors.borderAdaptive(context)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.4 : 0.07),
+            color: Colors.black.withAlpha(isDark ? 102 : 18),
             blurRadius: 16,
             offset: const Offset(0, 6),
           ),
@@ -186,7 +186,7 @@ class AboutScreen extends StatelessWidget {
         border: Border.all(color: AppColors.borderAdaptive(context)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.4 : 0.07),
+            color: Colors.black.withAlpha(isDark ? 102 : 18),
             blurRadius: 16,
             offset: const Offset(0, 6),
           ),
@@ -198,7 +198,7 @@ class AboutScreen extends StatelessWidget {
             width: 52,
             height: 52,
             decoration: BoxDecoration(
-              color: AppColors.primary.withOpacity(0.12),
+              color: AppColors.primary.withAlpha(31),
               borderRadius: BorderRadius.circular(16),
             ),
             child: Icon(icon, color: AppColors.primary, size: 28),
@@ -229,7 +229,7 @@ class AboutScreen extends StatelessWidget {
         border: Border.all(color: AppColors.borderAdaptive(context)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.4 : 0.07),
+            color: Colors.black.withAlpha(isDark ? 102 : 18),
             blurRadius: 16,
             offset: const Offset(0, 6),
           ),
@@ -296,7 +296,7 @@ class AboutScreen extends StatelessWidget {
         border: Border.all(color: AppColors.borderAdaptive(context)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.4 : 0.07),
+            color: Colors.black.withAlpha(isDark ? 102 : 18),
             blurRadius: 16,
             offset: const Offset(0, 6),
           ),
@@ -366,7 +366,7 @@ class AboutScreen extends StatelessWidget {
         border: Border.all(color: AppColors.borderAdaptive(context)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.4 : 0.07),
+            color: Colors.black.withAlpha(isDark ? 102 : 18),
             blurRadius: 16,
             offset: const Offset(0, 6),
           ),

@@ -142,7 +142,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> with SingleTickerPr
                         child: Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.2),
+                            color: Colors.white.withAlpha(51),
                             shape: BoxShape.circle,
                           ),
                           child: Icon(
@@ -158,7 +158,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> with SingleTickerPr
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.2),
+                            color: Colors.white.withAlpha(51),
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Text(
@@ -211,7 +211,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> with SingleTickerPr
                                 shape: BoxShape.circle,
                                 boxShadow: [
                                   BoxShadow(
-                                    color: slide.color.withOpacity(0.4),
+                                    color: slide.color.withAlpha(102),
                                     blurRadius: 30,
                                     offset: const Offset(0, 15),
                                   ),
@@ -237,7 +237,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> with SingleTickerPr
                                   borderRadius: BorderRadius.circular(25),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: const Color(0xFFFF6B6B).withOpacity(0.4),
+                                      color: const Color(0xFFFF6B6B).withAlpha(102),
                                       blurRadius: 15,
                                       offset: const Offset(0, 5),
                                     ),
@@ -282,7 +282,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> with SingleTickerPr
                                 slide.description,
                                 style: GoogleFonts.notoSans(
                                   fontSize: 16,
-                                  color: Colors.white.withOpacity(0.95),
+                                  color: Colors.white.withAlpha(242),
                                   height: 1.5,
                                 ),
                                 textAlign: TextAlign.center,
@@ -299,7 +299,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> with SingleTickerPr
                   currentPage: _currentPage,
                   count: _slides.length,
                   activeColor: Colors.white,
-                  inactiveColor: Colors.white.withOpacity(0.4),
+                  inactiveColor: Colors.white.withAlpha(102),
                 ),
                 const SizedBox(height: 30),
                 Padding(
@@ -315,7 +315,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> with SingleTickerPr
                           borderRadius: BorderRadius.circular(16),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.4),
+                              color: Colors.black.withAlpha(102),
                               blurRadius: 8,
                               offset: const Offset(0, 4),
                             ),
@@ -451,7 +451,7 @@ class WavyBackgroundPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
       ..style = PaintingStyle.fill
-      ..color = Colors.white.withOpacity(0.08);
+      ..color = Colors.white.withAlpha(20);
 
     // Draw 3 wavy layers
     for (int i = 0; i < 3; i++) {
@@ -479,7 +479,7 @@ class WavyBackgroundPainter extends CustomPainter {
     // Draw floating circles
     final circlePaint = Paint()
       ..style = PaintingStyle.fill
-      ..color = Colors.white.withOpacity(0.05);
+      ..color = Colors.white.withAlpha(13);
 
     canvas.drawCircle(
       Offset(size.width * 0.2, size.height * 0.15 + (sin(animationValue * 2 * 3.14159) * 20)),

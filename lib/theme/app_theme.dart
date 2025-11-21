@@ -43,6 +43,9 @@ class AppColors {
   static const Color darkCard = Color(0xFF2C2C2C);
   static const Color darkBorder = Color(0xFF3A3A3A);
   
+  // Light mode background
+  static const Color background = Color(0xFFF5F7FA);
+  
   // Adaptive colors helpers
   static Color surface(BuildContext context) {
     return Theme.of(context).brightness == Brightness.dark ? darkSurface : white;

@@ -16,7 +16,7 @@ class PerformanceUtils {
   void startTimer(String name) {
     _timers[name] = DateTime.now();
     if (kDebugMode) {
-      print('[Performance] Started: $name');
+      debugPrint('[Performance] Started: $name');
     }
   }
 
@@ -25,7 +25,7 @@ class PerformanceUtils {
     final startTime = _timers[name];
     if (startTime == null) {
       if (kDebugMode) {
-        print('[Performance] Warning: Timer "$name" was not started');
+        debugPrint('[Performance] Warning: Timer "$name" was not started');
       }
       return null;
     }
@@ -40,7 +40,7 @@ class PerformanceUtils {
     _metrics[name]!.add(duration);
 
     if (kDebugMode) {
-      print('[Performance] Completed: $name in ${duration.inMilliseconds}ms');
+      debugPrint('[Performance] Completed: $name in ${duration.inMilliseconds}ms');
     }
 
     return duration;
@@ -59,7 +59,7 @@ class PerformanceUtils {
   void clearMetrics(String name) {
     _metrics.remove(name);
     if (kDebugMode) {
-      print('[Performance] Cleared metrics for: $name');
+      debugPrint('[Performance] Cleared metrics for: $name');
     }
   }
 
@@ -68,7 +68,7 @@ class PerformanceUtils {
     _metrics.clear();
     _timers.clear();
     if (kDebugMode) {
-      print('[Performance] Cleared all metrics');
+      debugPrint('[Performance] Cleared all metrics');
     }
   }
 
@@ -105,7 +105,7 @@ class PerformanceUtils {
   /// Log a custom performance metric
   void logMetric(String name, dynamic value) {
     if (kDebugMode) {
-      print('[Performance] $name: $value');
+      debugPrint('[Performance] $name: $value');
     }
   }
 
@@ -142,22 +142,22 @@ class PerformanceUtils {
 
     final report = getPerformanceReport();
     if (report.isEmpty) {
-      print('[Performance] No metrics recorded');
+      debugPrint('[Performance] No metrics recorded');
       return;
     }
 
-    print('\n========== Performance Report ==========');
+    debugPrint('\n========== Performance Report ==========');
     for (final entry in report.entries) {
       final name = entry.key;
       final stats = entry.value;
-      print('\n$name:');
-      print('  Count: ${stats['count']}');
-      print('  Average: ${stats['average_ms']}ms');
-      print('  Min: ${stats['min_ms']}ms');
-      print('  Max: ${stats['max_ms']}ms');
-      print('  Total: ${stats['total_ms']}ms');
+      debugPrint('\n$name:');
+      debugPrint('  Count: ${stats['count']}');
+      debugPrint('  Average: ${stats['average_ms']}ms');
+      debugPrint('  Min: ${stats['min_ms']}ms');
+      debugPrint('  Max: ${stats['max_ms']}ms');
+      debugPrint('  Total: ${stats['total_ms']}ms');
     }
-    print('\n========================================\n');
+    debugPrint('\n========================================\n');
   }
 
   /// Monitor frame build time
@@ -171,10 +171,10 @@ class PerformanceUtils {
         final totalTime = timing.totalSpan;
 
         if (buildTime.inMilliseconds > 16) {
-          print('[Performance] Slow frame in $screenName:');
-          print('  Build: ${buildTime.inMilliseconds}ms');
-          print('  Raster: ${rasterTime.inMilliseconds}ms');
-          print('  Total: ${totalTime.inMilliseconds}ms');
+          debugPrint('[Performance] Slow frame in $screenName:');
+          debugPrint('  Build: ${buildTime.inMilliseconds}ms');
+          debugPrint('  Raster: ${rasterTime.inMilliseconds}ms');
+          debugPrint('  Total: ${totalTime.inMilliseconds}ms');
         }
       }
     });
@@ -198,3 +198,4 @@ class PerformanceUtils {
     }
   }
 }
+

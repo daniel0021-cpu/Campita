@@ -7,6 +7,7 @@ import 'about_screen.dart';
 import 'map_style_screen.dart';
 import 'navigation_mode_screen.dart';
 import 'user_guide_screen.dart';
+import 'home_dashboard_screen.dart';
 import '../utils/preferences_service.dart';
 import '../utils/app_settings.dart';
 import '../utils/app_routes.dart';
@@ -25,11 +26,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
   String _mapStyle = 'Standard';
   String _navigationMode = 'Walking';
   final PreferencesService _prefs = PreferencesService();
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
 
   @override
   void initState() {
     super.initState();
     _loadSettings();
+    _searchController.addListener(() {
+      setState(() {
+        _searchQuery = _searchController.text.toLowerCase();
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadSettings() async {
@@ -45,7 +59,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
       backgroundColor: AppColors.ash,
       appBar: AppBar(
@@ -57,8 +70,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
         padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
         children: [
           _buildProfileHeader(),
+          const SizedBox(height: 24),
+          _buildSearchBar(),
           const SizedBox(height: 28),
-          _sectionLabel('Appearance'),
+          if (_matchesSearch('Appearance') || _matchesSearch('Dark Mode') || _matchesSearch('Map Style')) ...[
+            _sectionLabel('Appearance'),
           _modernCard([
             _settingTile(
               icon: Icons.dark_mode_outlined,
@@ -89,7 +105,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ]),
           const SizedBox(height: 32),
-          _sectionLabel('Navigation'),
+          ],
+          if (_matchesSearch('Navigation') || _matchesSearch('Location') || _matchesSearch('Notifications')) ...[
+            _sectionLabel('Navigation'),
             _modernCard([
             _settingTile(
               icon: Icons.my_location_outlined,
@@ -136,8 +154,45 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ]),
           const SizedBox(height: 32),
-          _sectionLabel('App Info'),
-          _modernCard([
+          ],
+          if (_matchesSearch('Developer') || _matchesSearch('Dashboard')) ...[
+            _sectionLabel('Developer'),
+            _modernCard([
+            _settingTile(
+              icon: Icons.dashboard_outlined,
+              title: 'Home Dashboard (Preview)',
+              subtitle: 'View experimental dashboard',
+              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const HomeDashboardScreen())),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.withAlpha(26),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.orange.withAlpha(77)),
+                    ),
+                    child: Text(
+                      'TEMP',
+                      style: GoogleFonts.notoSans(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.orange,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  const Icon(Icons.chevron_right, color: AppColors.grey),
+                ],
+              ),
+            ),
+          ]),
+          const SizedBox(height: 32),
+          ],
+          if (_matchesSearch('App Info') || _matchesSearch('User Guide') || _matchesSearch('Help') || _matchesSearch('Privacy') || _matchesSearch('About')) ...[
+            _sectionLabel('App Info'),
+            _modernCard([
             _settingTile(
               icon: Icons.menu_book,
               title: 'User Guide',
@@ -171,8 +226,124 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ]),
           const SizedBox(height: 40),
-          Center(
-            child: Text('Version 1.0.0', style: GoogleFonts.notoSans(fontSize: 12, color: AppColors.grey)),
+          ],
+          if (_searchQuery.isEmpty)
+            Center(
+              child: Text('Version 1.0.0', style: GoogleFonts.notoSans(fontSize: 12, color: AppColors.grey)),
+            ),
+          if (_searchQuery.isNotEmpty && !_hasAnyMatches())
+            _buildNoResults(),
+        ],
+      ),
+    );
+  }
+
+  bool _matchesSearch(String text) {
+    if (_searchQuery.isEmpty) return true;
+    return text.toLowerCase().contains(_searchQuery);
+  }
+
+  bool _hasAnyMatches() {
+    final searchTerms = [
+      'Appearance', 'Dark Mode', 'Map Style',
+      'Navigation', 'Location', 'Notifications',
+      'Developer', 'Dashboard',
+      'App Info', 'User Guide', 'Help', 'Privacy', 'About'
+    ];
+    return searchTerms.any((term) => term.toLowerCase().contains(_searchQuery));
+  }
+
+  Widget _buildSearchBar() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark 
+            ? AppColors.cardBackground(context)
+            : Colors.white,
+        borderRadius: BorderRadius.circular(30),
+        border: Border.all(
+          color: _searchQuery.isNotEmpty 
+              ? AppColors.primary.withAlpha(128)
+              : AppColors.borderAdaptive(context),
+          width: _searchQuery.isNotEmpty ? 2 : 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: _searchQuery.isNotEmpty
+                ? AppColors.primary.withAlpha(51)
+                : Colors.black.withAlpha(isDark ? 77 : 13),
+            blurRadius: 15,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: TextField(
+        controller: _searchController,
+        style: GoogleFonts.notoSans(
+          fontSize: 15,
+          color: AppColors.textPrimaryAdaptive(context),
+        ),
+        decoration: InputDecoration(
+          hintText: 'Search settings...',
+          hintStyle: GoogleFonts.notoSans(
+            fontSize: 15,
+            color: AppColors.grey,
+          ),
+          prefixIcon: Icon(
+            Icons.search_rounded,
+            color: _searchQuery.isNotEmpty 
+                ? AppColors.primary 
+                : AppColors.grey,
+            size: 24,
+          ),
+          suffixIcon: _searchQuery.isNotEmpty
+              ? IconButton(
+                  icon: Icon(
+                    Icons.clear_rounded,
+                    color: AppColors.grey,
+                    size: 20,
+                  ),
+                  onPressed: () {
+                    _searchController.clear();
+                  },
+                )
+              : null,
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 20,
+            vertical: 16,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNoResults() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 60),
+      child: Column(
+        children: [
+          Icon(
+            Icons.search_off_rounded,
+            size: 64,
+            color: AppColors.grey.withAlpha(128),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'No results found',
+            style: GoogleFonts.poppins(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textSecondaryAdaptive(context),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Try searching for something else',
+            style: GoogleFonts.notoSans(
+              fontSize: 14,
+              color: AppColors.grey,
+            ),
           ),
         ],
       ),
@@ -189,7 +360,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         border: Border.all(color: AppColors.borderAdaptive(context)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.45 : 0.08),
+            color: Colors.black.withAlpha(isDark ? 115 : 20),
             blurRadius: 22,
             offset: const Offset(0, 10),
           ),
@@ -202,7 +373,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             height: 72,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: AppColors.primary.withOpacity(0.12),
+              color: AppColors.primary.withAlpha(31),
             ),
             child: const Icon(Icons.person, size: 40, color: AppColors.primary),
           ),
@@ -237,7 +408,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         border: Border.all(color: AppColors.borderAdaptive(context)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.4 : 0.07),
+            color: Colors.black.withAlpha(isDark ? 102 : 18),
             blurRadius: 20,
             offset: const Offset(0, 8),
           ),
@@ -264,7 +435,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               width: 44,
               height: 44,
               decoration: BoxDecoration(
-                color: AppColors.primary.withOpacity(0.12),
+                color: AppColors.primary.withAlpha(31),
                 borderRadius: BorderRadius.circular(14),
               ),
               child: Icon(icon, color: AppColors.primary),
@@ -287,6 +458,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Widget _divider() => Container(height: 1, color: AppColors.grey.withOpacity(0.15));
+  Widget _divider() => Container(height: 1, color: AppColors.grey.withAlpha(38));
 
 }

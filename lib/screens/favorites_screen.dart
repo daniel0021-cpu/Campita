@@ -62,7 +62,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> with SingleTickerProv
         ),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFFE91E63).withOpacity(0.4),
+            color: const Color(0xFFE91E63).withAlpha(102),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),
@@ -92,7 +92,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> with SingleTickerProv
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
+                      color: Colors.white.withAlpha(51),
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: const Icon(
@@ -120,7 +120,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> with SingleTickerProv
                           'All your hearted buildings in one place',
                           style: GoogleFonts.notoSans(
                             fontSize: 14,
-                            color: Colors.white.withOpacity(0.95),
+                            color: Colors.white.withAlpha(242),
                             height: 1.3,
                           ),
                         ),
@@ -133,7 +133,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> with SingleTickerProv
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
+                  color: Colors.white.withAlpha(51),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Row(
@@ -403,25 +403,25 @@ class _FavoritesScreenState extends State<FavoritesScreen> with SingleTickerProv
           borderRadius: BorderRadius.circular(24),
           border: isPinned
               ? Border.all(
-                  color: const Color(0xFFE91E63).withOpacity(0.4),
+                  color: const Color(0xFFE91E63).withAlpha(102),
                   width: 2,
                 )
               : Border.all(
                   color: isDark
-                      ? Colors.white.withOpacity(0.1)
-                      : Colors.black.withOpacity(0.05),
+                      ? Colors.white.withAlpha(26)
+                      : Colors.black.withAlpha(13),
                   width: 1,
                 ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(isDark ? 0.3 : 0.08),
+              color: Colors.black.withAlpha(isDark ? 77 : 20),
               blurRadius: 16,
               offset: const Offset(0, 6),
               spreadRadius: 2,
             ),
             if (isPinned)
               BoxShadow(
-                color: const Color(0xFFE91E63).withOpacity(0.2),
+                color: const Color(0xFFE91E63).withAlpha(51),
                 blurRadius: 20,
                 offset: const Offset(0, 4),
                 spreadRadius: 1,
@@ -447,20 +447,20 @@ class _FavoritesScreenState extends State<FavoritesScreen> with SingleTickerProv
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           colors: [
-                            _getCategoryColor(building.category).withOpacity(0.2),
-                            _getCategoryColor(building.category).withOpacity(0.1),
+                            _getCategoryColor(building.category).withAlpha(51),
+                            _getCategoryColor(building.category).withAlpha(26),
                           ],
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                         ),
                         borderRadius: BorderRadius.circular(18),
                         border: Border.all(
-                          color: _getCategoryColor(building.category).withOpacity(0.3),
+                          color: _getCategoryColor(building.category).withAlpha(77),
                           width: 2,
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: _getCategoryColor(building.category).withOpacity(0.15),
+                            color: _getCategoryColor(building.category).withAlpha(38),
                             blurRadius: 12,
                             offset: const Offset(0, 4),
                           ),
@@ -490,7 +490,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> with SingleTickerProv
                             shape: BoxShape.circle,
                             boxShadow: [
                               BoxShadow(
-                                color: const Color(0xFFE91E63).withOpacity(0.5),
+                                color: const Color(0xFFE91E63).withAlpha(128),
                                 blurRadius: 12,
                                 spreadRadius: 2,
                                 offset: const Offset(0, 2),

@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/private_place.dart';
 
@@ -21,7 +22,7 @@ class PrivatePlacesService {
           .map((json) => PrivatePlace.fromJson(json as Map<String, dynamic>))
           .toList();
     } catch (e) {
-      print('Error loading private places: $e');
+      debugPrint('Error loading private places: $e');
       return [];
     }
   }
@@ -34,7 +35,7 @@ class PrivatePlacesService {
       final jsonString = json.encode(jsonList);
       return await prefs.setString(_privatePlacesKey, jsonString);
     } catch (e) {
-      print('Error saving private places: $e');
+      debugPrint('Error saving private places: $e');
       return false;
     }
   }
@@ -109,3 +110,4 @@ class PrivatePlacesService {
     return await prefs.remove(_privatePlacesKey);
   }
 }
+

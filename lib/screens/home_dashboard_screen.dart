@@ -5,8 +5,6 @@ import '../theme/app_theme.dart';
 import '../models/campus_building.dart';
 import '../models/campus_event.dart';
 import 'enhanced_campus_map.dart';
-import 'favorites_screen.dart';
-import 'profile_screen.dart';
 import 'recent_searches_screen.dart';
 import 'events_screen.dart';
 import '../widgets/modern_navbar.dart';
@@ -382,7 +380,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
               return Transform(
                 transform: Matrix4.identity()
                   ..setEntry(3, 2, 0.001)
-                  ..scale(0.92 + (0.08 * curvedAnimation.value)),
+                  ..scale(0.92 + (0.08 * curvedAnimation.value), 0.92 + (0.08 * curvedAnimation.value), 1.0),
                 alignment: Alignment.center,
                 child: FadeTransition(
                   opacity: curvedAnimation,
@@ -563,7 +561,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
               transform: Matrix4.identity()
                 ..setEntry(3, 2, 0.001) // Perspective
                 ..translate(0.0, 20.0 * (1 - value), -10.0 * (1 - value))
-                ..scale(0.8 + (0.2 * value)),
+                ..scale(0.8 + (0.2 * value), 0.8 + (0.2 * value), 1.0),
               alignment: Alignment.center,
               child: Opacity(
                 opacity: value,
@@ -817,69 +815,6 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
       case BuildingCategory.worship:
         return const Color(0xFF673AB7);
     }
-  }
-
-  Widget _buildBottomNav() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 8,
-            offset: const Offset(0, -2),
-          ),
-        ],
-      ),
-      child: BottomNavigationBar(
-        currentIndex: 0,
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: AppColors.primary,
-        unselectedItemColor: AppColors.grey,
-        elevation: 0,
-        backgroundColor: Colors.transparent,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            label: 'Home',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.map),
-            label: 'Map',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.favorite),
-            label: 'Favorites',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person),
-            label: 'Profile',
-          ),
-        ],
-        onTap: (index) {
-          switch (index) {
-            case 1:
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (_) => const EnhancedCampusMap()),
-              );
-              break;
-            case 2:
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (_) => const FavoritesScreen()),
-              );
-              break;
-            case 3:
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (_) => const ProfileScreen()),
-              );
-              break;
-          }
-        },
-      ),
-    );
   }
 }
 
@@ -1140,3 +1075,4 @@ class _AnimatedPressButtonState extends State<_AnimatedPressButton>
     );
   }
 }
+

@@ -41,6 +41,7 @@ class _RoutePreviewScreenState extends State<RoutePreviewScreen>
   String _selectedTransportMode = 'foot';
   bool _showTransportError = false;
   double _sheetHeight = 0.35; // 35% expanded by default
+  bool _isMapReady = false;
 
   @override
   void initState() {
@@ -108,6 +109,8 @@ class _RoutePreviewScreenState extends State<RoutePreviewScreen>
         ),
       ),
     );
+
+    setState(() => _isMapReady = true);
   }
 
   @override
@@ -188,7 +191,7 @@ class _RoutePreviewScreenState extends State<RoutePreviewScreen>
     final screenHeight = MediaQuery.of(context).size.height;
 
     return Scaffold(
-      backgroundColor: isDark ? AppColors.darkBackground : Colors.grey[50],
+      backgroundColor: isDark ? AppColors.darkBackground : AppColors.background,
       body: Stack(
         children: [
           // Modern map with clean styling

@@ -119,7 +119,7 @@ class ModernNavBar extends StatelessWidget {
                       Transform(
                         transform: Matrix4.identity()
                           ..setEntry(3, 2, 0.001)
-                          ..scale(1.0 - (0.05 * secondaryCurve.value)),
+                          ..scale(1.0 - (0.05 * secondaryCurve.value), 1.0 - (0.05 * secondaryCurve.value), 1.0),
                         alignment: Alignment.center,
                         child: Opacity(
                           opacity: 1.0 - (0.3 * secondaryCurve.value),
@@ -130,7 +130,7 @@ class ModernNavBar extends StatelessWidget {
                     Transform(
                       transform: Matrix4.identity()
                         ..setEntry(3, 2, 0.001)
-                        ..scale(0.94 + (0.06 * curvedAnimation.value)),
+                        ..scale(0.94 + (0.06 * curvedAnimation.value), 0.94 + (0.06 * curvedAnimation.value), 1.0),
                       alignment: Alignment.center,
                       child: FadeTransition(
                         opacity: curvedAnimation,
@@ -287,3 +287,4 @@ class _AnimatedNavButtonState extends State<_AnimatedNavButton>
     );
   }
 }
+

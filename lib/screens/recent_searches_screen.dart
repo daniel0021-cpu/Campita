@@ -131,7 +131,7 @@ class _RecentSearchesScreenState extends State<RecentSearchesScreen> {
           Icon(
             Icons.history,
             size: 80,
-            color: AppColors.grey.withOpacity(0.5),
+            color: AppColors.grey.withAlpha(128),
           ),
           const SizedBox(height: 16),
           Text(
@@ -168,7 +168,7 @@ class _RecentSearchesScreenState extends State<RecentSearchesScreen> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withAlpha(13),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -178,7 +178,7 @@ class _RecentSearchesScreenState extends State<RecentSearchesScreen> {
         leading: Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: AppColors.primary.withOpacity(0.1),
+            color: AppColors.primary.withAlpha(26),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Icon(

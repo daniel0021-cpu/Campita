@@ -10,3 +10,4 @@ class AppSettings {
   // navigationMode: 'walking' | 'driving' | 'transit'
   static final ValueNotifier<String> navigationMode = ValueNotifier<String>('walking');
 }
+

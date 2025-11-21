@@ -18,7 +18,6 @@ import '../theme/app_theme.dart';
 import '../utils/osm_data_fetcher.dart';
 import 'directions_screen.dart';
 import 'route_preview_screen.dart';
-import 'live_navigation_screen.dart';
 import 'events_screen.dart';
  import '../utils/preferences_service.dart';
  import '../utils/favorites_service.dart';
@@ -310,6 +309,7 @@ class _EnhancedCampusMapState extends State<EnhancedCampusMap> with TickerProvid
   }
 
   Future<void> _loadOSMBuildings() async {
+    if (!mounted) return;
     setState(() => _loadingOSMData = true);
     try {
       final buildings = await OSMDataFetcher.fetchCampusBuildings().timeout(
@@ -320,6 +320,7 @@ class _EnhancedCampusMapState extends State<EnhancedCampusMap> with TickerProvid
         },
       );
       if (buildings.isNotEmpty) {
+        if (!mounted) return;
         setState(() {
           _osmBuildings = buildings;
           _loadingOSMData = false;
@@ -327,6 +328,7 @@ class _EnhancedCampusMapState extends State<EnhancedCampusMap> with TickerProvid
         _loadFavoritesFromPrefs();
         debugPrint('Loaded ${buildings.length} buildings from OSM');
       } else {
+        if (!mounted) return;
         setState(() {
           _osmBuildings = campusBuildings;
           _loadingOSMData = false;
@@ -336,6 +338,7 @@ class _EnhancedCampusMapState extends State<EnhancedCampusMap> with TickerProvid
       }
     } catch (e) {
       debugPrint('Error loading OSM buildings: $e');
+      if (!mounted) return;
       setState(() {
         _osmBuildings = campusBuildings;
         _loadingOSMData = false;
@@ -385,6 +388,7 @@ out geom;
             if (line.length > 1) paths.add(line);
           }
         }
+        if (!mounted) return;
         setState(() => _footpaths = paths);
         debugPrint('Loaded ${paths.length} footpaths from OSM');
       }
@@ -466,6 +470,7 @@ out geom;
   Future<void> _recenterAndTilt3D() async {
     if (_currentLocation == null || _isRecentering) return;
 
+    if (!mounted) return;
     setState(() {
       _isRecentering = true;
     });
@@ -644,52 +649,129 @@ out geom;
   }
 
   Future<void> _calculateRoute(CampusBuilding destination) async {
-    // Ensure we have current location before routing
-    if (_currentLocation == null) {
+    debugPrint('🟢 _calculateRoute called for ${destination.name}');
+    
+    // Check if current location is valid (within reasonable distance from campus)
+    final bool needsLocationUpdate = _currentLocation == null || 
+        !_isWithinOkadaBounds(_currentLocation!);
+    
+    if (needsLocationUpdate) {
+      if (_currentLocation != null) {
+        debugPrint('🔴 Current location is invalid/out of bounds: $_currentLocation');
+      } else {
+        debugPrint('🟡 No current location, getting GPS position');
+      }
       if (mounted) {
         showAnimatedSuccess(
           context,
-          'Getting your location... Please wait.',
+          'Getting your location...',
           icon: Icons.gps_fixed,
           iconColor: AppColors.primary,
-          duration: const Duration(seconds: 2),
+          duration: const Duration(milliseconds: 1500),
         );
       }
       
-      // Wait for GPS to be ready (max 5 seconds)
+      // Check location permission first
       try {
+        debugPrint('🟡 Checking location permission...');
+        final permission = await Geolocator.checkPermission();
+        debugPrint('🟡 Permission status: $permission');
+        
+        if (permission == LocationPermission.denied) {
+          debugPrint('🟡 Location permission denied, requesting...');
+          final newPermission = await Geolocator.requestPermission();
+          debugPrint('🟡 New permission status: $newPermission');
+          
+          if (newPermission == LocationPermission.denied || newPermission == LocationPermission.deniedForever) {
+            throw Exception('Location permission denied by user');
+          }
+        }
+        
+        if (permission == LocationPermission.deniedForever) {
+          throw Exception('Location permission permanently denied. Please enable in browser settings.');
+        }
+        
+        debugPrint('🟡 Getting GPS position (10 second timeout for web)...');
+        // Wait for GPS to be ready (10 seconds for web browsers - they're slower)
         final position = await Geolocator.getCurrentPosition(
           locationSettings: const LocationSettings(
-            accuracy: LocationAccuracy.bestForNavigation,
-            timeLimit: Duration(seconds: 5),
+            accuracy: LocationAccuracy.high,
+            timeLimit: Duration(seconds: 10),
           ),
+        ).timeout(
+          const Duration(seconds: 10),
+          onTimeout: () {
+            debugPrint('🔴 GPS timeout after 10 seconds');
+            throw TimeoutException('GPS took too long. Make sure location is enabled in your browser.');
+          },
         );
-        setState(() {
-          _currentLocation = LatLng(position.latitude, position.longitude);
-        });
+        
+        final detectedLocation = LatLng(position.latitude, position.longitude);
+        debugPrint('🟢 Got GPS location: $detectedLocation');
+        
+        // Verify location is within reasonable bounds
+        if (_isWithinOkadaBounds(detectedLocation)) {
+          setState(() {
+            _currentLocation = detectedLocation;
+          });
+          debugPrint('✅ Location is within campus bounds, using it!');
+          if (mounted) {
+            showAnimatedSuccess(
+              context,
+              'Location detected: ${position.accuracy.toStringAsFixed(0)}m accuracy',
+              icon: Icons.my_location_rounded,
+              iconColor: AppColors.success,
+              duration: const Duration(seconds: 2),
+            );
+          }
+        } else {
+          debugPrint('⚠️ GPS location is outside campus bounds (${detectedLocation.latitude}, ${detectedLocation.longitude})');
+          setState(() {
+            _currentLocation = _campusCenter;
+          });
+          if (mounted) {
+            showAnimatedSuccess(
+              context,
+              'You appear to be off-campus. Using campus center.',
+              icon: Icons.location_on,
+              iconColor: AppColors.warning,
+              duration: const Duration(seconds: 2),
+            );
+          }
+        }
       } catch (e) {
+        debugPrint('🔴 GPS error: $e - Using campus center as fallback');
+        // Use campus center as fallback - don't return, continue with routing
+        setState(() {
+          _currentLocation = _campusCenter;
+        });
         if (mounted) {
+          final isPermissionError = e.toString().contains('permission');
           showAnimatedSuccess(
             context,
-            'Could not get your location. Please enable GPS.',
-            icon: Icons.gps_off,
-            iconColor: AppColors.error,
+            isPermissionError 
+                ? 'Location access denied. Using campus center.'
+                : 'Could not get your location. Using campus center.',
+            icon: isPermissionError ? Icons.location_disabled_rounded : Icons.location_on,
+            iconColor: AppColors.warning,
             duration: const Duration(seconds: 3),
           );
         }
-        return;
       }
     }
     
     final start = _currentLocation ?? _campusCenter;
+    debugPrint('🟢 Starting route calculation from $start to ${destination.coordinates}');
     
     try {
       List<LatLng> routePoints = [];
       double distance = 0;
       double duration = 0;
       
+      debugPrint('🟢 Transport mode: $_transportMode');
       // Use different routing based on transport mode
       if (_transportMode == 'foot') {
+        debugPrint('🟢 Calculating footpath route...');
         // Prefer dedicated footpaths; fallback to mixed pedestrian (footpaths + safe roads)
         print('Calculating walking route (footpaths preferred) from ${start.latitude},${start.longitude} to ${destination.coordinates.latitude},${destination.coordinates.longitude}');
         routePoints = await _calculateFootpathRoute(start, destination.coordinates);
@@ -792,7 +874,9 @@ out geom;
         });
         _routeDrawController.forward(from: 0);
         // Navigate to preview screen
+        debugPrint('🟢 Route calculated successfully: ${routePoints.length} points, ${distance}m, mounted=$mounted');
         if (mounted) {
+          debugPrint('🟢 Navigating to RoutePreviewScreen');
           await Navigator.of(context).push(MaterialPageRoute(
             builder: (_) => RoutePreviewScreen(
               routePoints: routePoints,
@@ -803,6 +887,7 @@ out geom;
               transportMode: _transportMode,
             ),
           ));
+          debugPrint('🟢 Returned from RoutePreviewScreen');
         }
         _fitRouteBounds();
       } else {
@@ -2937,51 +3022,6 @@ out skel qt;
     );
   }
 
-  Widget _buildRefreshButton() {
-    return Positioned(
-      bottom: 320,
-      right: 16,
-      child: Material(
-        elevation: 4,
-        borderRadius: BorderRadius.circular(12),
-        clipBehavior: Clip.antiAlias,
-        shadowColor: Colors.black.withValues(alpha: 0.3),
-        color: AppColors.cardBackground(context),
-        child: InkWell(
-          onTap: _loadingOSMData ? null : _loadOSMBuildings,
-          child: SizedBox(
-            width: 48,
-            height: 48,
-            child: _loadingOSMData
-                ? const Padding(
-                    padding: EdgeInsets.all(12.0),
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.refresh,
-                        color: AppColors.primary,
-                        size: 20,
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        'OSM',
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.primary,
-                        ),
-                      ),
-                    ],
-                  ),
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildEventsFAB() {
     return Positioned(
       bottom: 210,
@@ -3275,7 +3315,10 @@ out skel qt;
                   runSpacing: 12,
                   children: [
                     ElevatedButton.icon(
-                      onPressed: () => _calculateRoute(b),
+                      onPressed: () {
+                        Navigator.pop(context);
+                        _calculateRoute(b);
+                      },
                       icon: Icon(_getTransportIcon()),
                       label: const Text('Directions'),
                       style: ElevatedButton.styleFrom(
@@ -3286,7 +3329,11 @@ out skel qt;
                       ),
                     ),
                     OutlinedButton.icon(
-                      onPressed: () => setState(() => _currentLocation = b.coordinates),
+                      onPressed: () {
+                        Navigator.pop(context);
+                        setState(() => _selectedBuilding = b);
+                        _calculateRoute(b);
+                      },
                       icon: const Icon(Icons.play_arrow),
                       label: const Text('Start'),
                       style: OutlinedButton.styleFrom(
@@ -3666,19 +3713,17 @@ out skel qt;
             });
           },
           onStartNavigation: (building) async {
+            debugPrint('🔵 Start button clicked for ${building.name}');
             Navigator.pop(ctx);
+            debugPrint('🔵 Dialog closed, calling _calculateRoute');
             await _calculateRoute(building);
-            if (!mounted || _routePolyline.isEmpty) return;
-            await Navigator.of(context).push(MaterialPageRoute(
-              builder: (_) => LiveNavigationScreen(
-                routePoints: _routePolyline,
-                destination: building.coordinates,
-                transportMode: _transportMode,
-              ),
-            ));
+            debugPrint('🔵 _calculateRoute completed');
           },
           onGetDirections: (building) async {
             Navigator.pop(ctx);
+            setState(() {
+              _selectedBuilding = building;
+            });
             await _calculateRoute(building);
           },
           onShare: (building) {

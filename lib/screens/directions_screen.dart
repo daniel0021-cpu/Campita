@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../models/campus_building.dart';
 import '../theme/app_theme.dart';
 import '../widgets/animated_success_card.dart';
@@ -60,16 +61,7 @@ class _DirectionsScreenState extends State<DirectionsScreen> {
   }
 
   void _navigateWithDirections() {
-    if (!_useCurrentLocation && _startLocation == null) {
-      showAnimatedSuccess(
-        context,
-        'Please select a start location or use current location',
-        icon: Icons.error_outline_rounded,
-        iconColor: Colors.orange,
-      );
-      return;
-    }
-    
+    // ALWAYS allow if destination is set (current location is default)
     if (_endLocation == null) {
       showAnimatedSuccess(
         context,
@@ -80,6 +72,7 @@ class _DirectionsScreenState extends State<DirectionsScreen> {
       return;
     }
     
+    // If using current location but don't have it yet, load it
     if (_useCurrentLocation && _currentPosition == null) {
       showAnimatedSuccess(
         context,
@@ -88,12 +81,24 @@ class _DirectionsScreenState extends State<DirectionsScreen> {
         iconColor: AppColors.primary,
       );
       _loadCurrentLocation();
+      // Continue with navigation anyway - map will use current location
+    }
+    
+    // If NOT using current location, must have start location
+    if (!_useCurrentLocation && _startLocation == null) {
+      showAnimatedSuccess(
+        context,
+        'Please select a start location',
+        icon: Icons.error_outline_rounded,
+        iconColor: Colors.orange,
+      );
       return;
     }
 
     HapticFeedback.mediumImpact();
     
     // Return to map and let it calculate the route
+    // If useCurrentLocation is true, map will use its own _currentLocation
     Navigator.pop(context, {
       'start': _useCurrentLocation ? null : _startLocation,
       'end': _endLocation,
@@ -125,7 +130,7 @@ class _DirectionsScreenState extends State<DirectionsScreen> {
           color: isSelected ? AppColors.primary : AppColors.white,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: isSelected ? AppColors.primary : AppColors.grey.withOpacity(0.3),
+            color: isSelected ? AppColors.primary : AppColors.grey.withAlpha(77),
             width: 2,
           ),
         ),
@@ -153,13 +158,24 @@ class _DirectionsScreenState extends State<DirectionsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
     return Scaffold(
-      backgroundColor: AppColors.white,
+      backgroundColor: isDark ? AppColors.darkGrey : AppColors.ash,
       appBar: AppBar(
-        backgroundColor: AppColors.primary,
-        foregroundColor: AppColors.white,
-        title: const Text('Get Directions'),
+        backgroundColor: Colors.transparent,
         elevation: 0,
+        title: Text(
+          'Get Directions',
+          style: GoogleFonts.poppins(
+            fontWeight: FontWeight.w600,
+            color: isDark ? AppColors.white : AppColors.darkGrey,
+          ),
+        ),
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back_ios_rounded, color: isDark ? AppColors.white : AppColors.darkGrey),
+          onPressed: () => Navigator.pop(context),
+        ),
       ),
       body: Column(
         children: [
@@ -172,7 +188,7 @@ class _DirectionsScreenState extends State<DirectionsScreen> {
                   margin: const EdgeInsets.only(bottom: 12),
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: AppColors.primary.withOpacity(0.1),
+                    color: AppColors.primary.withAlpha(26),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
                       color: _useCurrentLocation ? AppColors.primary : Colors.transparent,
@@ -349,7 +365,7 @@ class _DirectionsScreenState extends State<DirectionsScreen> {
               color: AppColors.white,
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
+                  color: Colors.black.withAlpha(26),
                   blurRadius: 10,
                   offset: const Offset(0, -2),
                 ),
@@ -413,7 +429,7 @@ class _DirectionsScreenState extends State<DirectionsScreen> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
+                  color: color.withAlpha(26),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(icon, color: color, size: 24),
@@ -678,13 +694,13 @@ class _LocationSelectionSheetState extends State<_LocationSelectionSheet> {
                     
                     return Card(
                       elevation: isSelected ? 4 : 1,
-                      color: isSelected ? AppColors.primary.withOpacity(0.1) : null,
+                      color: isSelected ? AppColors.primary.withAlpha(26) : null,
                       margin: const EdgeInsets.only(bottom: 8),
                       child: ListTile(
                         leading: Container(
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
-                            color: _getCategoryColor(building.category).withOpacity(0.1),
+                            color: _getCategoryColor(building.category).withAlpha(26),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
@@ -735,7 +751,7 @@ class _LocationSelectionSheetState extends State<_LocationSelectionSheet> {
           });
         },
         backgroundColor: AppColors.ash,
-        selectedColor: AppColors.primary.withOpacity(0.2),
+        selectedColor: AppColors.primary.withAlpha(51),
         checkmarkColor: AppColors.primary,
         labelStyle: TextStyle(
           color: isSelected ? AppColors.primary : AppColors.darkGrey,

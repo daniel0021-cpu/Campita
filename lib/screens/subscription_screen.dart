@@ -71,12 +71,12 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
         color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: AppColors.primary.withOpacity(0.3),
+          color: AppColors.primary.withAlpha(77),
           width: 2,
         ),
         boxShadow: [
           BoxShadow(
-            color: AppColors.primary.withOpacity(0.1),
+            color: AppColors.primary.withAlpha(26),
             blurRadius: 20,
             offset: const Offset(0, 4),
           ),
@@ -90,7 +90,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.12),
+                  color: AppColors.primary.withAlpha(31),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(Icons.diamond_rounded, color: AppColors.primary, size: 28),
@@ -174,7 +174,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
         borderRadius: BorderRadius.circular(20),
         boxShadow: recommended ? [
           BoxShadow(
-            color: const Color(0xFFFFD700).withOpacity(0.3),
+            color: const Color(0xFFFFD700).withAlpha(77),
             blurRadius: 20,
             offset: const Offset(0, 4),
           ),
@@ -205,7 +205,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                     borderRadius: BorderRadius.circular(12),
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFFFFD700).withOpacity(0.4),
+                        color: const Color(0xFFFFD700).withAlpha(102),
                         blurRadius: 8,
                         offset: const Offset(0, 2),
                       ),
@@ -263,10 +263,10 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
               margin: const EdgeInsets.only(bottom: 12),
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: (f['color'] as Color).withOpacity(0.08),
+                color: (f['color'] as Color).withAlpha(20),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: (f['color'] as Color).withOpacity(0.2),
+                  color: (f['color'] as Color).withAlpha(51),
                   width: 1,
                 ),
               ),
@@ -275,7 +275,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: (f['color'] as Color).withOpacity(0.15),
+                      color: (f['color'] as Color).withAlpha(38),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Icon(
@@ -304,7 +304,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
           SizedBox(
             width: double.infinity,
             height: 52,
-            child: ElevatedButton(
+            child: _AnimatedPlanButton(
               onPressed: () async {
                 await _contactSupport();
                 if (context.mounted) {
@@ -316,14 +316,9 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                   );
                 }
               },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: recommended ? const Color(0xFFFFD700) : AppColors.primary,
-                foregroundColor: recommended ? Colors.black : Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                elevation: recommended ? 4 : 0,
-              ),
+              backgroundColor: recommended ? const Color(0xFFFFD700) : AppColors.primary,
+              foregroundColor: recommended ? Colors.black : Colors.white,
+              elevation: recommended ? 4 : 0,
               child: Text(
                 'Select Plan',
                 style: GoogleFonts.poppins(
@@ -403,12 +398,12 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
         color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: color.withOpacity(0.2),
+          color: color.withAlpha(51),
           width: 1.5,
         ),
         boxShadow: [
           BoxShadow(
-            color: color.withOpacity(0.1),
+            color: color.withAlpha(26),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -420,7 +415,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.15),
+              color: color.withAlpha(38),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(icon, color: color, size: 26),
@@ -451,6 +446,95 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// Animated Plan Button with Apple-style smooth animations
+class _AnimatedPlanButton extends StatefulWidget {
+  final VoidCallback onPressed;
+  final Color backgroundColor;
+  final Color foregroundColor;
+  final double elevation;
+  final Widget child;
+
+  const _AnimatedPlanButton({
+    required this.onPressed,
+    required this.backgroundColor,
+    required this.foregroundColor,
+    required this.elevation,
+    required this.child,
+  });
+
+  @override
+  State<_AnimatedPlanButton> createState() => _AnimatedPlanButtonState();
+}
+
+class _AnimatedPlanButtonState extends State<_AnimatedPlanButton>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 150),
+      vsync: this,
+    );
+
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.96).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _handleTapDown(TapDownDetails details) {
+    _controller.forward();
+  }
+
+  void _handleTapUp(TapUpDetails details) {
+    _controller.reverse();
+    widget.onPressed();
+  }
+
+  void _handleTapCancel() {
+    _controller.reverse();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: _handleTapDown,
+      onTapUp: _handleTapUp,
+      onTapCancel: _handleTapCancel,
+      child: ScaleTransition(
+        scale: _scaleAnimation,
+        child: Container(
+          decoration: BoxDecoration(
+            color: widget.backgroundColor,
+            borderRadius: BorderRadius.circular(14),
+            boxShadow: [
+              BoxShadow(
+                color: widget.backgroundColor.withAlpha(77),
+                blurRadius: widget.elevation * 3,
+                offset: Offset(0, widget.elevation),
+              ),
+            ],
+          ),
+          child: Center(
+            child: DefaultTextStyle(
+              style: TextStyle(color: widget.foregroundColor),
+              child: widget.child,
+            ),
+          ),
+        ),
       ),
     );
   }

@@ -16,11 +16,17 @@ class _EventsScreenState extends State<EventsScreen> with SingleTickerProviderSt
   final List<CampusEvent> _upcomingEvents = _sampleUpcomingEvents;
   final List<CampusEvent> _activeEvents = _sampleActiveEvents;
   final List<CampusEvent> _pastEvents = _samplePastEvents;
+  String? _selectedCategory; // null means show all
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+  }
+  
+  List<CampusEvent> _filterEvents(List<CampusEvent> events) {
+    if (_selectedCategory == null) return events;
+    return events.where((e) => e.category == _selectedCategory).toList();
   }
 
   @override
@@ -48,6 +54,17 @@ class _EventsScreenState extends State<EventsScreen> with SingleTickerProviderSt
         iconTheme: IconThemeData(
           color: isDark ? AppColors.white : AppColors.darkGrey,
         ),
+        actions: [
+          // Filter button
+          IconButton(
+            icon: Icon(
+              _selectedCategory == null ? Icons.filter_list_outlined : Icons.filter_list,
+              color: _selectedCategory != null ? AppColors.primary : (isDark ? AppColors.white : AppColors.darkGrey),
+            ),
+            onPressed: _showFilterDialog,
+            tooltip: 'Filter Events',
+          ),
+        ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(48),
           child: Container(
@@ -57,7 +74,7 @@ class _EventsScreenState extends State<EventsScreen> with SingleTickerProviderSt
               indicatorColor: AppColors.primary,
               indicatorWeight: 3,
               labelColor: AppColors.primary,
-              unselectedLabelColor: isDark ? AppColors.grey : AppColors.darkGrey.withOpacity(0.6),
+              unselectedLabelColor: isDark ? AppColors.grey : AppColors.darkGrey.withAlpha(153),
               labelStyle: GoogleFonts.notoSans(
                 fontSize: 15,
                 fontWeight: FontWeight.w700,
@@ -73,10 +90,11 @@ class _EventsScreenState extends State<EventsScreen> with SingleTickerProviderSt
       ),
       body: TabBarView(
         controller: _tabController,
+        physics: const ClampingScrollPhysics(), // Smoother, no bounce overshoot
         children: [
-          _buildRefreshableEventsList(_upcomingEvents, eventType: 'upcoming'),
-          _buildRefreshableEventsList(_activeEvents, eventType: 'active'),
-          _buildRefreshableEventsList(_pastEvents, eventType: 'past'),
+          _buildRefreshableEventsList(_filterEvents(_upcomingEvents), eventType: 'upcoming'),
+          _buildRefreshableEventsList(_filterEvents(_activeEvents), eventType: 'active'),
+          _buildRefreshableEventsList(_filterEvents(_pastEvents), eventType: 'past'),
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
@@ -161,13 +179,13 @@ class _EventsScreenState extends State<EventsScreen> with SingleTickerProviderSt
               width: 120,
               height: 120,
               decoration: BoxDecoration(
-                color: AppColors.primary.withOpacity(0.1),
+                color: AppColors.primary.withAlpha(26),
                 shape: BoxShape.circle,
               ),
               child: Icon(
                 icon,
                 size: 60,
-                color: AppColors.primary.withOpacity(0.5),
+                color: AppColors.primary.withAlpha(128),
               ),
             ),
             const SizedBox(height: 24),
@@ -187,6 +205,137 @@ class _EventsScreenState extends State<EventsScreen> with SingleTickerProviderSt
                 fontSize: 15,
                 color: AppColors.grey,
                 height: 1.5,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showFilterDialog() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final categories = ['All', 'Academic', 'Sports', 'Cultural', 'Social', 'Workshop', 'Seminar'];
+    
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      enableDrag: true,
+      builder: (context) => Container(
+        margin: const EdgeInsets.only(top: 100),
+        decoration: BoxDecoration(
+          color: isDark ? AppColors.darkCard : Colors.white,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withAlpha(0x33),
+              blurRadius: 30,
+              offset: const Offset(0, -10),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Drag handle
+            Container(
+              width: 40,
+              height: 4,
+              margin: const EdgeInsets.symmetric(vertical: 12),
+              decoration: BoxDecoration(
+                color: AppColors.grey.withAlpha(0x4D),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            // Header
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withAlpha(0x1A),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(Icons.filter_list_rounded, color: AppColors.primary, size: 24),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    'Filter Events',
+                    style: GoogleFonts.poppins(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textPrimaryAdaptive(context),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // Categories
+            Flexible(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                physics: const BouncingScrollPhysics(),
+                child: Column(
+                  children: categories.map((category) {
+                    final isSelected = (category == 'All' && _selectedCategory == null) || 
+                                      _selectedCategory == category;
+                    return AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      curve: Curves.easeOut,
+                      margin: const EdgeInsets.only(bottom: 8),
+                      decoration: BoxDecoration(
+                        color: isSelected 
+                            ? AppColors.primary.withAlpha(0x1F)
+                            : (isDark ? AppColors.darkSurface : AppColors.ash),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: isSelected 
+                              ? AppColors.primary
+                              : Colors.transparent,
+                          width: 2,
+                        ),
+                      ),
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: () {
+                            setState(() {
+                              _selectedCategory = category == 'All' ? null : category;
+                            });
+                            Navigator.pop(context);
+                          },
+                          borderRadius: BorderRadius.circular(14),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  isSelected ? Icons.check_circle_rounded : Icons.circle_outlined,
+                                  color: isSelected ? AppColors.primary : AppColors.grey,
+                                  size: 24,
+                                ),
+                                const SizedBox(width: 16),
+                                Text(
+                                  category,
+                                  style: GoogleFonts.notoSans(
+                                    fontSize: 15,
+                                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                                    color: isSelected 
+                                        ? AppColors.primary
+                                        : AppColors.textPrimaryAdaptive(context),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
               ),
             ),
           ],
@@ -238,13 +387,13 @@ class _EventsScreenState extends State<EventsScreen> with SingleTickerProviderSt
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: isDark 
-              ? AppColors.borderAdaptive(context).withOpacity(0.2)
+              ? AppColors.borderAdaptive(context).withAlpha(51)
               : Colors.grey.shade200,
           width: 1,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.3 : 0.08),
+            color: Colors.black.withAlpha(isDark ? 77 : 20),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -272,7 +421,7 @@ class _EventsScreenState extends State<EventsScreen> with SingleTickerProviderSt
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           colors: [
-                            event.categoryColor.withOpacity(0.8),
+                            event.categoryColor.withAlpha(204),
                             event.categoryColor,
                           ],
                           begin: Alignment.topLeft,
@@ -283,7 +432,7 @@ class _EventsScreenState extends State<EventsScreen> with SingleTickerProviderSt
                         child: Icon(
                           event.categoryIcon,
                           size: 60,
-                          color: Colors.white.withOpacity(0.7),
+                          color: Colors.white.withAlpha(179),
                         ),
                       ),
                     ),
@@ -296,7 +445,7 @@ class _EventsScreenState extends State<EventsScreen> with SingleTickerProviderSt
                     borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
                     gradient: LinearGradient(
                       colors: [
-                        event.categoryColor.withOpacity(0.8),
+                        event.categoryColor.withAlpha(204),
                         event.categoryColor,
                       ],
                       begin: Alignment.topLeft,
@@ -307,7 +456,7 @@ class _EventsScreenState extends State<EventsScreen> with SingleTickerProviderSt
                     child: Icon(
                       event.categoryIcon,
                       size: 60,
-                      color: Colors.white.withOpacity(0.7),
+                      color: Colors.white.withAlpha(179),
                     ),
                   ),
                 ),
@@ -322,7 +471,7 @@ class _EventsScreenState extends State<EventsScreen> with SingleTickerProviderSt
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
-                        color: event.categoryColor.withOpacity(0.15),
+                        color: event.categoryColor.withAlpha(38),
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text(
@@ -353,14 +502,14 @@ class _EventsScreenState extends State<EventsScreen> with SingleTickerProviderSt
                         Icon(
                           Icons.calendar_today,
                           size: 16,
-                          color: isDark ? AppColors.grey : AppColors.darkGrey.withOpacity(0.6),
+                          color: isDark ? AppColors.grey : AppColors.darkGrey.withAlpha(153),
                         ),
                         const SizedBox(width: 8),
                         Text(
                           DateFormat('MMM dd, yyyy • hh:mm a').format(event.dateTime),
                           style: GoogleFonts.notoSans(
                             fontSize: 14,
-                            color: isDark ? AppColors.grey : AppColors.darkGrey.withOpacity(0.7),
+                            color: isDark ? AppColors.grey : AppColors.darkGrey.withAlpha(179),
                           ),
                         ),
                       ],
@@ -373,7 +522,7 @@ class _EventsScreenState extends State<EventsScreen> with SingleTickerProviderSt
                         Icon(
                           Icons.location_on,
                           size: 16,
-                          color: isDark ? AppColors.grey : AppColors.darkGrey.withOpacity(0.6),
+                          color: isDark ? AppColors.grey : AppColors.darkGrey.withAlpha(153),
                         ),
                         const SizedBox(width: 8),
                         Expanded(
@@ -381,7 +530,7 @@ class _EventsScreenState extends State<EventsScreen> with SingleTickerProviderSt
                             event.location,
                             style: GoogleFonts.notoSans(
                               fontSize: 14,
-                              color: isDark ? AppColors.grey : AppColors.darkGrey.withOpacity(0.7),
+                              color: isDark ? AppColors.grey : AppColors.darkGrey.withAlpha(179),
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -521,7 +670,7 @@ class _EventsScreenState extends State<EventsScreen> with SingleTickerProviderSt
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
                             colors: [
-                              event.categoryColor.withOpacity(0.8),
+                              event.categoryColor.withAlpha(204),
                               event.categoryColor,
                             ],
                           ),
@@ -530,7 +679,7 @@ class _EventsScreenState extends State<EventsScreen> with SingleTickerProviderSt
                           child: Icon(
                             event.categoryIcon,
                             size: 80,
-                            color: Colors.white.withOpacity(0.7),
+                            color: Colors.white.withAlpha(179),
                           ),
                         ),
                       ),
@@ -542,7 +691,7 @@ class _EventsScreenState extends State<EventsScreen> with SingleTickerProviderSt
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         colors: [
-                          event.categoryColor.withOpacity(0.8),
+                          event.categoryColor.withAlpha(204),
                           event.categoryColor,
                         ],
                       ),
@@ -551,7 +700,7 @@ class _EventsScreenState extends State<EventsScreen> with SingleTickerProviderSt
                       child: Icon(
                         event.categoryIcon,
                         size: 80,
-                        color: Colors.white.withOpacity(0.7),
+                        color: Colors.white.withAlpha(179),
                       ),
                     ),
                   ),
@@ -565,7 +714,7 @@ class _EventsScreenState extends State<EventsScreen> with SingleTickerProviderSt
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                         decoration: BoxDecoration(
-                          color: event.categoryColor.withOpacity(0.15),
+                          color: event.categoryColor.withAlpha(38),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Text(
@@ -696,7 +845,7 @@ class _EventsScreenState extends State<EventsScreen> with SingleTickerProviderSt
         Container(
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: AppColors.primary.withOpacity(0.1),
+            color: AppColors.primary.withAlpha(26),
             borderRadius: BorderRadius.circular(10),
           ),
           child: Icon(
@@ -715,7 +864,7 @@ class _EventsScreenState extends State<EventsScreen> with SingleTickerProviderSt
                 style: GoogleFonts.notoSans(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
-                  color: isDark ? AppColors.grey : AppColors.darkGrey.withOpacity(0.6),
+                  color: isDark ? AppColors.grey : AppColors.darkGrey.withAlpha(153),
                 ),
               ),
               const SizedBox(height: 4),
@@ -965,7 +1114,7 @@ class _AnimatedEventCardState extends State<_AnimatedEventCard> with SingleTicke
                   ) : null,
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(isDark ? 0.3 : 0.08),
+                      color: Colors.black.withAlpha(isDark ? 77 : 20),
                       blurRadius: 12,
                       offset: const Offset(0, 4),
                     ),
@@ -982,7 +1131,7 @@ class _AnimatedEventCardState extends State<_AnimatedEventCard> with SingleTicke
                           Container(
                             padding: const EdgeInsets.all(10),
                             decoration: BoxDecoration(
-                              color: widget.event.categoryColor.withOpacity(0.15),
+                              color: widget.event.categoryColor.withAlpha(38),
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Icon(
@@ -1058,8 +1207,8 @@ class _AnimatedEventCardState extends State<_AnimatedEventCard> with SingleTicke
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
                         color: isDark
-                            ? Colors.white.withOpacity(0.05)
-                            : AppColors.grey.withOpacity(0.05),
+                            ? Colors.white.withAlpha(13)
+                            : AppColors.grey.withAlpha(13),
                         borderRadius: const BorderRadius.only(
                           bottomLeft: Radius.circular(20),
                           bottomRight: Radius.circular(20),
@@ -1266,7 +1415,7 @@ class _AddEventSheetState extends State<_AddEventSheet> with SingleTickerProvide
             borderRadius: BorderRadius.circular(32),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.3),
+                color: Colors.black.withAlpha(77),
                 blurRadius: 40,
                 offset: const Offset(0, -10),
               ),
@@ -1280,7 +1429,7 @@ class _AddEventSheetState extends State<_AddEventSheet> with SingleTickerProvide
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: AppColors.grey.withOpacity(0.3),
+                  color: AppColors.grey.withAlpha(77),
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -1301,7 +1450,7 @@ class _AddEventSheetState extends State<_AddEventSheet> with SingleTickerProvide
                             gradient: LinearGradient(
                               colors: [
                                 AppColors.primary,
-                                AppColors.primary.withOpacity(0.7),
+                                AppColors.primary.withAlpha(179),
                               ],
                             ),
                             borderRadius: BorderRadius.circular(14),
@@ -1355,8 +1504,8 @@ class _AddEventSheetState extends State<_AddEventSheet> with SingleTickerProvide
                         hintText: 'Enter event name',
                         filled: true,
                         fillColor: isDark 
-                            ? Colors.white.withOpacity(0.05)
-                            : AppColors.grey.withOpacity(0.05),
+                            ? Colors.white.withAlpha(13)
+                            : AppColors.grey.withAlpha(13),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(14),
                           borderSide: BorderSide.none,
@@ -1394,10 +1543,10 @@ class _AddEventSheetState extends State<_AddEventSheet> with SingleTickerProvide
                             ),
                             decoration: BoxDecoration(
                               color: isSelected
-                                  ? entry.value['color'].withOpacity(0.15)
+                                  ? entry.value['color'].withAlpha(38)
                                   : isDark
-                                      ? Colors.white.withOpacity(0.05)
-                                      : AppColors.grey.withOpacity(0.05),
+                                      ? Colors.white.withAlpha(13)
+                                      : AppColors.grey.withAlpha(13),
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(
                                 color: isSelected
@@ -1482,8 +1631,8 @@ class _AddEventSheetState extends State<_AddEventSheet> with SingleTickerProvide
                                   padding: const EdgeInsets.all(16),
                                   decoration: BoxDecoration(
                                     color: isDark
-                                        ? Colors.white.withOpacity(0.05)
-                                        : AppColors.grey.withOpacity(0.05),
+                                        ? Colors.white.withAlpha(13)
+                                        : AppColors.grey.withAlpha(13),
                                     borderRadius: BorderRadius.circular(14),
                                   ),
                                   child: Row(
@@ -1537,8 +1686,8 @@ class _AddEventSheetState extends State<_AddEventSheet> with SingleTickerProvide
                                   padding: const EdgeInsets.all(16),
                                   decoration: BoxDecoration(
                                     color: isDark
-                                        ? Colors.white.withOpacity(0.05)
-                                        : AppColors.grey.withOpacity(0.05),
+                                        ? Colors.white.withAlpha(13)
+                                        : AppColors.grey.withAlpha(13),
                                     borderRadius: BorderRadius.circular(14),
                                   ),
                                   child: Row(
@@ -1584,8 +1733,8 @@ class _AddEventSheetState extends State<_AddEventSheet> with SingleTickerProvide
                         hintText: 'Enter event location',
                         filled: true,
                         fillColor: isDark
-                            ? Colors.white.withOpacity(0.05)
-                            : AppColors.grey.withOpacity(0.05),
+                            ? Colors.white.withAlpha(13)
+                            : AppColors.grey.withAlpha(13),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(14),
                           borderSide: BorderSide.none,
@@ -1615,8 +1764,8 @@ class _AddEventSheetState extends State<_AddEventSheet> with SingleTickerProvide
                         hintText: 'Tell us about your event...',
                         filled: true,
                         fillColor: isDark
-                            ? Colors.white.withOpacity(0.05)
-                            : AppColors.grey.withOpacity(0.05),
+                            ? Colors.white.withAlpha(13)
+                            : AppColors.grey.withAlpha(13),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(14),
                           borderSide: BorderSide.none,
@@ -1789,7 +1938,7 @@ class _EventDetailSheetState extends State<_EventDetailSheet> with SingleTickerP
             borderRadius: BorderRadius.circular(32),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.3),
+                color: Colors.black.withAlpha(77),
                 blurRadius: 40,
                 offset: const Offset(0, -10),
               ),
@@ -1803,7 +1952,7 @@ class _EventDetailSheetState extends State<_EventDetailSheet> with SingleTickerP
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: AppColors.grey.withOpacity(0.3),
+                  color: AppColors.grey.withAlpha(77),
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -1821,7 +1970,7 @@ class _EventDetailSheetState extends State<_EventDetailSheet> with SingleTickerP
                         Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: widget.event.categoryColor.withOpacity(0.15),
+                            color: widget.event.categoryColor.withAlpha(38),
                             borderRadius: BorderRadius.circular(14),
                           ),
                           child: Icon(
@@ -1834,7 +1983,7 @@ class _EventDetailSheetState extends State<_EventDetailSheet> with SingleTickerP
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
                           decoration: BoxDecoration(
-                            color: widget.event.categoryColor.withOpacity(0.15),
+                            color: widget.event.categoryColor.withAlpha(38),
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Text(
@@ -1980,8 +2129,8 @@ class _EventDetailSheetState extends State<_EventDetailSheet> with SingleTickerP
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: isDark 
-            ? Colors.white.withOpacity(0.05) 
-            : AppColors.grey.withOpacity(0.05),
+            ? Colors.white.withAlpha(13) 
+            : AppColors.grey.withAlpha(13),
         borderRadius: BorderRadius.circular(14),
       ),
       child: Row(
@@ -1989,7 +2138,7 @@ class _EventDetailSheetState extends State<_EventDetailSheet> with SingleTickerP
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: AppColors.primary.withOpacity(0.12),
+              color: AppColors.primary.withAlpha(31),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(icon, color: AppColors.primary, size: 20),

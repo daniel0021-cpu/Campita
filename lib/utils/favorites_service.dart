@@ -50,3 +50,4 @@ class FavoritesService {
     _favoritesController.close();
   }
 }
+

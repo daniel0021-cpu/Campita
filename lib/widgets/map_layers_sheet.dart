@@ -59,7 +59,7 @@ class _MapLayersSheetState extends State<MapLayersSheet>
         onTap: _close,
         behavior: HitTestBehavior.opaque,
         child: Container(
-          color: Colors.black.withOpacity(0.4),
+          color: Colors.black.withAlpha(102),
           child: Center(
             child: ScaleTransition(
               scale: _scaleAnimation,
@@ -73,7 +73,7 @@ class _MapLayersSheetState extends State<MapLayersSheet>
                     borderRadius: BorderRadius.circular(24),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.3),
+                        color: Colors.black.withAlpha(77),
                         blurRadius: 40,
                         offset: const Offset(0, 20),
                         spreadRadius: 0,
@@ -92,7 +92,7 @@ class _MapLayersSheetState extends State<MapLayersSheet>
                               width: 40,
                               height: 40,
                               decoration: BoxDecoration(
-                                color: AppColors.primary.withOpacity(0.12),
+                                color: AppColors.primary.withAlpha(31),
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: Icon(
@@ -128,8 +128,8 @@ class _MapLayersSheetState extends State<MapLayersSheet>
                         height: 1,
                         thickness: 1,
                         color: isDark
-                            ? Colors.white.withOpacity(0.1)
-                            : Colors.black.withOpacity(0.06),
+                            ? Colors.white.withAlpha(26)
+                            : Colors.black.withAlpha(15),
                       ),
                       
                       // Map styles
@@ -225,17 +225,17 @@ class _MapLayersSheetState extends State<MapLayersSheet>
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: isSelected
-              ? AppColors.primary.withOpacity(0.12)
+              ? AppColors.primary.withAlpha(31)
               : (isDark
-                  ? Colors.grey[800]?.withOpacity(0.5)
+                  ? Colors.grey[800]?.withAlpha(128)
                   : AppColors.ash),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: isSelected
-                ? AppColors.primary.withOpacity(0.4)
+                ? AppColors.primary.withAlpha(102)
                 : (isDark
-                    ? Colors.white.withOpacity(0.05)
-                    : Colors.black.withOpacity(0.05)),
+                    ? Colors.white.withAlpha(13)
+                    : Colors.black.withAlpha(13)),
             width: isSelected ? 2 : 1,
           ),
         ),
@@ -246,7 +246,7 @@ class _MapLayersSheetState extends State<MapLayersSheet>
               height: 48,
               decoration: BoxDecoration(
                 color: isSelected
-                    ? AppColors.primary.withOpacity(0.15)
+                    ? AppColors.primary.withAlpha(38)
                     : (isDark
                         ? Colors.grey[700]
                         : Colors.white),
