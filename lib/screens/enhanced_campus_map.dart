@@ -713,7 +713,9 @@ out geom;
       _campusCenter,
       location,
     );
-    return distance <= okadaRadiusKm;
+    final isWithin = distance <= okadaRadiusKm;
+    debugPrint('📍 Bounds check: Location (${location.latitude}, ${location.longitude}) is ${distance.toStringAsFixed(2)}km from campus center. Within bounds: $isWithin');
+    return isWithin;
   }
 
   void _showOutsideOkadaWarning() {
@@ -825,30 +827,59 @@ out geom;
           throw Exception('Location permission permanently denied. Please enable in browser settings.');
         }
         
-        debugPrint('🟡 Getting GPS position (10 second timeout for web)...');
-        // Wait for GPS to be ready (10 seconds for web browsers - they're slower)
-        final position = await Geolocator.getCurrentPosition(
-          locationSettings: const LocationSettings(
-            accuracy: LocationAccuracy.high,
-            timeLimit: Duration(seconds: 10),
-          ),
-        ).timeout(
-          const Duration(seconds: 10),
-          onTimeout: () {
-            debugPrint('🔴 GPS timeout after 10 seconds');
-            throw TimeoutException('GPS took too long. Make sure location is enabled in your browser.');
-          },
-        );
+        debugPrint('🟡 Getting GPS position (15 second timeout for mobile)...');
+        // Wait for GPS to be ready (15 seconds for mobile devices - they need more time)
+        Position? position;
+        int retryCount = 0;
+        const maxRetries = 3;
+        
+        while (position == null && retryCount < maxRetries) {
+          try {
+            position = await Geolocator.getCurrentPosition(
+              locationSettings: LocationSettings(
+                accuracy: LocationAccuracy.high,
+                timeLimit: Duration(seconds: 15),
+              ),
+            ).timeout(
+              const Duration(seconds: 15),
+              onTimeout: () {
+                debugPrint('🔴 GPS timeout attempt ${retryCount + 1}/$maxRetries');
+                throw TimeoutException('GPS timeout');
+              },
+            );
+            
+            // Check if accuracy is good enough (< 50m for mobile)
+            if (position.accuracy > 50) {
+              debugPrint('⚠️ GPS accuracy poor (${position.accuracy}m), retrying...');
+              if (retryCount < maxRetries - 1) {
+                position = null;
+                await Future.delayed(Duration(seconds: 2));
+              }
+            }
+          } catch (e) {
+            retryCount++;
+            if (retryCount < maxRetries) {
+              debugPrint('🟡 GPS retry ${retryCount}/$maxRetries after error: $e');
+              await Future.delayed(Duration(seconds: 2));
+            } else {
+              throw TimeoutException('GPS took too long after $maxRetries attempts. Make sure location is enabled.');
+            }
+          }
+        }
+        
+        if (position == null) {
+          throw Exception('Could not get GPS position after $maxRetries attempts');
+        }
         
         final detectedLocation = LatLng(position.latitude, position.longitude);
-        debugPrint('🟢 Got GPS location: $detectedLocation');
+        debugPrint('🟢 Got GPS location: $detectedLocation with accuracy: ${position.accuracy}m');
         
         // Verify location is within reasonable bounds
         if (_isWithinOkadaBounds(detectedLocation)) {
           setState(() {
             _currentLocation = detectedLocation;
           });
-          debugPrint('✅ Location is within campus bounds, using it!');
+          debugPrint('✅ Location is within campus bounds, using GPS location for routing!');
           if (mounted) {
             showAnimatedSuccess(
               context,
@@ -859,7 +890,7 @@ out geom;
             );
           }
         } else {
-          debugPrint('⚠️ GPS location is outside campus bounds (${detectedLocation.latitude}, ${detectedLocation.longitude})');
+          debugPrint('⚠️ GPS location OUTSIDE campus bounds (${detectedLocation.latitude}, ${detectedLocation.longitude}) - using campus center instead');
           setState(() {
             _currentLocation = _campusCenter;
           });
@@ -895,17 +926,19 @@ out geom;
     }
     
     final start = _currentLocation ?? _campusCenter;
-    debugPrint('🟢 Starting route calculation from $start to ${destination.coordinates}');
+    debugPrint('🚀 ROUTE CALCULATION STARTING:');
+    debugPrint('   From: (${start.latitude}, ${start.longitude}) ${_currentLocation != null ? "[GPS]" : "[Campus Center Fallback]"}');
+    debugPrint('   To: ${destination.name} at (${destination.coordinates.latitude}, ${destination.coordinates.longitude})');
+    debugPrint('   Transport: $_transportMode');
     
     try {
       List<LatLng> routePoints = [];
       double distance = 0;
       double duration = 0;
       
-      debugPrint('🟢 Transport mode: $_transportMode');
       // Use different routing based on transport mode
       if (_transportMode == 'foot') {
-        debugPrint('🟢 Calculating footpath route...');
+        debugPrint('🚶 Calculating footpath route...');
         // Prefer dedicated footpaths; fallback to mixed pedestrian (footpaths + safe roads)
         print('Calculating walking route (footpaths preferred) from ${start.latitude},${start.longitude} to ${destination.coordinates.latitude},${destination.coordinates.longitude}');
         routePoints = await _calculateFootpathRoute(start, destination.coordinates);
