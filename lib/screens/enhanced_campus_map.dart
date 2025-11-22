@@ -1570,12 +1570,18 @@ out skel qt;
       }
     });
     
-    final maxDistance = 500.0; // Increased to 500m to find nodes better
-    if (minDistance < maxDistance && nearestId != null) {
-      print('Found nearest node at ${minDistance.toStringAsFixed(0)}m away');
+    // MOBILE FIX: Always return nearest node even if far away
+    // This prevents "no route found" when GPS location is not near a mapped path
+    if (nearestId != null) {
+      if (minDistance < 500.0) {
+        debugPrint('✅ Found nearest node at ${minDistance.toStringAsFixed(0)}m away');
+      } else {
+        debugPrint('⚠️ Nearest node is ${minDistance.toStringAsFixed(0)}m away (>500m) - using it anyway for mobile GPS');
+      }
       return nearestId;
     }
-    print('No node found within ${maxDistance}m (closest: ${minDistance.toStringAsFixed(0)}m)');
+    
+    debugPrint('❌ No nodes available in graph at all!');
     return null;
   }
 
