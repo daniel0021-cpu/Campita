@@ -1848,9 +1848,9 @@ out skel qt;
     // Optimize: only show markers at appropriate zoom level
     // Use _currentZoom state variable instead of mapController to avoid accessing before render
     final showAllMarkers = _currentZoom >= 14.0; // Lower threshold so markers show earlier
-    final showLabels = _currentZoom >= 15.0; // Show labels at slightly higher zoom
+    // Labels only shown on selected building to prevent map clutter
     
-    // Add building markers with labels
+    // Add building markers (labels only on selected)
     for (final building in buildingsToDisplay) {
       // Filter by category if selected
       if (_selectedCategory != null && building.category != _selectedCategory) {
@@ -1865,8 +1865,8 @@ out skel qt;
       markers.add(
         Marker(
           point: building.coordinates,
-          width: showLabels ? 120 : (isSelected ? 36 : 28),
-          height: showLabels ? 60 : (isSelected ? 36 : 28),
+          width: isSelected ? 120 : 28,
+          height: isSelected ? 60 : 28,
           child: GestureDetector(
             onTap: () => _showBuildingSheet(building),
             child: Column(

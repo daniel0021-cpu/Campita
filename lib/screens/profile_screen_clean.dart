@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'profile_screen_modern.dart';
+import 'profile_screen_redesigned.dart';
 
 /// Profile Screen Redirect
-/// This file now redirects to the ultra-modern ProfileScreenModern
+/// This file now redirects to the completely redesigned ProfileScreenRedesigned
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
@@ -14,12 +14,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   void initState() {
     super.initState();
-    // Automatically navigate to modern profile screen
+    // Automatically navigate to redesigned profile screen
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (_) => const ProfileScreenModern()),
+          MaterialPageRoute(builder: (_) => const ProfileScreenRedesigned()),
         );
       }
     });
