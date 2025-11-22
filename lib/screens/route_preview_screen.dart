@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -662,10 +663,11 @@ class _RoutePreviewScreenState extends State<RoutePreviewScreen>
                   delay: Duration(milliseconds: 100 + (index * 50)),
                   child: GestureDetector(
                   onTap: () {
+                    HapticFeedback.lightImpact();
                     setState(() => _selectedTransportMode = key);
                   },
                   child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 300),
+                    duration: const Duration(milliseconds: 250),
                     curve: Curves.easeOutCubic,
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     decoration: BoxDecoration(

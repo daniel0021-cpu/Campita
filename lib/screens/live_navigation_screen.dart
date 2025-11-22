@@ -1269,11 +1269,10 @@ class _LiveNavigationScreenState extends State<LiveNavigationScreen>
             ),
             children: [
               TileLayer(
-                urlTemplate: 'https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}.png',
+                urlTemplate: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                subdomains: const ['a', 'b', 'c'],
                 userAgentPackageName: 'com.example.campus_navigation',
-                additionalOptions: const {
-                  'attribution': 'Stadia Maps',
-                },
+                maxZoom: 19,
               ),
               if (widget.routePoints.isNotEmpty)
                 PolylineLayer(
