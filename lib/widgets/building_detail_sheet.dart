@@ -125,6 +125,86 @@ class _BuildingDetailSheetState extends State<BuildingDetailSheet>
     }
   }
 
+  void _show3DToast(BuildContext context, String message) {
+    final overlay = Overlay.of(context);
+    late OverlayEntry overlayEntry;
+    
+    overlayEntry = OverlayEntry(
+      builder: (context) => Positioned(
+        top: MediaQuery.of(context).padding.top + 60,
+        left: 20,
+        right: 20,
+        child: TweenAnimationBuilder<double>(
+          duration: const Duration(milliseconds: 600),
+          curve: const Cubic(0.175, 0.885, 0.32, 1.275),
+          tween: Tween(begin: 0.0, end: 1.0),
+          onEnd: () {
+            Future.delayed(const Duration(milliseconds: 1500), () {
+              overlayEntry.remove();
+            });
+          },
+          builder: (context, value, child) {
+            return Transform.scale(
+              scale: value,
+              child: Transform(
+                transform: Matrix4.identity()
+                  ..setEntry(3, 2, 0.001)
+                  ..rotateX((1 - value) * 0.3),
+                alignment: Alignment.center,
+                child: Opacity(
+                  opacity: value,
+                  child: Material(
+                    elevation: 8,
+                    borderRadius: BorderRadius.circular(20),
+                    shadowColor: AppColors.primary.withAlpha(128),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            AppColors.primary,
+                            AppColors.primary.withAlpha(230),
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation(Colors.white),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Flexible(
+                            child: Text(
+                              message,
+                              style: GoogleFonts.notoSans(
+                                color: Colors.white,
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+    
+    overlay.insert(overlayEntry);
+  }
+
   Future<bool?> _showElasticConfirmation(BuildContext context) async {
     return await showDialog<bool>(
       context: context,
@@ -648,6 +728,10 @@ class _BuildingDetailSheetState extends State<BuildingDetailSheet>
                   final isMobile = screenWidth < 600;
                   
                   if (isMobile) {
+                    // Show toast notification
+                    _show3DToast(context, 'Preparing your route...');
+                    await Future.delayed(const Duration(milliseconds: 500));
+                    
                     final confirmed = await _showElasticConfirmation(context);
                     if (confirmed == true) {
                       setState(() => isLoadingLocation = true);

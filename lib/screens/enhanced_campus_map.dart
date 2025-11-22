@@ -1072,8 +1072,9 @@ out geom;
         debugPrint('🟢 Route calculated successfully: ${routePoints.length} points, ${distance}m, mounted=$mounted');
         if (mounted) {
           debugPrint('🟢 Navigating to RoutePreviewScreen');
-          final result = await Navigator.of(context).push(MaterialPageRoute(
-            builder: (_) => RoutePreviewScreen(
+          final result = await Navigator.of(context).push(
+            PageRouteBuilder(
+              pageBuilder: (context, animation, secondaryAnimation) => RoutePreviewScreen(
               routePoints: routePoints,
               start: _currentLocation ?? _campusCenter,
               end: destination.coordinates,
@@ -1081,6 +1082,20 @@ out geom;
               durationSeconds: duration,
               transportMode: _transportMode,
             ),
+            transitionsBuilder: (context, animation, secondaryAnimation, child) {
+              return Transform(
+                transform: Matrix4.identity()
+                  ..setEntry(3, 2, 0.001)
+                  ..rotateY(animation.value * 0.3)
+                  ..scale(0.85 + (animation.value * 0.15)),
+                alignment: Alignment.center,
+                child: FadeTransition(
+                  opacity: animation,
+                  child: child,
+                ),
+              );
+            },
+            transitionDuration: const Duration(milliseconds: 600),
           ));
           debugPrint('🟢 Returned from RoutePreviewScreen');
           // Clear route if navigation was completed
