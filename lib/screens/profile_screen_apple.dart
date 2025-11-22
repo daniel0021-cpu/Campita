@@ -317,7 +317,7 @@ class _ProfileScreenAppleState extends State<ProfileScreenApple> with TickerProv
                   child: Center(
                     child: Text(
                       'Profile',
-                      style: GoogleFonts.sfProDisplay(
+                      style: GoogleFonts.inter(
                         fontSize: 17,
                         fontWeight: FontWeight.w600,
                         color: isDark ? Colors.white : Colors.black,
@@ -421,7 +421,7 @@ class _ProfileScreenAppleState extends State<ProfileScreenApple> with TickerProv
               // Name
               Text(
                 _userName,
-                style: GoogleFonts.sfProDisplay(
+                style: GoogleFonts.inter(
                   fontSize: 28,
                   fontWeight: FontWeight.w700,
                   color: isDark ? Colors.white : Colors.black,
@@ -453,7 +453,7 @@ class _ProfileScreenAppleState extends State<ProfileScreenApple> with TickerProv
                     const SizedBox(width: 6),
                     Text(
                       _department,
-                      style: GoogleFonts.sfProText(
+                      style: GoogleFonts.roboto(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
                         color: AppColors.primary,
@@ -494,7 +494,7 @@ class _ProfileScreenAppleState extends State<ProfileScreenApple> with TickerProv
                 const SizedBox(width: 8),
                 Text(
                   title,
-                  style: GoogleFonts.sfProText(
+                  style: GoogleFonts.roboto(
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
                     color: isDark ? Colors.white70 : Colors.black54,
@@ -532,7 +532,7 @@ class _ProfileScreenAppleState extends State<ProfileScreenApple> with TickerProv
               children: [
                 Text(
                   label,
-                  style: GoogleFonts.sfProText(
+                  style: GoogleFonts.roboto(
                     fontSize: 13,
                     fontWeight: FontWeight.w500,
                     color: isDark ? Colors.white60 : Colors.black45,
@@ -541,7 +541,7 @@ class _ProfileScreenAppleState extends State<ProfileScreenApple> with TickerProv
                 const SizedBox(height: 2),
                 Text(
                   value,
-                  style: GoogleFonts.sfProText(
+                  style: GoogleFonts.roboto(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
                     color: isDark ? Colors.white : Colors.black87,
@@ -586,7 +586,7 @@ class _ProfileScreenAppleState extends State<ProfileScreenApple> with TickerProv
           Expanded(
             child: Text(
               label,
-              style: GoogleFonts.sfProText(
+              style: GoogleFonts.roboto(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
                 color: isDark ? Colors.white : Colors.black87,
@@ -625,7 +625,7 @@ class _ProfileScreenAppleState extends State<ProfileScreenApple> with TickerProv
               children: [
                 Text(
                   label,
-                  style: GoogleFonts.sfProText(
+                  style: GoogleFonts.roboto(
                     fontSize: 13,
                     fontWeight: FontWeight.w500,
                     color: isDark ? Colors.white60 : Colors.black45,
@@ -634,7 +634,7 @@ class _ProfileScreenAppleState extends State<ProfileScreenApple> with TickerProv
                 const SizedBox(height: 2),
                 Text(
                   value,
-                  style: GoogleFonts.sfProText(
+                  style: GoogleFonts.roboto(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
                     color: AppColors.primary,
@@ -666,7 +666,7 @@ class _ProfileScreenAppleState extends State<ProfileScreenApple> with TickerProv
           const SizedBox(width: 10),
           Text(
             'Sign Out',
-            style: GoogleFonts.sfProText(
+            style: GoogleFonts.roboto(
               fontSize: 16,
               fontWeight: FontWeight.w600,
               color: Colors.red,
@@ -808,7 +808,7 @@ class _ProfileScreenAppleState extends State<ProfileScreenApple> with TickerProv
         children: [
           Text(
             'Edit ${_getFieldLabel(field)}',
-            style: GoogleFonts.sfProText(
+            style: GoogleFonts.roboto(
               fontSize: 18,
               fontWeight: FontWeight.w600,
             ),
@@ -1193,7 +1193,7 @@ class _SelectionSheet extends StatelessWidget {
             const SizedBox(height: 20),
             Text(
               title,
-              style: GoogleFonts.sfProText(
+              style: GoogleFonts.roboto(
                 fontSize: 17,
                 fontWeight: FontWeight.w600,
               ),
@@ -1204,7 +1204,7 @@ class _SelectionSheet extends StatelessWidget {
               return ListTile(
                 title: Text(
                   option,
-                  style: GoogleFonts.sfProText(
+                  style: GoogleFonts.roboto(
                     fontSize: 16,
                     fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
                     color: isSelected ? AppColors.primary : null,
@@ -1226,3 +1226,4 @@ class _SelectionSheet extends StatelessWidget {
     );
   }
 }
+
