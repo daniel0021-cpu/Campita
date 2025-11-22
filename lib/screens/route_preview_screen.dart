@@ -187,7 +187,12 @@ class _RoutePreviewScreenState extends State<RoutePreviewScreen>
             },
             transitionDuration: const Duration(milliseconds: 300),
           ),
-        );
+        ).then((_) {
+          // Clear route when returning from navigation
+          if (mounted) {
+            Navigator.of(context).pop({'clearRoute': true});
+          }
+        });
       }
     } else {
       _showTransportErrorMessage();
@@ -483,6 +488,7 @@ class _RoutePreviewScreenState extends State<RoutePreviewScreen>
                       ),
                     ),
                   ),
+                  ),
                 ),
               ),
 
@@ -666,10 +672,24 @@ class _RoutePreviewScreenState extends State<RoutePreviewScreen>
                     HapticFeedback.lightImpact();
                     setState(() => _selectedTransportMode = key);
                   },
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 250),
-                    curve: Curves.easeOutCubic,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
+                  child: TweenAnimationBuilder<double>(
+                    duration: const Duration(milliseconds: 500),
+                    curve: Curves.easeInOutCubic,
+                    tween: Tween(begin: 0.0, end: isSelected ? 1.0 : 0.0),
+                    builder: (context, value, child) {
+                      return Transform(
+                        transform: Matrix4.identity()
+                          ..setEntry(3, 2, 0.001)
+                          ..rotateY(value * 0.1)
+                          ..scale(1.0 + (value * 0.05)),
+                        alignment: Alignment.center,
+                        child: child,
+                      );
+                    },
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 250),
+                      curve: Curves.easeOutCubic,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
                     decoration: BoxDecoration(
                       gradient: isSelected
                           ? LinearGradient(
@@ -731,10 +751,11 @@ class _RoutePreviewScreenState extends State<RoutePreviewScreen>
                         ),
                       ],
                     ),
+                    ),
+                  ),
                   ),
                 ),
               ),
-            ),
             );
           }).toList(),
         ),

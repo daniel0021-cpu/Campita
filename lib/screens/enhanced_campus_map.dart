@@ -242,6 +242,11 @@ class _EnhancedCampusMapState extends State<EnhancedCampusMap> with TickerProvid
           _showBuildingSheet(widget.selectedBuilding!, fromSearch: true);
         }
       });
+    } else {
+      // Auto-show current location on app start (default behavior)
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _centerOnUserLocation();
+      });
     }
   }
 
@@ -1067,7 +1072,7 @@ out geom;
         debugPrint('🟢 Route calculated successfully: ${routePoints.length} points, ${distance}m, mounted=$mounted');
         if (mounted) {
           debugPrint('🟢 Navigating to RoutePreviewScreen');
-          await Navigator.of(context).push(MaterialPageRoute(
+          final result = await Navigator.of(context).push(MaterialPageRoute(
             builder: (_) => RoutePreviewScreen(
               routePoints: routePoints,
               start: _currentLocation ?? _campusCenter,
@@ -1078,6 +1083,10 @@ out geom;
             ),
           ));
           debugPrint('🟢 Returned from RoutePreviewScreen');
+          // Clear route if navigation was completed
+          if (result is Map && result['clearRoute'] == true) {
+            _clearRoute();
+          }
         }
         _fitRouteBounds();
       } else {
@@ -2073,6 +2082,14 @@ out skel qt;
       controller.dispose();
     }
     super.dispose();
+  }
+
+  void _centerOnUserLocation() {
+    if (_currentLocation != null) {
+      _mapController.move(_currentLocation!, 18.0);
+      setState(() => _mapRotation = 0.0);
+      _mapController.rotate(0.0);
+    }
   }
 
   @override

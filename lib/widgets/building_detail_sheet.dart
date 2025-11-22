@@ -125,6 +125,134 @@ class _BuildingDetailSheetState extends State<BuildingDetailSheet>
     }
   }
 
+  Future<bool?> _showElasticConfirmation(BuildContext context) async {
+    return await showDialog<bool>(
+      context: context,
+      barrierDismissible: true,
+      builder: (BuildContext dialogContext) {
+        return TweenAnimationBuilder<double>(
+          duration: const Duration(milliseconds: 600),
+          curve: const Cubic(0.175, 0.885, 0.32, 1.275), // Elastic curve
+          tween: Tween(begin: 0.0, end: 1.0),
+          builder: (context, value, child) {
+            return Transform.scale(
+              scale: value,
+              child: Opacity(
+                opacity: value,
+                child: child,
+              ),
+            );
+          },
+          child: AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(28),
+            ),
+            backgroundColor: Theme.of(context).brightness == Brightness.dark
+                ? AppColors.darkCard
+                : Colors.white,
+            contentPadding: const EdgeInsets.all(24),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        AppColors.primary,
+                        AppColors.primary.withAlpha(204),
+                      ],
+                    ),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.navigation_rounded,
+                    size: 48,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  'Getting Ready!',
+                  style: GoogleFonts.notoSans(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? Colors.white
+                        : AppColors.darkGrey,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'We\'ll calculate the best route to ${widget.building.name} and show you the directions.',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.notoSans(
+                    fontSize: 14,
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? Colors.white70
+                        : AppColors.grey,
+                    height: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextButton(
+                        onPressed: () => Navigator.of(dialogContext).pop(false),
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            side: BorderSide(
+                              color: AppColors.grey.withAlpha(77),
+                            ),
+                          ),
+                        ),
+                        child: Text(
+                          'Cancel',
+                          style: GoogleFonts.notoSans(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: Theme.of(context).brightness == Brightness.dark
+                                ? Colors.white70
+                                : AppColors.darkGrey,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () => Navigator.of(dialogContext).pop(true),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          elevation: 2,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                        child: Text(
+                          'Let\'s Go!',
+                          style: GoogleFonts.notoSans(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   IconData _getCategoryIcon(BuildingCategory category) {
     switch (category) {
       case BuildingCategory.academic:
@@ -515,15 +643,33 @@ class _BuildingDetailSheetState extends State<BuildingDetailSheet>
             child: InkWell(
               onTap: isLoadingLocation ? null : () async {
                 if (isStartButton) {
-                  setState(() => isLoadingLocation = true);
+                  // Show elastic confirmation dialog on mobile
+                  final screenWidth = MediaQuery.of(context).size.width;
+                  final isMobile = screenWidth < 600;
                   
-                  // Get location instantly with highest accuracy
-                  try {
-                    await Future.delayed(const Duration(milliseconds: 50)); // Minimal delay for animation
-                    onTap();
-                  } finally {
-                    if (context.mounted) {
-                      setState(() => isLoadingLocation = false);
+                  if (isMobile) {
+                    final confirmed = await _showElasticConfirmation(context);
+                    if (confirmed == true) {
+                      setState(() => isLoadingLocation = true);
+                      try {
+                        await Future.delayed(const Duration(milliseconds: 50));
+                        onTap();
+                      } finally {
+                        if (context.mounted) {
+                          setState(() => isLoadingLocation = false);
+                        }
+                      }
+                    }
+                  } else {
+                    // Desktop - no confirmation needed
+                    setState(() => isLoadingLocation = true);
+                    try {
+                      await Future.delayed(const Duration(milliseconds: 50));
+                      onTap();
+                    } finally {
+                      if (context.mounted) {
+                        setState(() => isLoadingLocation = false);
+                      }
                     }
                   }
                 } else {

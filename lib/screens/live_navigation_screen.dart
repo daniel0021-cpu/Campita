@@ -1,8 +1,11 @@
 import 'dart:async';
 import 'dart:math';
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:sensors_plus/sensors_plus.dart';
+import 'dart:async' as async;
 import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:flutter_compass/flutter_compass.dart';
@@ -97,6 +100,14 @@ class _LiveNavigationScreenState extends State<LiveNavigationScreen>
   
   // Real-time arrival tracking
   DateTime? _estimatedArrivalTime;
+  
+  // Map dragging control
+  bool _userIsDraggingMap = false;
+  Timer? _resetDraggingTimer;
+  
+  // Gyroscope rotation
+  async.StreamSubscription<GyroscopeEvent>? _gyroscopeSubscription;
+  double _deviceRotation = 0.0;
 
   @override
   void initState() {
@@ -105,6 +116,7 @@ class _LiveNavigationScreenState extends State<LiveNavigationScreen>
     _initCompass();
     _initializeTTS();
     _startInstructionUpdates();
+    _initGyroscope();
     
     _infoSheetController = AnimationController(
       vsync: this,
@@ -167,6 +179,22 @@ class _LiveNavigationScreenState extends State<LiveNavigationScreen>
           _mapBearing = _userHeading;
         });
         _mapController.rotate(_mapBearing);
+      }
+    });
+  }
+  
+  void _initGyroscope() {
+    _gyroscopeSubscription = gyroscopeEventStream().listen((GyroscopeEvent event) {
+      if (mounted) {
+        setState(() {
+          // Use Z-axis rotation (rotation around vertical axis)
+          _deviceRotation += event.z * 0.5; // Adjust sensitivity
+          // Keep rotation in 0-360 range
+          _deviceRotation = _deviceRotation % 360;
+          if (_deviceRotation < 0) _deviceRotation += 360;
+        });
+        // Smoothly rotate map to match device rotation
+        _mapController.rotate(-_deviceRotation);
       }
     });
   }
@@ -577,7 +605,10 @@ class _LiveNavigationScreenState extends State<LiveNavigationScreen>
         final loc = LatLng(p.latitude, p.longitude);
         setState(() => _currentLocation = loc);
         _updateStats();
-        _mapController.move(loc, _mapController.camera.zoom);
+        // Only auto-center if user hasn't manually moved the map recently
+        if (!_userIsDraggingMap) {
+          _mapController.move(loc, _mapController.camera.zoom);
+        }
       });
       _updateStats();
     } catch (_) {}
@@ -589,6 +620,7 @@ class _LiveNavigationScreenState extends State<LiveNavigationScreen>
     _compassSub?.cancel();
     _instructionTimer?.cancel();
     _songProgressTimer?.cancel();
+    _resetDraggingTimer?.cancel();
     _infoSheetController?.dispose();
     _musicController?.dispose();
     _musicSearchController?.dispose();
@@ -1266,6 +1298,19 @@ class _LiveNavigationScreenState extends State<LiveNavigationScreen>
             options: MapOptions(
               initialCenter: _currentLocation ?? widget.routePoints.first,
               initialZoom: _is3DView ? 19.0 : 17.0,
+              onPositionChanged: (position, hasGesture) {
+                if (hasGesture) {
+                  // User is dragging the map
+                  setState(() => _userIsDraggingMap = true);
+                  // Reset after 5 seconds of no interaction
+                  _resetDraggingTimer?.cancel();
+                  _resetDraggingTimer = Timer(const Duration(seconds: 5), () {
+                    if (mounted) {
+                      setState(() => _userIsDraggingMap = false);
+                    }
+                  });
+                }
+              },
             ),
             children: [
               TileLayer(
@@ -1290,67 +1335,149 @@ class _LiveNavigationScreenState extends State<LiveNavigationScreen>
                 if (_currentLocation != null)
                   Marker(
                     point: _currentLocation!,
-                    width: 70,
-                    height: 70,
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        // Pulsing blue glow
-                        Container(
-                          width: 50,
-                          height: 50,
-                          decoration: BoxDecoration(
-                            color: Colors.blue.withValues(alpha: 0.2),
-                            shape: BoxShape.circle,
+                    width: 80,
+                    height: 80,
+                    child: Transform.rotate(
+                      angle: _deviceRotation * 3.141592653589793 / 180.0,
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          // Outer pulsing glow (Apple-style)
+                          TweenAnimationBuilder<double>(
+                            duration: const Duration(milliseconds: 1500),
+                            tween: Tween(begin: 0.8, end: 1.2),
+                            curve: Curves.easeInOut,
+                            builder: (context, value, child) {
+                              return Transform.scale(
+                                scale: value,
+                                child: Container(
+                                  width: 60,
+                                  height: 60,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF007AFF).withValues(alpha: 0.3),
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                              );
+                            },
+                            onEnd: () {
+                              if (mounted) setState(() {});
+                            },
                           ),
-                        ),
-                        // Inner blue dot
-                        Container(
-                          width: 20,
-                          height: 20,
-                          decoration: BoxDecoration(
-                            color: Colors.blue,
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white, width: 3),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.blue.withValues(alpha: 0.5),
-                                blurRadius: 8,
-                                spreadRadius: 2,
+                          // Middle glow
+                          Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF007AFF).withValues(alpha: 0.5),
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          // Inner circle (Apple blue)
+                          Container(
+                            width: 24,
+                            height: 24,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF007AFF),
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white, width: 3),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(0xFF007AFF).withValues(alpha: 0.6),
+                                  blurRadius: 12,
+                                  spreadRadius: 3,
+                                ),
+                              ],
+                            ),
+                          ),
+                          // Direction chevron (Apple-style)
+                          Positioned(
+                            top: 0,
+                            child: Transform.rotate(
+                              angle: (_userHeading - _deviceRotation) * 3.141592653589793 / 180.0,
+                              child: Container(
+                                padding: const EdgeInsets.all(4),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF007AFF),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: const Icon(
+                                  Icons.arrow_upward_rounded,
+                                  color: Colors.white,
+                                  size: 16,
+                                  shadows: [
+                                    Shadow(
+                                      color: Colors.black38,
+                                      blurRadius: 2,
+                                    ),
+                                  ],
+                                ),
                               ),
-                            ],
+                            ),
                           ),
-                        ),
-                        // Direction arrow (rotates with device heading)
-                        Transform.rotate(
-                          angle: (_userHeading) * 3.141592653589793 / 180.0,
-                          child: Icon(
-                            Icons.navigation_rounded,
-                            color: Colors.white,
-                            size: 24,
-                            shadows: [
-                              Shadow(
-                                color: Colors.black.withValues(alpha: 0.5),
-                                blurRadius: 4,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 Marker(
                   point: widget.destination,
-                  width: 48,
-                  height: 48,
-                  child: Icon(
-                    Icons.place_rounded,
-                    color: AppColors.error,
-                    size: 48,
-                    shadows: [
-                      Shadow(
-                        color: Colors.black.withValues(alpha: 0.3),
-                        blurRadius: 8,
+                  width: 44,
+                  height: 54,
+                  alignment: Alignment.topCenter,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      // Shadow
+                      Positioned(
+                        bottom: 0,
+                        child: Container(
+                          width: 16,
+                          height: 6,
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.3),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                      ),
+                      // Apple-style pin
+                      Positioned(
+                        top: 0,
+                        child: Column(
+                          children: [
+                            Container(
+                              width: 36,
+                              height: 36,
+                              decoration: BoxDecoration(
+                                gradient: const LinearGradient(
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
+                                  colors: [
+                                    Color(0xFFFF3B30),
+                                    Color(0xFFDC143C),
+                                  ],
+                                ),
+                                shape: BoxShape.circle,
+                                border: Border.all(color: Colors.white, width: 3),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.3),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                              ),
+                              child: const Icon(
+                                Icons.circle,
+                                color: Colors.white,
+                                size: 8,
+                              ),
+                            ),
+                            CustomPaint(
+                              size: const Size(8, 12),
+                              painter: _PinTailPainter(),
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
@@ -2471,7 +2598,26 @@ class _LiveNavigationScreenState extends State<LiveNavigationScreen>
                       borderRadius: BorderRadius.circular(16),
                       onTap: () {
                         HapticFeedback.mediumImpact();
-                        Navigator.pop(context);
+                        // 3D exit animation
+                        Navigator.of(context).push(
+                          PageRouteBuilder(
+                            pageBuilder: (context, animation, secondaryAnimation) => Container(),
+                            transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                              return FadeTransition(
+                                opacity: Tween<double>(begin: 1.0, end: 0.0).animate(animation),
+                                child: Transform(
+                                  transform: Matrix4.identity()
+                                    ..setEntry(3, 2, 0.001)
+                                    ..rotateX(animation.value * 1.5)
+                                    ..scale(1.0 - (animation.value * 0.3)),
+                                  alignment: Alignment.center,
+                                  child: Builder(builder: (context) => Container()),
+                                ),
+                              );
+                            },
+                            transitionDuration: const Duration(milliseconds: 400),
+                          ),
+                        ).then((_) => Navigator.pop(context));
                       },
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 200),
@@ -2789,4 +2935,25 @@ class _LiveNavigationScreenState extends State<LiveNavigationScreen>
       ),
     );
   }
+}
+
+// Custom painter for Apple-style pin tail
+class _PinTailPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = const Color(0xFFDC143C)
+      ..style = PaintingStyle.fill;
+
+    final uiPath = ui.Path();
+    uiPath.moveTo(size.width / 2, 0);
+    uiPath.lineTo(0, size.height);
+    uiPath.lineTo(size.width, size.height);
+    uiPath.close();
+
+    canvas.drawPath(uiPath, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

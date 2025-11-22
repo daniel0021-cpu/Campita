@@ -426,8 +426,17 @@ class _MusicPlayerSheetState extends State<MusicPlayerSheet>
 
   Widget _buildExpandedSheet(bool isDark) {
     final screenHeight = MediaQuery.of(context).size.height;
+    final screenWidth = MediaQuery.of(context).size.width;
     final safeTop = MediaQuery.of(context).padding.top;
     final safeBottom = MediaQuery.of(context).padding.bottom;
+    final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
+    
+    // Responsive height: smaller on mobile, accounts for keyboard
+    final isMobile = screenWidth < 600;
+    final availableHeight = screenHeight - safeTop - safeBottom - keyboardHeight;
+    final maxSheetHeight = isMobile 
+        ? availableHeight * 0.85  // 85% on mobile
+        : availableHeight * 0.75; // 75% on larger screens
     
     return Material(
       elevation: 24,
@@ -435,10 +444,10 @@ class _MusicPlayerSheetState extends State<MusicPlayerSheet>
       shadowColor: AppColors.primary.withAlpha(77),
       child: Container(
         key: const ValueKey('expanded'),
-        width: MediaQuery.of(context).size.width - 32,
+        width: screenWidth - 32,
         constraints: BoxConstraints(
           maxWidth: 600,
-          maxHeight: (screenHeight - safeTop - safeBottom) * 0.75,
+          maxHeight: maxSheetHeight,
         ),
         decoration: BoxDecoration(
           gradient: LinearGradient(
@@ -473,27 +482,30 @@ class _MusicPlayerSheetState extends State<MusicPlayerSheet>
               // Search bar
               _buildSearchBar(isDark),
               
-              // Content area with proper constraints
+              // Content area with proper constraints - now scrollable
               Flexible(
-                child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 400),
-                  switchInCurve: Curves.easeOutCubic,
-                  switchOutCurve: Curves.easeInCubic,
-                  transitionBuilder: (child, animation) {
-                    return FadeTransition(
-                      opacity: animation,
-                      child: SlideTransition(
-                        position: Tween<Offset>(
-                          begin: const Offset(0, 0.1),
-                          end: Offset.zero,
-                        ).animate(animation),
-                        child: child,
-                      ),
-                    );
-                  },
-                  child: _isSearching
-                      ? _buildSearchResults(isDark)
-                      : _buildNowPlaying(isDark),
+                child: SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 400),
+                    switchInCurve: Curves.easeOutCubic,
+                    switchOutCurve: Curves.easeInCubic,
+                    transitionBuilder: (child, animation) {
+                      return FadeTransition(
+                        opacity: animation,
+                        child: SlideTransition(
+                          position: Tween<Offset>(
+                            begin: const Offset(0, 0.1),
+                            end: Offset.zero,
+                          ).animate(animation),
+                          child: child,
+                        ),
+                      );
+                    },
+                    child: _isSearching
+                        ? _buildSearchResults(isDark)
+                        : _buildNowPlaying(isDark),
+                  ),
                 ),
               ),
               
