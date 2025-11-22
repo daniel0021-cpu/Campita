@@ -929,6 +929,14 @@ class _VoiceSearchDialogWidgetState extends State<_VoiceSearchDialogWidget>
       _recognition!.interimResults = true; // Show partial results
       _recognition!.lang = 'en-US';
       
+      // Extended settings for better microphone detection
+      try {
+        // @ts-ignore - these properties may not be in TypeScript definitions
+        (_recognition as dynamic).grammars = null;
+      } catch (e) {
+        debugPrint('Could not set grammars: $e');
+      }
+      
       try {
         _recognition!.maxAlternatives = 3;
       } catch (e) {
@@ -1004,11 +1012,11 @@ class _VoiceSearchDialogWidgetState extends State<_VoiceSearchDialogWidget>
           } else if (error.error == 'network') {
             message = 'Network error. Please check your connection.';
           } else if (error.error == 'no-speech') {
-            message = 'No speech detected';
+            message = 'No speech detected.\n\nTap to try again';
             setState(() {
               _listeningText = message;
               _isListening = false;
-              _hasError = false; // Allow retry
+              _hasError = true; // Show error icon
             });
             return;
           } else if (error.error == 'audio-capture') {
@@ -1032,9 +1040,9 @@ class _VoiceSearchDialogWidgetState extends State<_VoiceSearchDialogWidget>
         
         if (mounted && _spokenText.isEmpty && _isListening) {
           setState(() {
-            _listeningText = 'No speech detected';
+            _listeningText = 'No speech detected.\n\nTap to try again';
             _isListening = false;
-            _hasError = false;
+            _hasError = true; // Show error icon not checkmark
           });
         }
       });
@@ -1064,7 +1072,7 @@ class _VoiceSearchDialogWidgetState extends State<_VoiceSearchDialogWidget>
     setState(() {
       _isListening = true;
       _hasError = false;
-      _listeningText = 'Listening...';
+      _listeningText = 'Listening...\n\nSpeak now';
       _spokenText = '';
     });
     

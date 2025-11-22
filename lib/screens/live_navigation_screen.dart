@@ -542,6 +542,21 @@ class _LiveNavigationScreenState extends State<LiveNavigationScreen>
 
   Future<void> _initLocation() async {
     try {
+      // Check and request location permissions first (critical for mobile)
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          debugPrint('Location permissions denied');
+          return;
+        }
+      }
+      
+      if (permission == LocationPermission.deniedForever) {
+        debugPrint('Location permissions permanently denied');
+        return;
+      }
+      
       // Get initial position with highest accuracy
       final pos = await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(
