@@ -136,7 +136,7 @@ class _ProfileScreenRedesignedState extends State<ProfileScreenRedesigned> with 
                 child: ListView(
                   controller: _scrollController,
                   padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
-                  physics: const ClampingScrollPhysics(), // NO BOUNCE - NO AUTO REFRESH
+                  physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()), // ULTRA SMOOTH SCROLLING
                 children: [
                   const SizedBox(height: 20),
                   
@@ -221,7 +221,7 @@ class _ProfileScreenRedesignedState extends State<ProfileScreenRedesigned> with 
 
   Widget _buildTopBar(bool isDark) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF1E293B) : Colors.white,
         boxShadow: [
@@ -232,28 +232,15 @@ class _ProfileScreenRedesignedState extends State<ProfileScreenRedesigned> with 
           ),
         ],
       ),
-      child: Row(
-        children: [
-          IconButton(
-            icon: Icon(Icons.arrow_back_ios_new_rounded, color: isDark ? Colors.white : Colors.black, size: 20),
-            onPressed: () {
-              HapticFeedback.lightImpact();
-              Navigator.pop(context);
-            },
+      child: Center(
+        child: Text(
+          'My Profile',
+          style: GoogleFonts.inter(
+            fontSize: 20,
+            fontWeight: FontWeight.w800,
+            color: isDark ? Colors.white : Colors.black,
           ),
-          Expanded(
-            child: Text(
-              'My Profile',
-              textAlign: TextAlign.center,
-              style: GoogleFonts.inter(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: isDark ? Colors.white : Colors.black,
-              ),
-            ),
-          ),
-          const SizedBox(width: 48), // Balance for back button
-        ],
+        ),
       ),
     );
   }
@@ -421,8 +408,22 @@ class _ProfileScreenRedesignedState extends State<ProfileScreenRedesigned> with 
     );
   }
 
+  Color _getIconColor(String label) {
+    switch (label) {
+      case 'Student ID': return const Color(0xFFFFA500); // Orange
+      case 'Department': return const Color(0xFF9C27B0); // Purple
+      case 'Level': return const Color(0xFF4CAF50); // Green
+      case 'Email': return const Color(0xFFE91E63); // Pink
+      case 'Phone': return const Color(0xFF00BCD4); // Cyan
+      case 'Hostel': return const Color(0xFFFF5722); // Deep Orange
+      case 'Room Number': return const Color(0xFF795548); // Brown
+      default: return AppColors.primary;
+    }
+  }
+
   Widget _buildInfoPill(String label, String value, IconData icon, bool isDark, VoidCallback onTap) {
     final isEmpty = value.startsWith('Add ');
+    final iconColor = _getIconColor(label);
     return GestureDetector(
       onTap: () {
         HapticFeedback.lightImpact();
@@ -434,12 +435,12 @@ class _ProfileScreenRedesignedState extends State<ProfileScreenRedesigned> with 
           color: isDark ? const Color(0xFF1E293B) : Colors.white,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: isEmpty ? (isDark ? Colors.white10 : Colors.black.withAlpha(25)) : AppColors.primary.withAlpha(51),
+            color: isEmpty ? (isDark ? Colors.white10 : Colors.black.withAlpha(25)) : iconColor.withAlpha(51),
             width: 1.5,
           ),
           boxShadow: [
             BoxShadow(
-              color: isEmpty ? Colors.transparent : AppColors.primary.withAlpha(13),
+              color: isEmpty ? Colors.transparent : iconColor.withAlpha(13),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -450,12 +451,12 @@ class _ProfileScreenRedesignedState extends State<ProfileScreenRedesigned> with 
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: isEmpty ? (isDark ? Colors.white10 : Colors.black.withAlpha(12)) : AppColors.primary.withAlpha(25),
+                color: isEmpty ? (isDark ? Colors.white10 : Colors.black.withAlpha(12)) : iconColor.withAlpha(25),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(
                 icon,
-                color: isEmpty ? Colors.grey : AppColors.primary,
+                color: isEmpty ? Colors.grey : iconColor,
                 size: 20,
               ),
             ),
@@ -611,7 +612,18 @@ class _ProfileScreenRedesignedState extends State<ProfileScreenRedesigned> with 
     );
   }
 
+  Color _getNavigationColor(String title) {
+    switch (title) {
+      case 'Settings': return const Color(0xFF607D8B); // Blue Grey
+      case 'About': return const Color(0xFF2196F3); // Blue
+      case 'Help & Support': return const Color(0xFF4CAF50); // Green
+      case 'User Guide': return const Color(0xFFFF9800); // Orange
+      default: return AppColors.primary;
+    }
+  }
+
   Widget _buildNavigationPill(String title, String subtitle, IconData icon, bool isDark, VoidCallback onTap) {
+    final navColor = _getNavigationColor(title);
     return GestureDetector(
       onTap: () {
         HapticFeedback.lightImpact();
@@ -639,10 +651,10 @@ class _ProfileScreenRedesignedState extends State<ProfileScreenRedesigned> with 
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: AppColors.primary.withAlpha(25),
+                color: navColor.withAlpha(25),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Icon(icon, color: AppColors.primary, size: 20),
+              child: Icon(icon, color: navColor, size: 20),
             ),
             const SizedBox(width: 14),
             Expanded(
@@ -867,21 +879,6 @@ class _ProfileScreenRedesignedState extends State<ProfileScreenRedesigned> with 
     });
   }
 
-  Future<void> _updateSelection(String key, String value) async {
-    setState(() {
-      switch (key) {
-        case 'mapStyle':
-          _mapStyle = value;
-          _prefs.saveString(PreferencesKeys.mapStyle, value);
-          AppSettings.mapStyle.value = value;
-          break;
-        case 'transport':
-          _transportMode = value;
-          _prefs.saveString(PreferencesKeys.lastTransportMode, value);
-          break;
-      }
-    });
-  }
 }
 
 // Smooth Modern Switch
