@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'profile_screen_apple.dart';
+import 'profile_screen_modern.dart';
 
 /// Profile Screen Redirect
-/// This file now redirects to the new Apple-style ProfileScreenApple
+/// This file now redirects to the ultra-modern ProfileScreenModern
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
@@ -14,12 +14,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   void initState() {
     super.initState();
-    // Automatically navigate to Apple-style profile screen
+    // Automatically navigate to modern profile screen
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (_) => const ProfileScreenApple()),
+          MaterialPageRoute(builder: (_) => const ProfileScreenModern()),
         );
       }
     });

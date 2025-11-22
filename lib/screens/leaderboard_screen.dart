@@ -683,10 +683,10 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
       ),
       child: Row(
         children: [
-          // Rank
+          // Rank - with improved visibility
           Container(
-            width: 36,
-            height: 36,
+            width: 40,
+            height: 40,
             decoration: BoxDecoration(
               gradient: user.isCurrentUser
                   ? const LinearGradient(
@@ -695,24 +695,32 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
                   : const LinearGradient(
                       colors: [Color(0xFF9CA3AF), Color(0xFF6B7280)],
                     ),
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: (user.isCurrentUser ? AppColors.primary : Colors.grey).withOpacity(0.3),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
             child: Center(
               child: Text(
                 '#${user.rank}',
                 style: GoogleFonts.poppins(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w800,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w900,
                   color: Colors.white,
+                  letterSpacing: -0.5,
                 ),
               ),
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 14),
 
           // Badge
           _buildSmallBadge(user),
-          const SizedBox(width: 12),
+          const SizedBox(width: 14),
 
           // Name and Level
           Expanded(

@@ -1900,8 +1900,8 @@ out skel qt;
                     ),
                   ),
                 ),
-                // Building name label (only at higher zoom)
-                if (showLabels || isSelected) ...[
+                // Building name label (only show for selected building to avoid clutter)
+                if (isSelected) ...[
                   const SizedBox(height: 4),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
@@ -1920,7 +1920,7 @@ out skel qt;
                       building.name,
                       style: GoogleFonts.notoSans(
                         fontSize: 11,
-                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                        fontWeight: FontWeight.w600,
                         color: _getCategoryColor(building.category),
                       ),
                       maxLines: 2,
