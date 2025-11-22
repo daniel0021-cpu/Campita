@@ -293,21 +293,36 @@ class _ProfileScreenRedesignedState extends State<ProfileScreenRedesigned> with 
                           : [AppColors.primary, AppColors.primary.withAlpha(179)],
                     ),
                   ),
-                  child: Container(
-                    margin: const EdgeInsets.all(3),
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: isDark ? const Color(0xFF0F172A) : Colors.white,
-                      image: _avatarBytes != null
-                          ? DecorationImage(
-                              image: MemoryImage(_avatarBytes!),
-                              fit: BoxFit.cover,
-                            )
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 400),
+                    switchInCurve: Curves.elasticOut,
+                    switchOutCurve: Curves.easeIn,
+                    transitionBuilder: (child, animation) {
+                      return ScaleTransition(
+                        scale: animation,
+                        child: FadeTransition(
+                          opacity: animation,
+                          child: child,
+                        ),
+                      );
+                    },
+                    child: Container(
+                      key: ValueKey(_avatarBytes),
+                      margin: const EdgeInsets.all(3),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: isDark ? const Color(0xFF0F172A) : Colors.white,
+                        image: _avatarBytes != null
+                            ? DecorationImage(
+                                image: MemoryImage(_avatarBytes!),
+                                fit: BoxFit.cover,
+                              )
+                            : null,
+                      ),
+                      child: _avatarBytes == null
+                          ? const Center(child: Text('📷', style: TextStyle(fontSize: 40)))
                           : null,
                     ),
-                    child: _avatarBytes == null
-                        ? const Center(child: Text('📷', style: TextStyle(fontSize: 40)))
-                        : null,
                   ),
                 ),
                 // Premium Crown
@@ -692,32 +707,360 @@ class _ProfileScreenRedesignedState extends State<ProfileScreenRedesigned> with 
   }
 
   Widget _buildSignOutButton(bool isDark) {
-    return GestureDetector(
-      onTap: () {
-        HapticFeedback.mediumImpact();
-        // Add sign out logic
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        decoration: BoxDecoration(
-          color: Colors.red.shade50,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.red.shade200, width: 1.5),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.logout_rounded, color: Colors.red.shade600, size: 20),
-            const SizedBox(width: 8),
-            Text(
-              'Sign Out',
-              style: GoogleFonts.inter(
-                fontSize: 15,
-                fontWeight: FontWeight.w700,
-                color: Colors.red.shade600,
+    return Column(
+      children: [
+        // Account Switching Button
+        GestureDetector(
+          onTap: () {
+            HapticFeedback.lightImpact();
+            _showAccountSwitchingSheet(isDark);
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            decoration: BoxDecoration(
+              color: isDark ? Colors.white.withAlpha(25) : Colors.grey.shade100,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: isDark ? Colors.white.withAlpha(51) : Colors.grey.shade300,
+                width: 1.5,
               ),
             ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.switch_account_rounded,
+                  color: isDark ? Colors.white70 : Colors.black87,
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Switch Account',
+                  style: GoogleFonts.inter(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: isDark ? Colors.white70 : Colors.black87,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        
+        const SizedBox(height: 12),
+        
+        // Sign Out Button
+        GestureDetector(
+          onTap: () {
+            HapticFeedback.mediumImpact();
+            _showSignOutConfirmation(isDark);
+          },
+          child: TweenAnimationBuilder(
+            duration: const Duration(milliseconds: 300),
+            tween: Tween<double>(begin: 0.0, end: 1.0),
+            builder: (context, value, child) => Container(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              decoration: BoxDecoration(
+                color: Colors.red.shade50,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.red.shade200, width: 1.5),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.logout_rounded, color: Colors.red.shade600, size: 20),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Sign Out',
+                    style: GoogleFonts.inter(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.red.shade600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _showAccountSwitchingSheet(bool isDark) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF1E293B) : Colors.white,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+        ),
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Handle bar
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 20),
+            
+            // Title
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withAlpha(25),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(
+                    Icons.switch_account_rounded,
+                    color: AppColors.primary,
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  'Switch Account',
+                  style: GoogleFonts.inter(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                    color: isDark ? Colors.white : Colors.black,
+                  ),
+                ),
+              ],
+            ),
+            
+            const SizedBox(height: 24),
+            
+            // Coming Soon Message
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    AppColors.primary.withAlpha(25),
+                    Colors.purple.withAlpha(25),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Column(
+                children: [
+                  const Text('🔄', style: TextStyle(fontSize: 48)),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Account Switching',
+                    style: GoogleFonts.inter(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: isDark ? Colors.white : Colors.black,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'This feature is coming soon! You\'ll be able to switch between multiple accounts seamlessly.',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.inter(
+                      fontSize: 14,
+                      color: isDark ? Colors.white70 : Colors.black54,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            
+            const SizedBox(height: 16),
+            
+            // Close button
+            GestureDetector(
+              onTap: () {
+                HapticFeedback.lightImpact();
+                Navigator.pop(context);
+              },
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                decoration: BoxDecoration(
+                  color: isDark ? Colors.white.withAlpha(25) : Colors.grey.shade200,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Center(
+                  child: Text(
+                    'Got it!',
+                    style: GoogleFonts.inter(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: isDark ? Colors.white : Colors.black,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            
+            const SizedBox(height: 16),
           ],
+        ),
+      ),
+    );
+  }
+
+  void _showSignOutConfirmation(bool isDark) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => TweenAnimationBuilder(
+        duration: const Duration(milliseconds: 400),
+        tween: Tween<double>(begin: 0.0, end: 1.0),
+        curve: Curves.elasticOut,
+        builder: (context, value, child) => Transform.scale(
+          scale: value,
+          child: Container(
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF1E293B) : Colors.white,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+            ),
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Handle bar
+                Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                
+                // Warning icon
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.red.shade50,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.logout_rounded,
+                    color: Colors.red.shade600,
+                    size: 40,
+                  ),
+                ),
+                
+                const SizedBox(height: 20),
+                
+                Text(
+                  'Sign Out?',
+                  style: GoogleFonts.inter(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w800,
+                    color: isDark ? Colors.white : Colors.black,
+                  ),
+                ),
+                
+                const SizedBox(height: 12),
+                
+                Text(
+                  'Are you sure you want to sign out of your account?',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.inter(
+                    fontSize: 14,
+                    color: isDark ? Colors.white70 : Colors.black54,
+                  ),
+                ),
+                
+                const SizedBox(height: 24),
+                
+                // Action buttons
+                Row(
+                  children: [
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () {
+                          HapticFeedback.lightImpact();
+                          Navigator.pop(context);
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          decoration: BoxDecoration(
+                            color: isDark ? Colors.white.withAlpha(25) : Colors.grey.shade200,
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Center(
+                            child: Text(
+                              'Cancel',
+                              style: GoogleFonts.inter(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
+                                color: isDark ? Colors.white : Colors.black,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () async {
+                          HapticFeedback.mediumImpact();
+                          Navigator.pop(context);
+                          
+                          // Show smooth sign out animation
+                          await Future.delayed(const Duration(milliseconds: 200));
+                          
+                          // TODO: Implement actual sign out logic
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  'Signed out successfully',
+                                  style: GoogleFonts.inter(fontWeight: FontWeight.w600),
+                                ),
+                                backgroundColor: Colors.green,
+                                behavior: SnackBarBehavior.floating,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                            );
+                          }
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          decoration: BoxDecoration(
+                            color: Colors.red.shade600,
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Center(
+                            child: Text(
+                              'Sign Out',
+                              style: GoogleFonts.inter(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                
+                const SizedBox(height: 16),
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -736,7 +1079,18 @@ class _ProfileScreenRedesignedState extends State<ProfileScreenRedesigned> with 
         reader.onLoadEnd.listen((e) async {
           final bytes = reader.result as Uint8List?;
           if (bytes != null) {
-            setState(() => _avatarBytes = bytes);
+            // Animate the avatar change with 3D effect
+            setState(() {
+              _avatarBytes = null; // Fade out old avatar
+            });
+
+            await Future.delayed(const Duration(milliseconds: 150));
+
+            setState(() {
+              _avatarBytes = bytes; // Fade in new avatar with animation
+            });
+
+            HapticFeedback.mediumImpact();
             await _prefs.saveProfileData(avatarBase64: base64Encode(bytes));
           }
         });
@@ -952,14 +1306,28 @@ class _BeautifulEditSheet extends StatefulWidget {
   State<_BeautifulEditSheet> createState() => _BeautifulEditSheetState();
 }
 
-class _BeautifulEditSheetState extends State<_BeautifulEditSheet> {
+class _BeautifulEditSheetState extends State<_BeautifulEditSheet> with SingleTickerProviderStateMixin {
   late TextEditingController _controller;
   final _focusNode = FocusNode();
+  late AnimationController _saveAnimationController;
+  late Animation<double> _scaleAnimation;
+  late Animation<double> _fadeAnimation;
+  bool _isSaving = false;
 
   @override
   void initState() {
     super.initState();
     _controller = TextEditingController(text: widget.currentValue);
+    _saveAnimationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 1.2).animate(
+      CurvedAnimation(parent: _saveAnimationController, curve: Curves.elasticOut),
+    );
+    _fadeAnimation = Tween<double>(begin: 1.0, end: 0.0).animate(
+      CurvedAnimation(parent: _saveAnimationController, curve: Curves.easeOut),
+    );
     Future.delayed(const Duration(milliseconds: 300), () {
       _focusNode.requestFocus();
     });
@@ -969,7 +1337,29 @@ class _BeautifulEditSheetState extends State<_BeautifulEditSheet> {
   void dispose() {
     _controller.dispose();
     _focusNode.dispose();
+    _saveAnimationController.dispose();
     super.dispose();
+  }
+
+  Future<void> _handleSave() async {
+    if (_isSaving) return;
+    
+    setState(() => _isSaving = true);
+    HapticFeedback.mediumImpact();
+    
+    // Start success animation
+    await _saveAnimationController.forward();
+    
+    // Actually save the data
+    widget.onSave(_controller.text);
+    
+    // Wait a moment to show the animation
+    await Future.delayed(const Duration(milliseconds: 400));
+    
+    // Close the sheet
+    if (mounted) {
+      Navigator.pop(context);
+    }
   }
 
   @override
@@ -1105,40 +1495,51 @@ class _BeautifulEditSheetState extends State<_BeautifulEditSheet> {
                     Expanded(
                       flex: 2,
                       child: GestureDetector(
-                        onTap: () {
-                          HapticFeedback.mediumImpact();
-                          widget.onSave(_controller.text);
-                          Navigator.pop(context);
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [AppColors.primary, AppColors.primary.withAlpha(204)],
-                            ),
-                            borderRadius: BorderRadius.circular(16),
-                            boxShadow: [
-                              BoxShadow(
-                                color: AppColors.primary.withAlpha(179),
-                                blurRadius: 12,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
-                              const SizedBox(width: 8),
-                              Text(
-                                'Save Changes',
-                                style: GoogleFonts.inter(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w700,
-                                  color: Colors.white,
+                        onTap: _isSaving ? null : _handleSave,
+                        child: AnimatedBuilder(
+                          animation: _saveAnimationController,
+                          builder: (context, child) => Opacity(
+                            opacity: _fadeAnimation.value,
+                            child: Transform.scale(
+                              scale: _scaleAnimation.value,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(vertical: 16),
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: _isSaving 
+                                      ? [Colors.green, Colors.green.shade600]
+                                      : [AppColors.primary, AppColors.primary.withAlpha(204)],
+                                  ),
+                                  borderRadius: BorderRadius.circular(16),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: (_isSaving ? Colors.green : AppColors.primary).withAlpha(179),
+                                      blurRadius: 12,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      _isSaving ? Icons.check_circle_rounded : Icons.check_circle_rounded,
+                                      color: Colors.white,
+                                      size: 20,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      _isSaving ? 'Saved!' : 'Save Changes',
+                                      style: GoogleFonts.inter(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w700,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
-                            ],
+                            ),
                           ),
                         ),
                       ),

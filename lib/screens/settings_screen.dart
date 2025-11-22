@@ -103,7 +103,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               title: 'Map Style',
               subtitle: _mapStyle,
               onTap: () async {
-                final selected = await Navigator.push<String>(context, MaterialPageRoute(builder: (_) => const MapStyleScreen()));
+                final selected = await Navigator.push<String>(context, AppRoutes.flipRoute(const MapStyleScreen()));
                 if (selected != null) {
                   setState(() => _mapStyle = selected);
                 }
@@ -136,7 +136,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               title: 'Navigation Mode',
               subtitle: _navigationMode,
               onTap: () async {
-                final selected = await Navigator.push<String>(context, MaterialPageRoute(builder: (_) => const NavigationModeScreen()));
+                final selected = await Navigator.push<String>(context, AppRoutes.flipRoute(const NavigationModeScreen()));
                 if (selected != null) {
                   setState(() => _navigationMode = selected);
                   await _prefs.saveSettings(navigationMode: selected);
@@ -169,7 +169,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               icon: Icons.dashboard_outlined,
               title: 'Home Dashboard (Preview)',
               subtitle: 'View experimental dashboard',
-              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const HomeDashboardScreen())),
+              onTap: () => Navigator.push(context, AppRoutes.depthSlideRoute(const HomeDashboardScreen())),
               trailing: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -204,7 +204,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               icon: Icons.menu_book,
               title: 'User Guide',
               subtitle: 'Features & tips',
-              onTap: () => Navigator.push(context, AppRoutes.slideRoute(const UserGuideScreen())),
+              onTap: () => Navigator.push(context, AppRoutes.flipRoute(const UserGuideScreen())),
               trailing: const Icon(Icons.chevron_right, color: AppColors.grey),
             ),
             _divider(),
@@ -212,7 +212,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               icon: Icons.help_outline,
               title: 'Help & Support',
               subtitle: 'FAQs & contact',
-              onTap: () => Navigator.push(context, AppRoutes.slideRoute(const HelpSupportScreen())),
+              onTap: () => Navigator.push(context, AppRoutes.flipRoute(const HelpSupportScreen())),
               trailing: const Icon(Icons.chevron_right, color: AppColors.grey),
             ),
             _divider(),
@@ -220,7 +220,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               icon: Icons.privacy_tip_outlined,
               title: 'Privacy Policy',
               subtitle: 'Your data & rights',
-              onTap: () => Navigator.push(context, AppRoutes.slideRoute(const PrivacyPolicyScreen())),
+              onTap: () => Navigator.push(context, AppRoutes.flipRoute(const PrivacyPolicyScreen())),
               trailing: const Icon(Icons.chevron_right, color: AppColors.grey),
             ),
             _divider(),
@@ -228,7 +228,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               icon: Icons.info_outline,
               title: 'About',
               subtitle: 'App details',
-              onTap: () => Navigator.push(context, AppRoutes.slideRoute(const AboutScreen())),
+              onTap: () => Navigator.push(context, AppRoutes.flipRoute(const AboutScreen())),
               trailing: const Icon(Icons.chevron_right, color: AppColors.grey),
             ),
           ]),

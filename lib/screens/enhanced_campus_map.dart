@@ -2176,11 +2176,11 @@ out skel qt;
                   enableMultiFingerGestureRace: true,
                   rotationWinGestures: MultiFingerGesture.rotate,
                   pinchMoveWinGestures: MultiFingerGesture.pinchMove | MultiFingerGesture.pinchZoom,
-                  // Apple Maps-like ultra-smooth scrolling with momentum
-                  scrollWheelVelocity: 0.002, // Faster, more responsive zoom
-                  rotationThreshold: 8.0, // Even easier rotation
-                  pinchZoomThreshold: 0.2, // Faster, more responsive pinch zoom
-                  pinchMoveThreshold: 15.0, // Lower threshold for instant smooth pan
+                  // Ultra-smooth Apple Maps-like physics - optimized for 60fps
+                  scrollWheelVelocity: 0.003, // Buttery smooth zoom speed
+                  rotationThreshold: 5.0, // Hair-trigger rotation for fluid motion
+                  pinchZoomThreshold: 0.15, // Instant responsive pinch zoom
+                  pinchMoveThreshold: 10.0, // Ultra-low threshold for glass-smooth panning
                   cursorKeyboardRotationOptions: CursorKeyboardRotationOptions(
                     isKeyTrigger: null,
                   ),

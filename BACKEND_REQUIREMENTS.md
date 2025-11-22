@@ -56,7 +56,7 @@ Services Needed:
 ```javascript
 Stack:
 - Node.js + Express.js (REST API)
-- MongoDB (database)
+- PostGres (database)
 - JWT (authentication)
 - Socket.io (real-time updates)
 - AWS S3 / Cloudinary (file storage)
