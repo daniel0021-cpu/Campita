@@ -349,10 +349,7 @@ class _EventsScreenState extends State<EventsScreen> with SingleTickerProviderSt
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      transitionAnimationController: AnimationController(
-        duration: const Duration(milliseconds: 500),
-        vsync: this,
-      )..forward(),
+      enableDrag: true,
       builder: (context) => _AddEventSheet(
         onEventAdded: (CampusEvent event) {
           setState(() {

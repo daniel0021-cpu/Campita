@@ -14,10 +14,12 @@ import 'package:latlong2/latlong.dart';
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   
-  // Optimize system UI for performance
+  // Enable all orientations for responsive design
   SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
+    DeviceOrientation.landscapeLeft,
+    DeviceOrientation.landscapeRight,
   ]);
   
   // Enable smooth animations on all platforms

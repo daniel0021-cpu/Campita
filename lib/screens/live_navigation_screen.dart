@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
@@ -55,15 +57,12 @@ class _LiveNavigationScreenState extends State<LiveNavigationScreen>
   
   // Building info sheet
   AnimationController? _infoSheetController;
-  late Animation<double> _infoSheetAnimation;
   bool _isInfoSheetExpanded = false;
-  final double _collapsedSheetHeight = 8.0; // Just the handle
   final double _expandedSheetHeight = 400.0; // Full info card
   
   // Music player - enhanced with smooth animations
   AnimationController? _musicController;
   AnimationController? _musicSearchController;
-  late Animation<double> _musicExpandAnimation;
   late Animation<double> _musicSearchAnimation;
   late Animation<Offset> _musicSlideAnimation;
   bool _musicExpanded = false;
@@ -73,13 +72,31 @@ class _LiveNavigationScreenState extends State<LiveNavigationScreen>
   String _currentArtist = '';
   List<Map<String, String>> _searchResults = [];
   List<Map<String, String>> _allSongs = [];
-  final String _currentLocationName = 'Your Location';
   bool _isNearDestination = false;
   double _currentSongProgress = 0.0;
   Timer? _songProgressTimer;
   
   // Arrival state
   bool _hasShownArrivalDialog = false;
+  
+  // Music sheet expansion state
+  bool _isMusicSheetExpanded = false;
+  
+  // 3D tilt view control state
+  bool _is3DTiltView = false;
+  bool _isTilting = false;
+  
+  // OSM turn directions with auto-slide
+  List<Map<String, dynamic>> _osmDirections = [];
+  PageController? _directionsPageController;
+  int _currentDirectionIndex = 0;
+  
+  // Destination building carousel
+  PageController? _destinationCarouselController;
+  int _destinationCarouselIndex = 0;
+  
+  // Real-time arrival tracking
+  DateTime? _estimatedArrivalTime;
 
   @override
   void initState() {
@@ -93,18 +110,10 @@ class _LiveNavigationScreenState extends State<LiveNavigationScreen>
       vsync: this,
       duration: const Duration(milliseconds: 500),
     );
-    _infoSheetAnimation = CurvedAnimation(
-      parent: _infoSheetController!,
-      curve: const Cubic(0.34, 1.56, 0.64, 1.0),
-    );
     
     _musicController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 450),
-    );
-    _musicExpandAnimation = CurvedAnimation(
-      parent: _musicController!,
-      curve: Curves.elasticOut,
     );
     
     _musicSearchController = AnimationController(
@@ -119,6 +128,15 @@ class _LiveNavigationScreenState extends State<LiveNavigationScreen>
       begin: const Offset(0, 1),
       end: Offset.zero,
     ).animate(_musicSearchAnimation);
+    
+    // Extract OSM-based turn directions from route
+    _extractOsmDirections();
+    
+    // Initialize directions carousel controller
+    _directionsPageController = PageController(initialPage: 0);
+    
+    // Initialize destination carousel controller
+    _destinationCarouselController = PageController(initialPage: 0);
     
     // Preload song library with diverse collection
     _allSongs = [
@@ -296,6 +314,136 @@ class _LiveNavigationScreenState extends State<LiveNavigationScreen>
     );
   }
   
+  // Extract turn-by-turn directions from OSM route points
+  void _extractOsmDirections() {
+    if (widget.routePoints.length < 2) {
+      _osmDirections = _getMockDirections();
+      return;
+    }
+    
+    final directions = <Map<String, dynamic>>[];
+    double accumulatedDistance = 0;
+    
+    for (int i = 0; i < widget.routePoints.length - 1; i++) {
+      final current = widget.routePoints[i];
+      final next = widget.routePoints[i + 1];
+      final distance = const Distance().distance(current, next);
+      accumulatedDistance += distance;
+      
+      // Determine turn type based on bearing change
+      if (i > 0) {
+        final prev = widget.routePoints[i - 1];
+        final bearing1 = _calculateBearing(prev, current);
+        final bearing2 = _calculateBearing(current, next);
+        final angle = (bearing2 - bearing1).abs();
+        
+        if (angle > 45 && angle < 135) {
+          directions.add({
+            'icon': angle > 90 ? Icons.turn_right_rounded : Icons.turn_slight_right_rounded,
+            'text': angle > 90 ? 'Turn right' : 'Bear right',
+            'distance': _formatDistanceShort(accumulatedDistance),
+          });
+          accumulatedDistance = 0;
+        } else if (angle > 225 && angle < 315) {
+          directions.add({
+            'icon': angle > 270 ? Icons.turn_left_rounded : Icons.turn_slight_left_rounded,
+            'text': angle > 270 ? 'Turn left' : 'Bear left',
+            'distance': _formatDistanceShort(accumulatedDistance),
+          });
+          accumulatedDistance = 0;
+        }
+      }
+      
+      // Add waypoint every 200m if no turn
+      if (accumulatedDistance > 200 && i < widget.routePoints.length - 2) {
+        directions.add({
+          'icon': Icons.straight_rounded,
+          'text': 'Continue straight',
+          'distance': _formatDistanceShort(accumulatedDistance),
+        });
+        accumulatedDistance = 0;
+      }
+    }
+    
+    // Final destination
+    directions.add({
+      'icon': Icons.place_rounded,
+      'text': 'Arrive at destination',
+      'distance': _formatDistanceShort(accumulatedDistance),
+    });
+    
+    setState(() {
+      _osmDirections = directions.isEmpty ? _getMockDirections() : directions;
+    });
+  }
+  
+  double _calculateBearing(LatLng from, LatLng to) {
+    final lat1 = from.latitude * (3.14159265359 / 180);
+    final lat2 = to.latitude * (3.14159265359 / 180);
+    final dLon = (to.longitude - from.longitude) * (3.14159265359 / 180);
+    
+    final y = sin(dLon) * cos(lat2);
+    final x = cos(lat1) * sin(lat2) - sin(lat1) * cos(lat2) * cos(dLon);
+    final bearing = atan2(y, x) * (180 / 3.14159265359);
+    
+    return (bearing + 360) % 360;
+  }
+  
+  String _formatDistanceShort(double meters) {
+    if (meters < 1000) {
+      return '${meters.toStringAsFixed(0)}m';
+    }
+    return '${(meters / 1000).toStringAsFixed(1)}km';
+  }
+  
+  List<Map<String, dynamic>> _getMockDirections() {
+    return [
+      {'icon': Icons.straight_rounded, 'text': 'Continue straight', 'distance': '200m'},
+      {'icon': Icons.turn_right_rounded, 'text': 'Turn right at Main Gate', 'distance': '500m'},
+      {'icon': Icons.place_rounded, 'text': 'Arrive at destination', 'distance': '800m'},
+    ];
+  }
+  
+  // Toggle 3D tilt view with smooth animations
+  Future<void> _toggle3DTiltView() async {
+    if (_isTilting) return;
+    
+    HapticFeedback.mediumImpact();
+    
+    setState(() {
+      _isTilting = true;
+      _is3DTiltView = !_is3DTiltView;
+    });
+    
+    try {
+      final currentLocation = _currentLocation ?? widget.routePoints.first;
+      final targetZoom = _is3DTiltView ? 19.0 : 15.0;
+      final targetRotation = _is3DTiltView ? 45.0 : 0.0;
+      
+      // Smooth animation: zoom + rotate simultaneously
+      final startZoom = _mapController.camera.zoom;
+      final startRotation = _mapController.camera.rotation;
+      const steps = 20;
+      const duration = Duration(milliseconds: 350);
+      final stepDuration = duration.inMilliseconds ~/ steps;
+      
+      for (int i = 0; i <= steps; i++) {
+        final t = Curves.easeInOutCubic.transform(i / steps);
+        final zoom = startZoom + ((targetZoom - startZoom) * t);
+        final rotation = startRotation + ((targetRotation - startRotation) * t);
+        
+        _mapController.move(currentLocation, zoom);
+        _mapController.rotate(rotation);
+        
+        await Future.delayed(Duration(milliseconds: stepDuration));
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isTilting = false);
+      }
+    }
+  }
+  
   void _toggleView() {
     setState(() {
       _is3DView = !_is3DView;
@@ -430,6 +578,8 @@ class _LiveNavigationScreenState extends State<LiveNavigationScreen>
     _musicController?.dispose();
     _musicSearchController?.dispose();
     _musicSearchTextController.dispose();
+    _directionsPageController?.dispose();
+    _destinationCarouselController?.dispose();
     _audioPlayer.dispose();
     _tts.stop();
     super.dispose();
@@ -437,7 +587,7 @@ class _LiveNavigationScreenState extends State<LiveNavigationScreen>
 
   void _updateStats() {
     if (_currentLocation == null) return;
-    // Remaining distance: from current to destination straight-line + along route basic estimate
+    // Calculate remaining distance from current location along route
     double dist = 0;
     LatLng prev = _currentLocation!;
     for (final p in widget.routePoints) {
@@ -446,13 +596,60 @@ class _LiveNavigationScreenState extends State<LiveNavigationScreen>
     }
     dist += const Distance().distance(prev, widget.destination);
     _remainingDistance = dist;
-    // Simple ETA by mode
+    
+    // Calculate ETA based on transport mode speed
     final speed = _modeSpeed(widget.transportMode);
     _etaSeconds = dist / speed;
+    
+    // Calculate actual arrival time (current time + ETA)
+    _estimatedArrivalTime = DateTime.now().add(Duration(seconds: _etaSeconds.toInt()));
+    
+    // Auto-advance directions carousel based on proximity to turn points
+    _updateDirectionCarousel();
+    
     setState(() {});
     
     // Check if arrived
     _checkForDestinationArrival();
+  }
+  
+  // Auto-advance carousel when user reaches each turn
+  void _updateDirectionCarousel() {
+    if (_currentLocation == null || _osmDirections.isEmpty) return;
+    if (_directionsPageController == null || !_directionsPageController!.hasClients) return;
+    
+    // Check distance to next direction point
+    if (_currentDirectionIndex < _osmDirections.length) {
+      final nextDirection = _osmDirections[_currentDirectionIndex];
+      final targetLocation = nextDirection['location'] as LatLng?;
+      
+      if (targetLocation != null) {
+        final distanceToTurn = const Distance().distance(_currentLocation!, targetLocation);
+        
+        // Auto-advance when within 20 meters of turn point
+        if (distanceToTurn < 20 && _currentDirectionIndex < _osmDirections.length - 1) {
+          setState(() {
+            _currentDirectionIndex++;
+          });
+          
+          // Smoothly animate to next page
+          _directionsPageController!.animateToPage(
+            _currentDirectionIndex,
+            duration: const Duration(milliseconds: 400),
+            curve: Curves.easeInOutCubic,
+          );
+          
+          // Haptic feedback for turn arrival
+          HapticFeedback.mediumImpact();
+          
+          // Speak next instruction if TTS enabled
+          if (_ttsEnabled && _currentDirectionIndex < _osmDirections.length) {
+            final instruction = _osmDirections[_currentDirectionIndex]['text'] as String;
+            _tts.speak(instruction);
+          }
+        }
+      }
+    }
   }
 
   double _modeSpeed(String mode) {
@@ -474,6 +671,16 @@ class _LiveNavigationScreenState extends State<LiveNavigationScreen>
     final mins = (seconds/60).ceil();
     if (mins < 60) return '$mins min';
     final h = mins ~/ 60; final m = mins % 60; return '${h}h ${m}m';
+  }
+  
+  String _formatArrivalTime() {
+    if (_estimatedArrivalTime == null) return '...';
+    final hour = _estimatedArrivalTime!.hour;
+    final minute = _estimatedArrivalTime!.minute;
+    final period = hour >= 12 ? 'PM' : 'AM';
+    final displayHour = hour > 12 ? hour - 12 : (hour == 0 ? 12 : hour);
+    final displayMinute = minute.toString().padLeft(2, '0');
+    return '$displayHour:$displayMinute $period';
   }
 
   IconData _getTransportIcon() {
@@ -1138,54 +1345,31 @@ class _LiveNavigationScreenState extends State<LiveNavigationScreen>
             ],
           ),
 
-          // Top control buttons
-          SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Row(
-                children: [
-                  // Exit button
-                  _buildControlButton(
-                    icon: Icons.close_rounded,
-                    onTap: () => Navigator.pop(context),
-                    tooltip: 'Exit Navigation',
-                  ),
-                  const Spacer(),
-                  // 3D/2D toggle
-                  _buildControlButton(
-                    icon: _is3DView ? Icons.layers_rounded : Icons.threed_rotation_rounded,
-                    onTap: () {
-                      setState(() => _is3DView = !_is3DView);
-                      _mapController.move(_currentLocation ?? widget.routePoints.first, _is3DView ? 19.0 : 17.0);
-                    },
-                    tooltip: _is3DView ? '2D View' : '3D View',
-                  ),
-                  const SizedBox(width: 8),
-                  // TTS toggle
-                  _buildControlButton(
-                    icon: _ttsEnabled ? Icons.volume_up_rounded : Icons.volume_off_rounded,
-                    onTap: () {
-                      setState(() => _ttsEnabled = !_ttsEnabled);
-                      if (_ttsEnabled && _nextInstruction.isNotEmpty) {
-                        _speakInstruction(_nextInstruction);
-                      }
-                    },
-                    tooltip: 'Voice Instructions',
-                    isActive: _ttsEnabled,
-                  ),
-                  const SizedBox(width: 8),
-                  // Music player button - removed from top (now in center-right)
-                  // See _buildFloatingMusicButton() for new implementation
-                ],
-              ),
+          // Top directions carousel - swipeable turn-by-turn with OSM data
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 8,
+            left: 16,
+            right: 16,
+            child: _buildDirectionsCarousel(),
+          ),
+
+          // Right-side controls (3D tilt button)
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 120,
+            right: 16,
+            child: Column(
+              children: [
+                // 3D Tilt toggle button with advanced animations
+                _build3DTiltButton(),
+              ],
             ),
           ),
 
-          // Curved navigation info sheet at bottom
+          // Floating navigation button/sheet
           Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
+            left: 16,
+            right: 16,
+            bottom: 16,
             child: _buildNavigationSheet(context),
           ),
 
@@ -1198,13 +1382,562 @@ class _LiveNavigationScreenState extends State<LiveNavigationScreen>
               child: _buildFloatingInfoSheet(context),
             ),
 
-          // Floating music player (center-right)
+          // Floating music player (center-right) with proper error handling
           Positioned(
             right: 16,
-            top: MediaQuery.of(context).size.height / 2 - 30,
-            child: MusicPlayerSheet(),
+            bottom: 240,
+            child: Builder(
+              key: const ValueKey('music_player_builder'),
+              builder: (context) {
+                return RepaintBoundary(
+                  key: const ValueKey('music_player'),
+                  child: MusicPlayerSheet(
+                    key: const ValueKey('music_sheet'),
+                    onExpandedChanged: (isExpanded) {
+                      if (mounted) {
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          if (mounted) {
+                            setState(() => _isMusicSheetExpanded = isExpanded);
+                          }
+                        });
+                      }
+                    },
+                  ),
+                );
+              },
+            ),
           ),
+          
+          // Modern TTS control button (right side, above music) - hide when music is expanded
+          if (!_isMusicSheetExpanded)
+            Positioned(
+              right: 16,
+              bottom: 330,
+              child: _buildModernTTSButton(),
+            ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildModernTTSButton() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.0, end: 1.0),
+      duration: const Duration(milliseconds: 350),
+      curve: Curves.easeOutQuart,
+      builder: (context, value, child) {
+        final clampedValue = value.clamp(0.0, 1.0);
+        return Transform.scale(
+          scale: 0.8 + (0.2 * clampedValue),
+          child: Opacity(
+            opacity: clampedValue,
+            child: child,
+          ),
+        );
+      },
+      child: AnimatedScale(
+        scale: _ttsEnabled ? 1.0 : 0.95,
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOutQuart,
+        child: Material(
+          elevation: _ttsEnabled ? 12 : 6,
+          shadowColor: _ttsEnabled 
+            ? AppColors.primary.withAlpha(128) 
+            : Colors.black.withAlpha(isDark ? 64 : 32),
+          borderRadius: BorderRadius.circular(20),
+          color: _ttsEnabled 
+            ? AppColors.primary 
+            : (isDark ? const Color(0xFF2C2C2E) : Colors.white),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(20),
+            onTap: () {
+              HapticFeedback.lightImpact();
+              _toggleTTS();
+            },
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeOutQuart,
+              width: 56,
+              height: 56,
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: _ttsEnabled
+                    ? Colors.transparent
+                    : (isDark ? Colors.white.withAlpha(26) : Colors.black.withAlpha(13)),
+                  width: 1.5,
+                ),
+              ),
+              child: Icon(
+                _ttsEnabled ? Icons.record_voice_over_rounded : Icons.voice_over_off_rounded,
+                color: _ttsEnabled 
+                  ? Colors.white 
+                  : (isDark ? Colors.white : const Color(0xFF1C1C1E)),
+                size: 26,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Get color for turn type
+  Color _getTurnColor(IconData icon) {
+    if (icon == Icons.turn_right_rounded || icon == Icons.turn_sharp_right_rounded) {
+      return const Color(0xFF2196F3); // Blue for right turns
+    } else if (icon == Icons.turn_left_rounded || icon == Icons.turn_sharp_left_rounded) {
+      return const Color(0xFF9C27B0); // Purple for left turns
+    } else if (icon == Icons.turn_slight_right_rounded) {
+      return const Color(0xFF00BCD4); // Cyan for slight right
+    } else if (icon == Icons.turn_slight_left_rounded) {
+      return const Color(0xFF673AB7); // Deep purple for slight left
+    } else if (icon == Icons.place_rounded) {
+      return const Color(0xFFFF3B30); // Red for destination
+    } else {
+      return const Color(0xFF4CAF50); // Green for straight
+    }
+  }
+  
+  // Building image carousel with animated indicators
+  int _carouselIndex = 0;
+  
+  Widget _buildBuildingCarousel() {
+    final building = widget.destinationBuilding!;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    // Mock images - replace with actual building images
+    final images = [
+      'assets/buildings/danny.jpeg',
+      'assets/buildings/danny.jpeg',
+      'assets/buildings/danny.jpeg',
+    ];
+    
+    return Column(
+      children: [
+        Container(
+          height: 140,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withAlpha(26),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: PageView.builder(
+              itemCount: images.length,
+              onPageChanged: (index) {
+                setState(() => _carouselIndex = index);
+              },
+              physics: const BouncingScrollPhysics(),
+              itemBuilder: (context, index) {
+                return Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    Image.asset(
+                      images[index],
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stack) {
+                        return Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                AppColors.primary,
+                                AppColors.primary.withAlpha(180),
+                              ],
+                            ),
+                          ),
+                          child: Center(
+                            child: Icon(
+                              Icons.image_rounded,
+                              size: 48,
+                              color: Colors.white.withAlpha(128),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                    // Gradient overlay
+                    Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            Colors.transparent,
+                            Colors.black.withAlpha(77),
+                          ],
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                        ),
+                      ),
+                    ),
+                    // Building name at bottom
+                    Positioned(
+                      bottom: 12,
+                      left: 12,
+                      right: 12,
+                      child: Text(
+                        building.name,
+                        style: GoogleFonts.poppins(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                          shadows: [
+                            Shadow(
+                              color: Colors.black.withAlpha(128),
+                              blurRadius: 8,
+                            ),
+                          ],
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        // Animated carousel indicators
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: List.generate(images.length, (index) {
+            final isActive = _carouselIndex == index;
+            return TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0.0, end: isActive ? 1.0 : 0.0),
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeOutCubic,
+              builder: (context, value, child) {
+                return Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 4),
+                  width: isActive ? 24 : 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    color: isActive
+                        ? AppColors.primary
+                        : (isDark ? Colors.white.withAlpha(77) : Colors.black.withAlpha(51)),
+                    borderRadius: BorderRadius.circular(4),
+                    boxShadow: isActive
+                        ? [
+                            BoxShadow(
+                              color: AppColors.primary.withAlpha(102),
+                              blurRadius: 8,
+                            ),
+                          ]
+                        : null,
+                  ),
+                );
+              },
+            );
+          }),
+        ),
+      ],
+    );
+  }
+  
+  // Destination image carousel for navigation sheet with 3D animated indicators
+  Widget _buildDestinationImageCarousel(bool isDark) {
+    final building = widget.destinationBuilding!;
+    
+    // Mock images - replace with actual building images from assets or network
+    final images = [
+      'assets/buildings/danny.jpeg',
+      'assets/buildings/danny.jpeg',
+      'assets/buildings/danny.jpeg',
+    ];
+    
+    return Column(
+      children: [
+        // PageView carousel with smooth animations
+        Container(
+          height: 160,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.primary.withAlpha(51),
+                blurRadius: 16,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(20),
+            child: PageView.builder(
+              controller: _destinationCarouselController,
+              physics: const BouncingScrollPhysics(),
+              itemCount: images.length,
+              onPageChanged: (index) {
+                setState(() {
+                  _destinationCarouselIndex = index;
+                });
+                HapticFeedback.lightImpact();
+              },
+              itemBuilder: (context, index) {
+                return TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0.0, end: 1.0),
+                  duration: const Duration(milliseconds: 400),
+                  curve: Curves.easeOutQuart,
+                  builder: (context, value, child) {
+                    return Transform.scale(
+                      scale: 0.95 + (0.05 * value),
+                      child: Opacity(
+                        opacity: 0.7 + (0.3 * value),
+                        child: child,
+                      ),
+                    );
+                  },
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      // Building image
+                      Image.asset(
+                        images[index],
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Container(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  AppColors.primary.withAlpha(51),
+                                  AppColors.primary.withAlpha(26),
+                                ],
+                              ),
+                            ),
+                            child: Icon(
+                              Icons.business_rounded,
+                              size: 48,
+                              color: AppColors.primary.withAlpha(128),
+                            ),
+                          );
+                        },
+                      ),
+                      // Gradient overlay
+                      Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              Colors.transparent,
+                              Colors.black.withAlpha(179),
+                            ],
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                          ),
+                        ),
+                      ),
+                      // Building name at bottom
+                      Positioned(
+                        bottom: 16,
+                        left: 16,
+                        right: 16,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              building.name,
+                              style: GoogleFonts.poppins(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                                shadows: [
+                                  Shadow(
+                                    color: Colors.black.withAlpha(128),
+                                    blurRadius: 12,
+                                  ),
+                                ],
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 4),
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.location_on_rounded,
+                                  size: 14,
+                                  color: Colors.white.withAlpha(204),
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  building.category.toString().split('.').last.toUpperCase(),
+                                  style: GoogleFonts.notoSans(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.white.withAlpha(204),
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        // 3D Animated Indicators
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: List.generate(images.length, (index) {
+            final isActive = _destinationCarouselIndex == index;
+            final distance = (_destinationCarouselIndex - index).abs();
+            
+            return TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0.0, end: isActive ? 1.0 : 0.0),
+              duration: const Duration(milliseconds: 350),
+              curve: Curves.easeInOutCubic,
+              builder: (context, value, child) {
+                // 3D scale effect based on distance from active indicator
+                final scale = isActive ? (0.9 + (0.1 * value)) : (0.5 - (distance * 0.1));
+                
+                return Transform.scale(
+                  scale: scale.clamp(0.3, 1.0),
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 4),
+                    width: isActive ? 32 : 10,
+                    height: isActive ? 10 : 10,
+                    decoration: BoxDecoration(
+                      gradient: isActive
+                          ? LinearGradient(
+                              colors: [
+                                AppColors.primary,
+                                AppColors.primary.withAlpha(179),
+                              ],
+                            )
+                          : null,
+                      color: !isActive
+                          ? (isDark ? Colors.white.withAlpha(77) : Colors.black.withAlpha(77))
+                          : null,
+                      borderRadius: BorderRadius.circular(5),
+                      boxShadow: isActive
+                          ? [
+                              BoxShadow(
+                                color: AppColors.primary.withAlpha(128),
+                                blurRadius: 12,
+                                spreadRadius: 1,
+                              ),
+                            ]
+                          : null,
+                    ),
+                  ),
+                );
+              },
+            );
+          }),
+        ),
+      ],
+    );
+  }
+
+  // Smooth zoom toggle button with buttery 200ms animation
+  Widget _build3DTiltButton() {
+    final isActive = _is3DTiltView;
+    
+    return Tooltip(
+      message: isActive ? 'Exit 3D Tilt' : '3D Tilt View',
+      child: TweenAnimationBuilder<double>(
+        key: const ValueKey('3d_tilt_button'),
+        tween: Tween(begin: 0.0, end: 1.0),
+        duration: const Duration(milliseconds: 350),
+        curve: Curves.easeInOutCubic,
+        builder: (context, value, child) {
+          return Transform.scale(
+            scale: 0.92 + (0.08 * value),
+            child: Opacity(
+              opacity: 0.7 + (0.3 * value),
+              child: child,
+            ),
+          );
+        },
+        child: Material(
+          color: isActive 
+              ? const Color(0xFF7C3AED).withAlpha((0.15 * 255).toInt())
+              : Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          elevation: isActive ? 8 : 4,
+          child: InkWell(
+            onTap: _isTilting ? null : _toggle3DTiltView,
+            borderRadius: BorderRadius.circular(12),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 350),
+              curve: Curves.easeInOutCubic,
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: isActive 
+                    ? const Color(0xFF7C3AED).withAlpha((0.1 * 255).toInt())
+                    : Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: isActive ? const Color(0xFF7C3AED) : Colors.grey.shade300,
+                  width: isActive ? 2.5 : 2,
+                ),
+                boxShadow: isActive ? [
+                  BoxShadow(
+                    color: const Color(0xFF7C3AED).withAlpha((0.3 * 255).toInt()),
+                    blurRadius: 12,
+                    spreadRadius: 2,
+                  ),
+                ] : null,
+              ),
+              child: Stack(
+                children: [
+                  Center(
+                    child: TweenAnimationBuilder<double>(
+                      tween: Tween(begin: 0, end: _isTilting ? 1 : 0),
+                      duration: const Duration(milliseconds: 350),
+                      curve: Curves.easeInOutCubic,
+                      builder: (context, animValue, child) {
+                        return Transform.rotate(
+                          angle: animValue * 3.14159 / 4, // 45 degrees rotation
+                          child: Icon(
+                            isActive ? Icons.threed_rotation_rounded : Icons.view_in_ar_rounded,
+                            color: isActive ? const Color(0xFF7C3AED) : Colors.grey.shade700,
+                            size: 24,
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  // Active indicator badge
+                  if (isActive)
+                    Positioned(
+                      bottom: 2,
+                      right: 2,
+                      child: Container(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF7C3AED),
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFF7C3AED).withAlpha((0.5 * 255).toInt()),
+                              blurRadius: 6,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -1248,90 +1981,516 @@ class _LiveNavigationScreenState extends State<LiveNavigationScreen>
 
   Widget _buildNavigationSheet(BuildContext context) {
     final destination = widget.destinationBuilding?.name ?? 'Destination';
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final screenHeight = MediaQuery.of(context).size.height;
     
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(32),
-          topRight: Radius.circular(32),
+    return GestureDetector(
+      onTap: () {
+        setState(() => _isInfoSheetExpanded = !_isInfoSheetExpanded);
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 400),
+        curve: Curves.easeOutCubic,
+        constraints: BoxConstraints(
+          maxHeight: _isInfoSheetExpanded ? screenHeight * 0.6 : 56,
+          minHeight: 56,
         ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.15),
-            blurRadius: 20,
-            offset: const Offset(0, -5),
-          ),
-        ],
+        decoration: BoxDecoration(
+          gradient: _isInfoSheetExpanded
+              ? LinearGradient(
+                  colors: isDark
+                      ? [AppColors.darkCard, AppColors.darkCard.withAlpha(230)]
+                      : [Colors.white, Colors.grey[50]!],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                )
+              : LinearGradient(
+                  colors: [
+                    AppColors.primary,
+                    AppColors.primary.withAlpha(230),
+                  ],
+                ),
+          borderRadius: BorderRadius.circular(28),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.primary.withAlpha(_isInfoSheetExpanded ? 77 : 153),
+              blurRadius: _isInfoSheetExpanded ? 24 : 20,
+              spreadRadius: _isInfoSheetExpanded ? 2 : 3,
+            ),
+          ],
+        ),
+        child: _isInfoSheetExpanded
+            ? _buildExpandedNavigationContent(destination, isDark)
+            : _buildCollapsedGlowingLine(),
       ),
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Route info
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(
-                  _getTransportIcon(),
-                  color: AppColors.primary,
-                  size: 28,
-                ),
+    );
+  }
+
+  Widget _buildCollapsedGlowingLine() {
+    final destination = widget.destinationBuilding?.name ?? 'Destination';
+    
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.0, end: 1.0),
+      duration: const Duration(milliseconds: 1200),
+      builder: (context, value, child) {
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            final isCompact = constraints.maxWidth < 400;
+            
+            return Container(
+              padding: EdgeInsets.symmetric(
+                horizontal: isCompact ? 12 : 16,
+                vertical: 12,
               ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Current Location → $destination',
-                      style: GoogleFonts.poppins(
-                        fontSize: 14,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    AppColors.primary,
+                    AppColors.primary.withAlpha((204 + value * 51).toInt()),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(28),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.primary.withAlpha((128 + value * 77).toInt()),
+                    blurRadius: 16 + (value * 8),
+                    spreadRadius: 2 + (value * 2),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  // Transport mode icon
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withAlpha(51),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      _getTransportIcon(),
+                      color: Colors.white,
+                      size: 18,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  
+                  // Destination name
+                  Expanded(
+                    child: Text(
+                      destination,
+                      style: GoogleFonts.notoSans(
+                        fontSize: isCompact ? 13 : 14,
                         fontWeight: FontWeight.w600,
-                        color: AppColors.textPrimary,
+                        color: Colors.white,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Icon(Icons.near_me_rounded, size: 14, color: AppColors.grey),
-                        const SizedBox(width: 4),
-                        Text(
-                          _remainingDistance != null
-                              ? '${(_remainingDistance! / 1000).toStringAsFixed(1)} km'
-                              : 'Calculating...',
-                          style: GoogleFonts.notoSans(
-                            fontSize: 13,
-                            color: AppColors.grey,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Icon(Icons.schedule_rounded, size: 14, color: AppColors.grey),
-                        const SizedBox(width: 4),
-                        Text(
-                          _etaSeconds > 0
-                              ? '${(_etaSeconds / 60).ceil()} min'
-                              : 'Calculating...',
-                          style: GoogleFonts.notoSans(
-                            fontSize: 13,
-                            color: AppColors.grey,
-                          ),
-                        ),
-                      ],
+                  ),
+                  
+                  // Distance icon + value
+                  if (_remainingDistance != null && !isCompact) ...[
+                    const SizedBox(width: 8),
+                    Icon(
+                      Icons.straighten_rounded,
+                      color: Colors.white.withAlpha(204),
+                      size: 14,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      '${(_remainingDistance! / 1000).toStringAsFixed(1)}km',
+                      style: GoogleFonts.notoSans(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.white.withAlpha(230),
+                      ),
                     ),
                   ],
-                ),
+                  
+                  // ETA icon + value
+                  if (_etaSeconds > 0) ...[
+                    const SizedBox(width: 8),
+                    Icon(
+                      Icons.access_time_rounded,
+                      color: Colors.white.withAlpha(204),
+                      size: 14,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      '${(_etaSeconds / 60).ceil()}min',
+                      style: GoogleFonts.notoSans(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.white.withAlpha(230),
+                      ),
+                    ),
+                  ],
+                  
+                  const SizedBox(width: 8),
+                  Icon(
+                    Icons.expand_less_rounded,
+                    color: Colors.white,
+                    size: 22,
+                  ),
+                ],
               ),
-            ],
+            );
+          },
+        );
+      },
+      onEnd: () {
+        if (mounted && !_isInfoSheetExpanded) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              setState(() {}); // Restart animation
+            }
+          });
+        }
+      },
+    );
+  }
+
+  Widget _buildExpandedNavigationContent(String destination, bool isDark) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.0, end: 1.0),
+      duration: const Duration(milliseconds: 400),
+      curve: Curves.easeOutCubic,
+      builder: (context, value, child) {
+        final clampedValue = value.clamp(0.0, 1.0);
+        return Opacity(
+          opacity: clampedValue,
+          child: Transform.translate(
+            offset: Offset(0, 20 * (1 - clampedValue)),
+            child: child,
           ),
-        ],
+        );
+      },
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final isCompact = constraints.maxWidth < 400;
+          
+          return SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
+            child: Padding(
+              padding: EdgeInsets.all(isCompact ? 16 : 20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                // Building image carousel with indicators
+                if (widget.destinationBuilding != null) ...[
+                  _buildBuildingCarousel(),
+                  const SizedBox(height: 16),
+                ],
+                
+                // Location route info with icons
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        AppColors.primary.withAlpha(26),
+                        AppColors.primary.withAlpha(13),
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: AppColors.primary.withAlpha(51),
+                      width: 1,
+                    ),
+                  ),
+                  child: Column(
+                    children: [
+                      // From location
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF4CAF50),
+                              borderRadius: BorderRadius.circular(10),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(0xFF4CAF50).withAlpha(77),
+                                  blurRadius: 8,
+                                ),
+                              ],
+                            ),
+                            child: const Icon(
+                              Icons.my_location_rounded,
+                              color: Colors.white,
+                              size: 18,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Your Location',
+                                  style: GoogleFonts.notoSans(
+                                    fontSize: 11,
+                                    color: AppColors.grey,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  'Current Position',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.textPrimary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withAlpha(26),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Icon(
+                              _getTransportIcon(),
+                              color: AppColors.primary,
+                              size: 18,
+                            ),
+                          ),
+                        ],
+                      ),
+                      
+                      // Connecting line
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        child: Row(
+                          children: [
+                            const SizedBox(width: 16),
+                            Container(
+                              width: 2,
+                              height: 24,
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [
+                                    AppColors.primary,
+                                    AppColors.primary.withAlpha(128),
+                                  ],
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            // Distance and ETA badges
+                            Expanded(
+                              child: Wrap(
+                                spacing: 8,
+                                runSpacing: 6,
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                    decoration: BoxDecoration(
+                                      color: isDark ? const Color(0xFF2C2C2E) : Colors.white,
+                                      borderRadius: BorderRadius.circular(12),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withAlpha(13),
+                                          blurRadius: 4,
+                                        ),
+                                      ],
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          Icons.straighten_rounded,
+                                          size: 14,
+                                          color: AppColors.primary,
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          _remainingDistance != null
+                                              ? '${(_remainingDistance! / 1000).toStringAsFixed(1)} km'
+                                              : '...',
+                                          style: GoogleFonts.notoSans(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                            color: AppColors.textPrimary,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                    decoration: BoxDecoration(
+                                      color: isDark ? const Color(0xFF2C2C2E) : Colors.white,
+                                      borderRadius: BorderRadius.circular(12),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withAlpha(13),
+                                          blurRadius: 4,
+                                        ),
+                                      ],
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          Icons.schedule_rounded,
+                                          size: 14,
+                                          color: const Color(0xFFFF9800),
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          _etaSeconds > 0
+                                              ? '${(_etaSeconds / 60).ceil()} min'
+                                              : '...',
+                                          style: GoogleFonts.notoSans(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                            color: AppColors.textPrimary,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      
+                      // To destination
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFF3B30),
+                              borderRadius: BorderRadius.circular(10),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(0xFFFF3B30).withAlpha(77),
+                                  blurRadius: 8,
+                                ),
+                              ],
+                            ),
+                            child: const Icon(
+                              Icons.place_rounded,
+                              color: Colors.white,
+                              size: 18,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Destination',
+                                  style: GoogleFonts.notoSans(
+                                    fontSize: 11,
+                                    color: AppColors.grey,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  destination,
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.textPrimary,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                
+                const SizedBox(height: 20),
+                
+                // Building image carousel (new)
+                if (widget.destinationBuilding != null) ...[
+                  Text(
+                    'Destination Preview',
+                    style: GoogleFonts.poppins(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  _buildDestinationImageCarousel(isDark),
+                  const SizedBox(height: 20),
+                ],
+                
+                // Exit Navigation button with smooth animation
+                TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0.0, end: 1.0),
+                  duration: const Duration(milliseconds: 350),
+                  curve: Curves.easeOutQuart,
+                  builder: (context, animValue, child) {
+                    return Transform.scale(
+                      scale: 0.9 + (0.1 * animValue),
+                      child: Opacity(
+                        opacity: animValue,
+                        child: child,
+                      ),
+                    );
+                  },
+                  child: Material(
+                    elevation: 4,
+                    borderRadius: BorderRadius.circular(16),
+                    color: const Color(0xFFFF3B30),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(16),
+                      onTap: () {
+                        HapticFeedback.mediumImpact();
+                        Navigator.pop(context);
+                      },
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        curve: Curves.easeOutQuart,
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.close_rounded,
+                              color: Colors.white,
+                              size: 22,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Exit Navigation',
+                              style: GoogleFonts.poppins(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          );
+        },
       ),
     );
   }
@@ -1456,6 +2615,162 @@ class _LiveNavigationScreenState extends State<LiveNavigationScreen>
               ),
             ],
           ],
+        ),
+      ),
+    );
+  }
+
+  // New directions carousel widget for turn-by-turn swipeable instructions with OSM data
+  Widget _buildDirectionsCarousel() {
+    if (!mounted) return const SizedBox.shrink();
+    
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final directions = _osmDirections.isNotEmpty ? _osmDirections : _getMockDirections();
+    
+    return TweenAnimationBuilder<double>(
+      key: const ValueKey('directions_carousel'),
+      tween: Tween(begin: 0.0, end: 1.0),
+      duration: const Duration(milliseconds: 400),
+      curve: Curves.easeOutQuart,
+      builder: (context, value, child) {
+        return Transform.translate(
+          offset: Offset(0, -30 * (1 - value)),
+          child: Opacity(
+            opacity: value,
+            child: child,
+          ),
+        );
+      },
+      child: Container(
+        height: 100,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withAlpha(isDark ? 77 : 26),
+              blurRadius: 16,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(24),
+          child: PageView.builder(
+            controller: _directionsPageController,
+            itemCount: directions.length,
+            physics: const BouncingScrollPhysics(),
+            onPageChanged: (index) {
+              setState(() {
+                _currentDirectionIndex = index;
+              });
+            },
+            itemBuilder: (context, index) {
+              if (index >= directions.length) return const SizedBox.shrink();
+              
+              final direction = directions[index];
+              final icon = direction['icon'] as IconData? ?? Icons.straight_rounded;
+              
+              // Get turn color for background
+              final turnColor = _getTurnColor(icon);
+              
+              return Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      turnColor.withAlpha((0.25 * 255).toInt()),
+                      turnColor.withAlpha((0.15 * 255).toInt()),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 64,
+                        height: 64,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [turnColor, turnColor.withAlpha(180)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                              color: turnColor.withAlpha(153),
+                              blurRadius: 12,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Icon(
+                          icon,
+                          color: Colors.white,
+                          size: 32,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              direction['text'] as String,
+                              style: GoogleFonts.poppins(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                                color: isDark ? Colors.white : const Color(0xFF1C1C1E),
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.straighten_rounded,
+                                  size: 14,
+                                  color: turnColor,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  direction['distance'] as String,
+                                  style: GoogleFonts.notoSans(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    color: turnColor,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      // Page indicator dots
+                      if (directions.length > 1)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withAlpha(51),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            '${index + 1}/${directions.length}',
+                            style: GoogleFonts.notoSans(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
         ),
       ),
     );

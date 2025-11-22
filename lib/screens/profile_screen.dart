@@ -170,12 +170,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.school_rounded, color: Colors.white.withOpacity(0.9), size: 13),
+                      Icon(Icons.school_rounded, color: Colors.white.withAlpha(230), size: 13),
                       const SizedBox(width: 4),
                       Flexible(
                         child: Text(
                           dept,
-                          style: GoogleFonts.notoSans(fontSize: 12, color: Colors.white.withOpacity(0.95), fontWeight: FontWeight.w500),
+                          style: GoogleFonts.notoSans(fontSize: 12, color: Colors.white.withAlpha(242), fontWeight: FontWeight.w500),
                           textAlign: TextAlign.center,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -211,7 +211,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         color: isDark ? AppColors.darkCard : Colors.white,
         borderRadius: BorderRadius.circular(14),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2)),
+          BoxShadow(color: Colors.black.withAlpha(10), blurRadius: 8, offset: const Offset(0, 2)),
         ],
       ),
       child: Column(
@@ -265,7 +265,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           color: isDark ? AppColors.darkCard : Colors.white,
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
-            BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 6, offset: const Offset(0, 2)),
+            BoxShadow(color: Colors.black.withAlpha(10), blurRadius: 6, offset: const Offset(0, 2)),
           ],
         ),
         child: Column(
@@ -298,7 +298,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         color: isDark ? AppColors.darkCard : Colors.white,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 6, offset: const Offset(0, 1)),
+          BoxShadow(color: Colors.black.withAlpha(8), blurRadius: 6, offset: const Offset(0, 1)),
         ],
       ),
       child: ListTile(

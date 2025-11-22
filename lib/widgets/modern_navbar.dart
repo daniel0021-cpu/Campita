@@ -25,24 +25,24 @@ class ModernNavBar extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
           decoration: BoxDecoration(
             color: isDark 
-                ? Colors.grey[900]?.withOpacity(0.95) 
-                : Colors.white.withOpacity(0.95),
+                ? Colors.grey[900]?.withAlpha(242) 
+                : Colors.white.withAlpha(242),
             borderRadius: BorderRadius.circular(50),
             border: Border.all(
               color: isDark 
-                  ? Colors.white.withOpacity(0.1) 
-                  : Colors.black.withOpacity(0.08),
+                  ? Colors.white.withAlpha(26) 
+                  : Colors.black.withAlpha(20),
               width: 1,
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(isDark ? 0.5 : 0.12),
+                color: Colors.black.withAlpha(isDark ? 128 : 31),
                 blurRadius: 20,
                 offset: const Offset(0, 8),
                 spreadRadius: 0,
               ),
               BoxShadow(
-                color: Colors.black.withOpacity(isDark ? 0.3 : 0.05),
+                color: Colors.black.withAlpha(isDark ? 77 : 13),
                 blurRadius: 40,
                 offset: const Offset(0, 12),
                 spreadRadius: -5,
@@ -153,7 +153,7 @@ class ModernNavBar extends StatelessWidget {
                 curve: Curves.easeOutCubic,
                 child: Icon(
                   icon,
-                  color: selected ? AppColors.primary : AppColors.grey.withOpacity(0.6),
+                  color: selected ? AppColors.primary : AppColors.grey.withAlpha(153),
                   size: selected ? 23 : 20,
                 ),
               ),
@@ -255,25 +255,25 @@ class _AnimatedNavButtonState extends State<_AnimatedNavButton>
           ),
           decoration: BoxDecoration(
             color: widget.selected
-                ? AppColors.primary.withOpacity(0.14)
+                ? AppColors.primary.withAlpha(36)
                 : Colors.transparent,
             borderRadius: BorderRadius.circular(50),
             border: widget.selected
                 ? Border.all(
-                    color: AppColors.primary.withOpacity(0.35),
+                    color: AppColors.primary.withAlpha(89),
                     width: 1.2,
                   )
                 : null,
             boxShadow: widget.selected
                 ? [
                     BoxShadow(
-                      color: AppColors.primary.withOpacity(0.18),
+                      color: AppColors.primary.withAlpha(46),
                       blurRadius: 14,
                       offset: const Offset(0, 2),
                       spreadRadius: 2,
                     ),
                     BoxShadow(
-                      color: AppColors.primary.withOpacity(0.1),
+                      color: AppColors.primary.withAlpha(26),
                       blurRadius: 24,
                       offset: const Offset(0, 4),
                       spreadRadius: 4,

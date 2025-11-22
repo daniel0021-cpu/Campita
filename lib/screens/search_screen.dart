@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'dart:html' as html;
 import '../theme/app_theme.dart';
 import '../models/campus_building.dart';
 import '../screens/premium_profile_screen.dart';
@@ -69,6 +70,21 @@ class _SearchScreenState extends State<SearchScreen> {
           // Auto-fill search field with detected speech
           _searchController.text = text;
           _performSearch(text);
+          
+          // Automatically navigate to first matching building with animation
+          final searchQuery = text.toLowerCase();
+          final matchingBuilding = campusBuildings.firstWhere(
+            (building) => building.name.toLowerCase().contains(searchQuery) ||
+                          building.categoryName.toLowerCase().contains(searchQuery),
+            orElse: () => campusBuildings.first,
+          );
+          
+          // Pop back to map screen with selected building for animation
+          Future.delayed(const Duration(milliseconds: 800), () {
+            if (mounted) {
+              Navigator.pop(context, matchingBuilding);
+            }
+          });
         },
       ),
     );
@@ -856,6 +872,10 @@ class _VoiceSearchDialogWidgetState extends State<_VoiceSearchDialogWidget>
   String _spokenText = '';
   bool _isListening = false;
   bool _hasError = false;
+  
+  // Web Speech Recognition for device microphone access
+  html.SpeechRecognition? _recognition;
+  bool _speechAvailable = false;
 
   @override
   void initState() {
@@ -872,39 +892,217 @@ class _VoiceSearchDialogWidgetState extends State<_VoiceSearchDialogWidget>
         curve: Curves.easeInOut,
       ),
     );
+    
+    // Initialize Web Speech API for device microphone
+    _initializeSpeech();
   }
 
   @override
   void dispose() {
     _pulseController.dispose();
+    try {
+      _recognition?.stop();
+      _recognition?.abort();
+    } catch (e) {
+      debugPrint('Error disposing speech recognition: $e');
+    }
     super.dispose();
   }
-
+  
+  void _initializeSpeech() {
+    try {
+      // Create Web Speech Recognition instance (uses device microphone)
+      _recognition = html.SpeechRecognition();
+      
+      if (_recognition == null) {
+        if (mounted) {
+          setState(() {
+            _listeningText = 'Speech not supported';
+            _hasError = true;
+          });
+        }
+        return;
+      }
+      
+      // Configure for optimal device microphone usage
+      _recognition!.continuous = false; // Single command mode
+      _recognition!.interimResults = true; // Show partial results
+      _recognition!.lang = 'en-US';
+      
+      try {
+        _recognition!.maxAlternatives = 3;
+      } catch (e) {
+        debugPrint('maxAlternatives not supported: $e');
+      }
+      
+      // Handle speech results
+      _recognition!.onResult.listen((event) {
+        try {
+          final results = event.results;
+          if (results != null && results.isNotEmpty) {
+            final result = results[results.length - 1];
+            String? transcript;
+            bool isFinal = false;
+            
+            try {
+              final alternatives = result as List<dynamic>;
+              if (alternatives.isNotEmpty) {
+                transcript = alternatives[0].transcript as String?;
+                isFinal = result.isFinal ?? false;
+              }
+            } catch (e) {
+              try {
+                transcript = (result as dynamic).transcript as String?;
+                isFinal = (result as dynamic).isFinal ?? false;
+              } catch (e2) {
+                debugPrint('Error parsing result: $e2');
+              }
+            }
+            
+            if (transcript != null && transcript.isNotEmpty && mounted) {
+              setState(() {
+                _spokenText = transcript!;
+                if (isFinal) {
+                  _listeningText = 'Searching for "$transcript"...';
+                  _isListening = false;
+                } else {
+                  _listeningText = 'Listening: "$transcript"';
+                }
+              });
+              
+              // Immediately search when final result is ready
+              if (isFinal) {
+                try {
+                  _recognition?.stop();
+                } catch (e) {
+                  debugPrint('Error stopping: $e');
+                }
+                _finalizeSpeech();
+              }
+            }
+          }
+        } catch (e) {
+          debugPrint('Result handling error: $e');
+        }
+      });
+      
+      // Handle errors
+      _recognition!.onError.listen((error) {
+        debugPrint('Speech error: ${error.error}');
+        
+        try {
+          _recognition?.stop();
+          _recognition?.abort();
+        } catch (e) {
+          debugPrint('Error cleaning up: $e');
+        }
+        
+        if (mounted) {
+          String message = 'Error occurred';
+          if (error.error == 'not-allowed' || error.error == 'service-not-allowed') {
+            message = 'Microphone access denied.\\n\\nPlease enable microphone permissions.';
+          } else if (error.error == 'network') {
+            message = 'Network error. Please check your connection.';
+          } else if (error.error == 'no-speech') {
+            message = 'No speech detected';
+            setState(() {
+              _listeningText = message;
+              _isListening = false;
+              _hasError = false; // Allow retry
+            });
+            return;
+          } else if (error.error == 'audio-capture') {
+            message = 'Microphone not found.\\n\\nCheck your device microphone.';
+          }
+          setState(() {
+            _listeningText = message;
+            _isListening = false;
+            _hasError = true;
+          });
+        }
+      });
+      
+      // Handle end
+      _recognition!.onEnd.listen((_) {
+        try {
+          _recognition?.abort();
+        } catch (e) {
+          debugPrint('Error aborting: $e');
+        }
+        
+        if (mounted && _spokenText.isEmpty && _isListening) {
+          setState(() {
+            _listeningText = 'No speech detected';
+            _isListening = false;
+            _hasError = false;
+          });
+        }
+      });
+      
+      _speechAvailable = true;
+      
+    } catch (e) {
+      debugPrint('Speech initialization error: $e');
+      if (mounted) {
+        setState(() {
+          _listeningText = 'Speech not available';
+          _hasError = true;
+        });
+      }
+    }
+  }
+  
   void _startListening() {
+    if (!_speechAvailable || _recognition == null) {
+      setState(() {
+        _hasError = true;
+        _listeningText = 'Speech recognition not available';
+      });
+      return;
+    }
+    
     setState(() {
       _isListening = true;
       _hasError = false;
       _listeningText = 'Listening...';
       _spokenText = '';
     });
-
-    // Simulate speech detection (in web, you'd use actual speech recognition)
-    Future.delayed(const Duration(seconds: 3), () {
-      if (mounted && _isListening) {
-        // For demo, show error if no speech
-        setState(() {
-          _hasError = true;
-          _isListening = false;
-          _listeningText = 'No speech detected';
-        });
-      }
-    });
+    
+    try {
+      _recognition!.start();
+    } catch (e) {
+      debugPrint('Error starting recognition: $e');
+      setState(() {
+        _hasError = true;
+        _isListening = false;
+        _listeningText = 'Error starting microphone';
+      });
+    }
   }
 
   void _stopListening() {
+    try {
+      _recognition?.stop();
+    } catch (e) {
+      debugPrint('Error stopping: $e');
+    }
     setState(() {
       _isListening = false;
     });
+  }
+  
+  void _finalizeSpeech() {
+    if (_spokenText.isNotEmpty) {
+      // Trigger search callback immediately
+      widget.onSpeechDetected(_spokenText);
+      
+      // Close dialog after brief delay
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (mounted) {
+          Navigator.pop(context);
+        }
+      });
+    }
   }
 
   void _retry() {

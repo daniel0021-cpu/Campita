@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -7,10 +8,12 @@ import '../theme/app_theme.dart';
 
 class MusicPlayerSheet extends StatefulWidget {
   final VoidCallback? onClose;
+  final ValueChanged<bool>? onExpandedChanged;
 
   const MusicPlayerSheet({
     super.key,
     this.onClose,
+    this.onExpandedChanged,
   });
 
   @override
@@ -27,6 +30,7 @@ class _MusicPlayerSheetState extends State<MusicPlayerSheet>
   bool _isPlaying = false;
   bool _isSearching = false;
   bool _isLoading = false;
+  bool _isRepeatEnabled = false;
   
   String? _currentTrack;
   String? _currentArtist;
@@ -76,12 +80,19 @@ class _MusicPlayerSheetState extends State<MusicPlayerSheet>
       }
     });
     
-    // Listen to ended event - auto play next song
+    // Listen to ended event - auto play next song or repeat
     _audioElement!.onEnded.listen((_) {
       if (mounted) {
-        setState(() => _isPlaying = false);
-        // Auto-play next song if available
-        _playNextSong();
+        if (_isRepeatEnabled) {
+          // Repeat current song
+          _audioElement?.currentTime = 0;
+          _audioElement?.play();
+          setState(() => _isPlaying = true);
+        } else {
+          setState(() => _isPlaying = false);
+          // Auto-play next song if available
+          _playNextSong();
+        }
       }
     });
   }
@@ -312,6 +323,7 @@ class _MusicPlayerSheetState extends State<MusicPlayerSheet>
         onTap: () {
           if (!_isExpanded) {
             setState(() => _isExpanded = true);
+            widget.onExpandedChanged?.call(true);
           }
         },
         child: AnimatedSwitcher(
@@ -336,25 +348,43 @@ class _MusicPlayerSheetState extends State<MusicPlayerSheet>
   }
 
   Widget _buildCollapsedButton(bool isDark) {
-    return Material(
+    return TweenAnimationBuilder<double>(
       key: const ValueKey('collapsed'),
-      elevation: 8,
-      shape: const CircleBorder(),
-      shadowColor: AppColors.primary.withAlpha(128),
-      child: Container(
-        width: 60,
-        height: 60,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              AppColors.primary,
-              AppColors.primary.withAlpha(204),
+      tween: Tween(begin: 0.0, end: 1.0),
+      duration: const Duration(milliseconds: 800),
+      curve: Curves.elasticOut,
+      builder: (context, value, child) {
+        return Transform.scale(
+          scale: 0.7 + (value * 0.3),
+          child: child,
+        );
+      },
+      child: Material(
+        elevation: 12,
+        shape: const CircleBorder(),
+        shadowColor: AppColors.primary.withAlpha(153),
+        child: Container(
+          width: 64,
+          height: 64,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                AppColors.primary,
+                AppColors.primary.withAlpha(230),
+                AppColors.primary.withAlpha(204),
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.primary.withAlpha(102),
+                blurRadius: 20,
+                spreadRadius: 2,
+              ),
             ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
           ),
-          shape: BoxShape.circle,
-        ),
         child: Stack(
           alignment: Alignment.center,
           children: [
@@ -383,17 +413,22 @@ class _MusicPlayerSheetState extends State<MusicPlayerSheet>
                 },
               ),
             Icon(
-              _isPlaying ? Icons.music_note_rounded : Icons.music_note_outlined,
+              _isPlaying ? Icons.library_music_rounded : Icons.library_music_outlined,
               color: Colors.white,
               size: 28,
             ),
           ],
         ),
       ),
+      ),
     );
   }
 
   Widget _buildExpandedSheet(bool isDark) {
+    final screenHeight = MediaQuery.of(context).size.height;
+    final safeTop = MediaQuery.of(context).padding.top;
+    final safeBottom = MediaQuery.of(context).padding.bottom;
+    
     return Material(
       elevation: 24,
       borderRadius: BorderRadius.circular(32),
@@ -403,7 +438,7 @@ class _MusicPlayerSheetState extends State<MusicPlayerSheet>
         width: MediaQuery.of(context).size.width - 32,
         constraints: BoxConstraints(
           maxWidth: 600,
-          maxHeight: MediaQuery.of(context).size.height * 0.75,
+          maxHeight: (screenHeight - safeTop - safeBottom) * 0.75,
         ),
         decoration: BoxDecoration(
           gradient: LinearGradient(
@@ -430,6 +465,7 @@ class _MusicPlayerSheetState extends State<MusicPlayerSheet>
         child: ClipRRect(
           borderRadius: BorderRadius.circular(32),
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
               // Header with close button
               _buildHeader(isDark),
@@ -437,8 +473,8 @@ class _MusicPlayerSheetState extends State<MusicPlayerSheet>
               // Search bar
               _buildSearchBar(isDark),
               
-              // Content area
-              Expanded(
+              // Content area with proper constraints
+              Flexible(
                 child: AnimatedSwitcher(
                   duration: const Duration(milliseconds: 400),
                   switchInCurve: Curves.easeOutCubic,
@@ -461,22 +497,25 @@ class _MusicPlayerSheetState extends State<MusicPlayerSheet>
                 ),
               ),
               
-              // Mini player at bottom
+              // Mini player at bottom - properly rounded and floating
               if (_currentTrack != null)
-                TweenAnimationBuilder<double>(
-                  tween: Tween(begin: 0.0, end: 1.0),
-                  duration: const Duration(milliseconds: 400),
-                  curve: Curves.easeOutCubic,
-                  builder: (context, value, child) {
-                    return Transform.translate(
-                      offset: Offset(0, 50 * (1 - value)),
-                      child: Opacity(
-                        opacity: value,
-                        child: child,
-                      ),
-                    );
-                  },
-                  child: _buildMiniPlayer(isDark),
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: TweenAnimationBuilder<double>(
+                    tween: Tween(begin: 0.0, end: 1.0),
+                    duration: const Duration(milliseconds: 400),
+                    curve: Curves.easeOutCubic,
+                    builder: (context, value, child) {
+                      return Transform.translate(
+                        offset: Offset(0, 50 * (1 - value)),
+                        child: Opacity(
+                          opacity: value,
+                          child: child,
+                        ),
+                      );
+                    },
+                    child: _buildMiniPlayer(isDark),
+                  ),
                 ),
             ],
           ),
@@ -503,7 +542,7 @@ class _MusicPlayerSheetState extends State<MusicPlayerSheet>
               borderRadius: BorderRadius.circular(14),
             ),
             child: const Icon(
-              Icons.music_note_rounded,
+              Icons.library_music_rounded,
               color: Colors.white,
               size: 24,
             ),
@@ -511,7 +550,7 @@ class _MusicPlayerSheetState extends State<MusicPlayerSheet>
           const SizedBox(width: 12),
           Expanded(
             child: Text(
-              'Music Player',
+              'Music Library',
               style: GoogleFonts.notoSans(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
@@ -526,6 +565,7 @@ class _MusicPlayerSheetState extends State<MusicPlayerSheet>
             ),
             onPressed: () {
               setState(() => _isExpanded = false);
+              widget.onExpandedChanged?.call(false);
             },
           ),
         ],
@@ -538,11 +578,11 @@ class _MusicPlayerSheetState extends State<MusicPlayerSheet>
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
       child: TweenAnimationBuilder<double>(
         tween: Tween(begin: 0.0, end: 1.0),
-        duration: const Duration(milliseconds: 400),
-        curve: Curves.easeOutBack,
+        duration: const Duration(milliseconds: 500),
+        curve: Curves.elasticOut,
         builder: (context, value, child) {
           return Transform.scale(
-            scale: 0.9 + (value * 0.1),
+            scale: 0.85 + (value * 0.15),
             child: Opacity(
               opacity: value,
               child: child,
@@ -558,120 +598,91 @@ class _MusicPlayerSheetState extends State<MusicPlayerSheet>
                       Colors.grey[800]!.withAlpha(179),
                     ]
                   : [
-                      AppColors.primary.withAlpha(26),
-                      AppColors.primary.withAlpha(13),
+                      AppColors.primary.withAlpha(51),
+                      AppColors.primary.withAlpha(38),
                     ],
             ),
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(50),
             border: Border.all(
               color: isDark
-                  ? Colors.white.withAlpha(26)
-                  : AppColors.primary.withAlpha(51),
-              width: 1.5,
+                  ? Colors.grey[700]!.withAlpha(153)
+                  : AppColors.primary.withAlpha(102),
+              width: 2,
             ),
             boxShadow: [
               BoxShadow(
-                color: AppColors.primary.withAlpha(26),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
+                color: AppColors.primary.withAlpha(64),
+                blurRadius: 16,
+                spreadRadius: 2,
               ),
             ],
           ),
           child: Row(
             children: [
+              const SizedBox(width: 20),
+              Icon(
+                Icons.search_rounded,
+                color: isDark ? Colors.white70 : AppColors.primary,
+                size: 24,
+              ),
+              const SizedBox(width: 12),
               Expanded(
                 child: TextField(
                   controller: _searchController,
+                  onChanged: _searchMusic,
                   autofocus: true,
-                  onSubmitted: _searchMusic,
-                  onChanged: (value) {
-                    setState(() {}); // Rebuild to show/hide buttons
-                  },
                   style: GoogleFonts.notoSans(
+                    fontSize: 16,
                     color: isDark ? Colors.white : AppColors.darkGrey,
-                    fontSize: 15,
                     fontWeight: FontWeight.w500,
                   ),
                   decoration: InputDecoration(
-                    hintText: '🎵 Search any song in the world...',
+                    hintText: 'Search any song, artist, or album...',
                     hintStyle: GoogleFonts.notoSans(
-                      color: isDark ? Colors.white60 : AppColors.grey,
+                      color: isDark ? Colors.white54 : AppColors.grey,
                       fontSize: 15,
                     ),
-                    prefixIcon: Icon(
-                      Icons.search_rounded,
-                      color: AppColors.primary,
-                      size: 24,
-                    ),
-                    suffixIcon: _searchController.text.isNotEmpty
-                        ? Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              IconButton(
-                                icon: Icon(
-                                  Icons.clear_rounded,
-                                  color: isDark ? Colors.white60 : AppColors.grey,
-                                ),
-                                onPressed: () {
-                                  _searchController.clear();
-                                  setState(() {
-                                    _isSearching = false;
-                                    _searchResults = [];
-                                    _artistSuggestions = [];
-                                  });
-                                },
-                              ),
-                              Container(
-                                margin: const EdgeInsets.only(right: 8),
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: [
-                                      AppColors.primary,
-                                      AppColors.primary.withAlpha(204),
-                                    ],
-                                  ),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Material(
-                                  color: Colors.transparent,
-                                  child: InkWell(
-                                    borderRadius: BorderRadius.circular(12),
-                                    onTap: () => _searchMusic(_searchController.text),
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 16,
-                                        vertical: 10,
-                                      ),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          const Icon(
-                                            Icons.search_rounded,
-                                            color: Colors.white,
-                                            size: 18,
-                                          ),
-                                          const SizedBox(width: 6),
-                                          Text(
-                                            'Search',
-                                            style: GoogleFonts.notoSans(
-                                              color: Colors.white,
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          )
-                        : null,
                     border: InputBorder.none,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 16,
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                ),
+              ),
+              if (_searchController.text.isNotEmpty)
+                IconButton(
+                  icon: Icon(
+                    Icons.clear_rounded,
+                    color: isDark ? Colors.white54 : AppColors.grey,
+                  ),
+                  onPressed: () {
+                    setState(() {
+                      _searchController.clear();
+                      _searchResults.clear();
+                      _isSearching = false;
+                    });
+                  },
+                ),
+              Container(
+                margin: const EdgeInsets.only(right: 8),
+                child: ElevatedButton(
+                  onPressed: () {
+                    if (_searchController.text.isNotEmpty) {
+                      _searchMusic(_searchController.text);
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(50),
+                    ),
+                  ),
+                  child: Text(
+                    'Search',
+                    style: GoogleFonts.notoSans(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 15,
                     ),
                   ),
                 ),
@@ -684,13 +695,22 @@ class _MusicPlayerSheetState extends State<MusicPlayerSheet>
   }
 
   Widget _buildSearchResults(bool isDark) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return _buildSearchResultsContent(isDark, constraints);
+      },
+    );
+  }
+
+  Widget _buildSearchResultsContent(bool isDark, BoxConstraints constraints) {
     if (_isLoading) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+            CupertinoActivityIndicator(
+              radius: 16,
+              color: AppColors.primary,
             ),
             const SizedBox(height: 16),
             Text(
@@ -705,12 +725,19 @@ class _MusicPlayerSheetState extends State<MusicPlayerSheet>
       );
     }
 
-    return SingleChildScrollView(
-      physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          padding: EdgeInsets.only(
+            left: constraints.maxWidth < 400 ? 12 : 20,
+            right: constraints.maxWidth < 400 ? 12 : 20,
+            top: 16,
+            bottom: _currentTrack != null ? 140 : 16, // Extra space for mini player
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
           // Artist suggestions with animation
           if (_artistSuggestions.isNotEmpty) ...[
             TweenAnimationBuilder<double>(
@@ -739,7 +766,7 @@ class _MusicPlayerSheetState extends State<MusicPlayerSheet>
                   ),
                   const SizedBox(height: 12),
                   SizedBox(
-                    height: 100,
+                    height: 115,
                     child: ListView.builder(
                       scrollDirection: Axis.horizontal,
                       physics: const BouncingScrollPhysics(),
@@ -817,15 +844,18 @@ class _MusicPlayerSheetState extends State<MusicPlayerSheet>
             ),
           ],
         ],
-      ),
+          ),
+        );
+      },
     );
   }
 
   Widget _buildArtistCard(Map<String, dynamic> artist, bool isDark) {
     return Container(
-      width: 100,
-      margin: const EdgeInsets.only(right: 12),
+      width: 90,
+      margin: const EdgeInsets.only(right: 10),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
           Container(
             width: 70,
@@ -879,10 +909,10 @@ class _MusicPlayerSheetState extends State<MusicPlayerSheet>
         borderRadius: BorderRadius.circular(12),
       ),
       child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         leading: Container(
-          width: 50,
-          height: 50,
+          width: 48,
+          height: 48,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(10),
             image: track['artwork'] != null && track['artwork'].isNotEmpty
@@ -895,33 +925,41 @@ class _MusicPlayerSheetState extends State<MusicPlayerSheet>
           ),
           child: track['artwork'] == null || track['artwork'].isEmpty
               ? Icon(
-                  Icons.music_note_rounded,
+                  Icons.album_rounded,
                   color: AppColors.primary,
                 )
               : null,
         ),
-        title: Text(
-          track['name'],
-          style: GoogleFonts.notoSans(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-            color: isCurrentTrack
-                ? AppColors.primary
-                : isDark
-                    ? Colors.white
-                    : AppColors.darkGrey,
-          ),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
+        title: LayoutBuilder(
+          builder: (context, constraints) {
+            return Text(
+              track['name'],
+              style: GoogleFonts.notoSans(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: isCurrentTrack
+                    ? AppColors.primary
+                    : isDark
+                        ? Colors.white
+                        : AppColors.darkGrey,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            );
+          },
         ),
-        subtitle: Text(
-          track['artist'],
-          style: GoogleFonts.notoSans(
-            fontSize: 12,
-            color: isDark ? Colors.white60 : AppColors.grey,
-          ),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
+        subtitle: LayoutBuilder(
+          builder: (context, constraints) {
+            return Text(
+              track['artist'],
+              style: GoogleFonts.notoSans(
+                fontSize: 11,
+                color: isDark ? Colors.white60 : AppColors.grey,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            );
+          },
         ),
         trailing: isCurrentTrack && _isPlaying
             ? const Icon(
@@ -1089,19 +1127,31 @@ class _MusicPlayerSheetState extends State<MusicPlayerSheet>
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isDark
-            ? Colors.grey[900]?.withAlpha(242)
-            : AppColors.primary.withAlpha(13),
-        borderRadius: const BorderRadius.vertical(
-          bottom: Radius.circular(32),
+        gradient: LinearGradient(
+          colors: isDark
+              ? [
+                  Colors.grey[850]!,
+                  Colors.grey[900]!,
+                ]
+              : [
+                  AppColors.primary.withAlpha(26),
+                  AppColors.primary.withAlpha(13),
+                ],
         ),
-        border: Border(
-          top: BorderSide(
-            color: isDark
-                ? Colors.grey[800]!
-                : AppColors.primary.withAlpha(26),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: isDark
+              ? Colors.grey[700]!.withAlpha(128)
+              : AppColors.primary.withAlpha(51),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withAlpha(isDark ? 77 : 26),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
           ),
-        ),
+        ],
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -1147,13 +1197,31 @@ class _MusicPlayerSheetState extends State<MusicPlayerSheet>
                   ],
                 ),
               ),
-              IconButton(
-                icon: Icon(
-                  _isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
-                  size: 32,
-                  color: AppColors.primary,
-                ),
-                onPressed: _togglePlayPause,
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Repeat button
+                  IconButton(
+                    icon: Icon(
+                      _isRepeatEnabled ? Icons.repeat_one_rounded : Icons.repeat_rounded,
+                      size: 24,
+                      color: _isRepeatEnabled ? AppColors.primary : (isDark ? Colors.white38 : AppColors.grey),
+                    ),
+                    onPressed: () {
+                      setState(() => _isRepeatEnabled = !_isRepeatEnabled);
+                    },
+                    tooltip: _isRepeatEnabled ? 'Repeat: On' : 'Repeat: Off',
+                  ),
+                  // Play/Pause button
+                  IconButton(
+                    icon: Icon(
+                      _isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                      size: 32,
+                      color: AppColors.primary,
+                    ),
+                    onPressed: _togglePlayPause,
+                  ),
+                ],
               ),
             ],
           ),

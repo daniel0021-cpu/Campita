@@ -4,6 +4,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
 import '../models/campus_building.dart';
+import '../widgets/advanced_animations.dart';
 import 'live_navigation_screen.dart';
 
 class RoutePreviewScreen extends StatefulWidget {
@@ -40,7 +41,7 @@ class _RoutePreviewScreenState extends State<RoutePreviewScreen>
   
   String _selectedTransportMode = 'foot';
   bool _showTransportError = false;
-  double _sheetHeight = 0.35; // 35% expanded by default
+  double _sheetHeight = 0.45; // 45% expanded by default
 
   @override
   void initState() {
@@ -62,7 +63,7 @@ class _RoutePreviewScreenState extends State<RoutePreviewScreen>
       end: const Offset(0, 0),
     ).animate(CurvedAnimation(
       parent: _errorPillController,
-      curve: Curves.elasticOut,
+      curve: Curves.easeOutBack,
     ));
 
     _errorFadeAnimation = Tween<double>(
@@ -144,17 +145,27 @@ class _RoutePreviewScreenState extends State<RoutePreviewScreen>
   }
 
   void _showTransportErrorMessage() {
+    if (!mounted) return;
+    
     setState(() => _showTransportError = true);
-    _errorPillController.forward();
+    
+    _errorPillController.forward().catchError((error) {
+      debugPrint('Error pill animation error: $error');
+    });
 
     Future.delayed(const Duration(milliseconds: 3000), () {
-      if (mounted) {
-        _errorPillController.reverse().then((_) {
-          if (mounted) {
-            setState(() => _showTransportError = false);
-          }
-        });
-      }
+      if (!mounted) return;
+      
+      _errorPillController.reverse().then((_) {
+        if (mounted) {
+          setState(() => _showTransportError = false);
+        }
+      }).catchError((error) {
+        debugPrint('Error pill reverse animation error: $error');
+        if (mounted) {
+          setState(() => _showTransportError = false);
+        }
+      });
     });
   }
 
@@ -397,8 +408,22 @@ class _RoutePreviewScreenState extends State<RoutePreviewScreen>
             _sheetHeight = _sheetHeight.clamp(0.25, 0.7);
           });
         },
+        onVerticalDragEnd: (details) {
+          // Snap to nearest position based on velocity
+          final velocity = details.primaryVelocity ?? 0;
+          setState(() {
+            if (velocity > 500) {
+              _sheetHeight = 0.35; // Snap to collapsed
+            } else if (velocity < -500) {
+              _sheetHeight = 0.75; // Snap to expanded
+            } else {
+              // Snap to nearest
+              _sheetHeight = _sheetHeight < 0.55 ? 0.45 : 0.75;
+            }
+          });
+        },
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 300),
+          duration: const Duration(milliseconds: 400),
           curve: Curves.easeOutCubic,
           height: screenHeight * _sheetHeight,
           decoration: BoxDecoration(
@@ -406,25 +431,56 @@ class _RoutePreviewScreenState extends State<RoutePreviewScreen>
             borderRadius: BorderRadius.circular(32),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withAlpha(38),
-                blurRadius: 30,
-                offset: const Offset(0, -5),
+                color: Colors.black.withAlpha(51),
+                blurRadius: 40,
+                spreadRadius: 2,
+                offset: const Offset(0, -8),
               ),
             ],
           ),
           child: Column(
             children: [
-              // Drag handle
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 12),
+              // Drag handle with tap to expand
+              GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _sheetHeight = _sheetHeight < 0.5 ? 0.7 : 0.35;
+                  });
+                },
                 child: Container(
-                  width: 50,
-                  height: 5,
-                  decoration: BoxDecoration(
-                    color: isDark
-                        ? Colors.white.withAlpha(77)
-                        : AppColors.grey.withAlpha(128),
-                    borderRadius: BorderRadius.circular(3),
+                  color: Colors.transparent,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  child: Center(
+                    child: TweenAnimationBuilder<double>(
+                      tween: Tween(begin: 0.0, end: 1.0),
+                      duration: const Duration(milliseconds: 800),
+                      curve: Curves.easeOut,
+                      builder: (context, value, child) {
+                        return Transform.scale(
+                          scale: 0.8 + (value * 0.2),
+                          child: Opacity(
+                            opacity: value,
+                            child: child,
+                          ),
+                        );
+                      },
+                      child: Container(
+                        width: 50,
+                        height: 5,
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? Colors.white.withAlpha(102)
+                              : AppColors.grey.withAlpha(153),
+                          borderRadius: BorderRadius.circular(3),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.primary.withAlpha(51),
+                              blurRadius: 4,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -432,8 +488,11 @@ class _RoutePreviewScreenState extends State<RoutePreviewScreen>
               // Content
               Expanded(
                 child: SingleChildScrollView(
-                  physics: const BouncingScrollPhysics(),
+                  physics: const BouncingScrollPhysics(
+                    parent: AlwaysScrollableScrollPhysics(),
+                  ),
                   padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+                  clipBehavior: Clip.none,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -588,14 +647,19 @@ class _RoutePreviewScreenState extends State<RoutePreviewScreen>
         ),
         const SizedBox(height: 12),
         Row(
-          children: modes.map((mode) {
+          children: modes.asMap().entries.map((entry) {
+            final index = entry.key;
+            final mode = entry.value;
             final key = mode['key'] as String;
             final isSelected = _selectedTransportMode == key;
 
             return Expanded(
               child: Padding(
                 padding: const EdgeInsets.only(right: 10),
-                child: GestureDetector(
+                child: ElasticScaleIn(
+                  duration: const Duration(milliseconds: 500),
+                  delay: Duration(milliseconds: 100 + (index * 50)),
+                  child: GestureDetector(
                   onTap: () {
                     setState(() => _selectedTransportMode = key);
                   },
@@ -667,6 +731,7 @@ class _RoutePreviewScreenState extends State<RoutePreviewScreen>
                   ),
                 ),
               ),
+            ),
             );
           }).toList(),
         ),
@@ -739,18 +804,36 @@ class _RoutePreviewScreenState extends State<RoutePreviewScreen>
     return Row(
       children: [
         Expanded(
-          child: OutlinedButton.icon(
-            onPressed: () => Navigator.pop(context),
-            icon: const Icon(Icons.close_rounded),
-            label: const Text('Cancel'),
-            style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              side: BorderSide(
-                color: AppColors.primary.withAlpha(77),
-                width: 2,
+          child: ElasticScaleIn(
+            duration: const Duration(milliseconds: 500),
+            delay: const Duration(milliseconds: 200),
+            child: AnimatedButton(
+              onTap: () => Navigator.pop(context),
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: AppColors.primary.withAlpha(77),
+                    width: 2,
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.close_rounded, color: AppColors.primary),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Cancel',
+                      style: GoogleFonts.notoSans(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -758,18 +841,29 @@ class _RoutePreviewScreenState extends State<RoutePreviewScreen>
         const SizedBox(width: 12),
         Expanded(
           flex: 2,
-          child: ElevatedButton.icon(
-            onPressed: _handleStartNavigation,
-            icon: const Icon(Icons.navigation_rounded),
-            label: const Text('Start Navigation'),
-            style: ElevatedButton.styleFrom(
+          child: ElasticScaleIn(
+            duration: const Duration(milliseconds: 500),
+            delay: const Duration(milliseconds: 300),
+            child: AnimatedButton(
+              onTap: _handleStartNavigation,
               backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 16),
               elevation: 8,
-              shadowColor: AppColors.primary.withAlpha(128),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.navigation_rounded, color: Colors.white),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Start Navigation',
+                      style: GoogleFonts.notoSans(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),

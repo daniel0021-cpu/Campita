@@ -5,9 +5,11 @@ import 'dart:math' as math;
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_compass/flutter_compass.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:sensors_plus/sensors_plus.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'dart:html' as html;
@@ -18,8 +20,11 @@ import '../theme/app_theme.dart';
 import '../utils/osm_data_fetcher.dart';
 import 'directions_screen.dart';
 import 'route_preview_screen.dart';
-import 'events_screen.dart';
+import 'events_screen.dart' as events_screen;
  import '../utils/preferences_service.dart';
+ import '../utils/live_events_service.dart';
+ import '../widgets/live_events_banner.dart';
+ import '../models/campus_event.dart';
  import '../utils/favorites_service.dart';
  import '../utils/app_settings.dart';
  import 'search_screen.dart';
@@ -79,6 +84,11 @@ class _EnhancedCampusMapState extends State<EnhancedCampusMap> with TickerProvid
   bool _loadingOSMData = true;
   final List<CampusBuilding> _recentSearches = [];
   double _mapBearing = 0.0;
+  final LiveEventsService _eventsService = LiveEventsService();
+  List<CampusEvent> _liveEvents = [];
+  final bool _motionTrackingEnabled = false;
+  double _deviceTiltX = 0.0;
+  double _deviceTiltY = 0.0;
   double _userHeading = 0.0;
   bool _isNavigating = false;
   MapStyle _mapStyle = MapStyle.standard;
@@ -111,6 +121,7 @@ class _EnhancedCampusMapState extends State<EnhancedCampusMap> with TickerProvid
     _loadOSMFootpaths();
     _loadOSMBuildings();
     _loadUserPreferences();
+    _initializeLiveEvents();
     // listen for live settings updates
     AppSettings.mapStyle.addListener(() {
       final s = AppSettings.mapStyle.value.toLowerCase();
@@ -173,7 +184,7 @@ class _EnhancedCampusMapState extends State<EnhancedCampusMap> with TickerProvid
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
     _recenterAnimationController = AnimationController(
-      duration: const Duration(milliseconds: 800),
+      duration: const Duration(milliseconds: 350),
       vsync: this,
     );
     _routeDrawController = AnimationController(
@@ -200,6 +211,28 @@ class _EnhancedCampusMapState extends State<EnhancedCampusMap> with TickerProvid
       }
     });
     
+    // Device motion tracking (gyroscope) - only on mobile platforms
+    if (!kIsWeb) {
+      gyroscopeEventStream().listen((GyroscopeEvent event) {
+        if (_motionTrackingEnabled && mounted) {
+          setState(() {
+            _deviceTiltX = event.x;
+            _deviceTiltY = event.y;
+          });
+          
+          // Rotate map based on device tilt (Y-axis rotation)
+          final rotationSensitivity = 30.0; // Degrees per radian
+          final targetRotation = -event.y * rotationSensitivity;
+          
+          // Smooth rotation with limits
+          if (targetRotation.abs() < 45) { // Max 45 degrees tilt
+            _mapController.rotate(targetRotation);
+            setState(() => _mapRotation = targetRotation);
+          }
+        }
+      });
+    }
+    
     // Auto-show building sheet if coming from favorites
     if (widget.selectedBuilding != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -210,6 +243,21 @@ class _EnhancedCampusMapState extends State<EnhancedCampusMap> with TickerProvid
         }
       });
     }
+  }
+
+  void _initializeLiveEvents() {
+    _eventsService.initialize();
+    _eventsService.addListener(() {
+      if (mounted) {
+        setState(() {
+          _liveEvents = _eventsService.liveEvents;
+        });
+      }
+    });
+    // Initial load
+    setState(() {
+      _liveEvents = _eventsService.liveEvents;
+    });
   }
   
   void _startStaggeredAnimations() {
@@ -286,6 +334,9 @@ class _EnhancedCampusMapState extends State<EnhancedCampusMap> with TickerProvid
       // Reload OSM buildings data
       await _loadOSMBuildings();
       
+      // Refresh live events
+      await _eventsService.refresh();
+      
       // Refresh current location
       if (_locationEnabled) {
         final position = await Geolocator.getCurrentPosition(
@@ -306,6 +357,89 @@ class _EnhancedCampusMapState extends State<EnhancedCampusMap> with TickerProvid
     } catch (e) {
       debugPrint('Refresh error: $e');
     }
+  }
+
+  void _navigateToEvent(CampusEvent event) {
+    // Find building by venue ID
+    final building = [...campusBuildings, ..._osmBuildings].firstWhere(
+      (b) => b.name.toLowerCase() == event.venue.toLowerCase(),
+      orElse: () => campusBuildings.first, // Fallback
+    );
+    
+    // Show event details dialog
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.red,
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: const Text(
+                'LIVE',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                event.title,
+                style: const TextStyle(fontSize: 18),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(event.description),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                const Icon(Icons.location_on_rounded, size: 16),
+                const SizedBox(width: 4),
+                Text(event.venue, style: const TextStyle(fontWeight: FontWeight.w600)),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                const Icon(Icons.access_time_rounded, size: 16),
+                const SizedBox(width: 4),
+                Text(event.timeRangeFormatted),
+              ],
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+          ElevatedButton.icon(
+            onPressed: () {
+              Navigator.pop(context);
+              _showBuildingSheet(building, fromSearch: true);
+            },
+            icon: const Icon(Icons.directions_rounded, size: 18),
+            label: const Text('Get Directions'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _loadOSMBuildings() async {
@@ -1765,7 +1899,7 @@ out skel qt;
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: AppColors.error.withOpacity(0.4),
+                            color: AppColors.error.withAlpha(102),
                             blurRadius: 12,
                             offset: const Offset(0, 4),
                           ),
@@ -1783,7 +1917,7 @@ out skel qt;
                       width: 20 * _tempMarkerBounce.value,
                       height: 4,
                       decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.2 * _tempMarkerBounce.value),
+                        color: Colors.black.withAlpha((0.2 * 255 * _tempMarkerBounce.value).toInt()),
                         borderRadius: BorderRadius.circular(10),
                       ),
                     ),
@@ -1973,10 +2107,29 @@ out skel qt;
                 ),
           
                 if (!_isNavigating) _buildSearchBar(),
-          if (!_isNavigating) _buildLayersButton(),
+          // Live Events Banner
+          if (!_isNavigating && _liveEvents.isNotEmpty)
+            Positioned(
+              top: 130,
+              left: 0,
+              right: 0,
+              child: LiveEventsBanner(
+                liveEvents: _liveEvents,
+                onEventTap: (event) => _navigateToEvent(event),
+                onViewAll: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const events_screen.EventsScreen(),
+                    ),
+                  );
+                },
+              ),
+            ),
           if (!_isNavigating) _buildCategoryFilter(),
+          if (!_isNavigating) _buildLayersButton(),
           if (!_isNavigating) _buildCompassButton(),
-          _buildMyLocationButton(),
+          if (!_isNavigating) _buildMyLocationButton(),
           // OSM refresh happens automatically in background - no button needed
           // Favorites overlay removed: dedicated screen now handles favorites
           // if (!_isNavigating && _selectedNavIndex == 1) _buildFavoritesPanel(),
@@ -1996,6 +2149,43 @@ out skel qt;
           
           // Deprecated route info card replaced by navigation HUD
           
+          // Attribution tag at bottom left
+          Positioned(
+            left: 16,
+            bottom: _isNavigating ? 16 : 90,
+            child: AnimatedOpacity(
+              duration: const Duration(milliseconds: 200),
+              opacity: 0.75,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.6),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.2),
+                    width: 1,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.3),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Text(
+                  'Daniels maps',
+                  style: GoogleFonts.notoSans(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white.withValues(alpha: 0.9),
+                    letterSpacing: 0.3,
+                  ),
+                ),
+              ),
+            ),
+          ),
+
           // Bottom Navigation Bar (floating)
           if (!_isNavigating)
             const Positioned(
@@ -2128,18 +2318,18 @@ out skel qt;
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             decoration: BoxDecoration(
               color: isDark 
-                  ? Colors.grey[900]?.withOpacity(0.95) 
-                  : Colors.white.withOpacity(0.95),
+                  ? Colors.grey[900]?.withAlpha((0.95 * 255).toInt()) 
+                  : Colors.white.withAlpha((0.95 * 255).toInt()),
               borderRadius: BorderRadius.circular(28),
               border: Border.all(
                 color: isDark 
-                    ? Colors.white.withOpacity(0.1) 
-                    : Colors.black.withOpacity(0.08),
+                    ? Colors.white.withAlpha((0.1 * 255).toInt()) 
+                    : Colors.black.withAlpha((0.08 * 255).toInt()),
                 width: 1,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(isDark ? 0.3 : 0.1),
+                  color: Colors.black.withAlpha(((isDark ? 0.3 : 0.1) * 255).toInt()),
                   blurRadius: 16,
                   offset: const Offset(0, 4),
                 ),
@@ -2172,15 +2362,15 @@ out skel qt;
                       _showVoiceSearchDialog();
                     },
                     borderRadius: BorderRadius.circular(24),
-                    splashColor: AppColors.primary.withOpacity(0.2),
-                    highlightColor: AppColors.primary.withOpacity(0.1),
+                    splashColor: AppColors.primary.withAlpha((0.2 * 255).toInt()),
+                    highlightColor: AppColors.primary.withAlpha((0.1 * 255).toInt()),
                     child: Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           colors: [
-                            AppColors.primary.withOpacity(0.15),
-                            AppColors.primary.withOpacity(0.1),
+                            AppColors.primary.withAlpha((0.15 * 255).toInt()),
+                            AppColors.primary.withAlpha((0.1 * 255).toInt()),
                           ],
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
@@ -2188,7 +2378,7 @@ out skel qt;
                         borderRadius: BorderRadius.circular(24),
                         boxShadow: [
                           BoxShadow(
-                            color: AppColors.primary.withOpacity(0.2),
+                            color: AppColors.primary.withAlpha((0.2 * 255).toInt()),
                             blurRadius: 8,
                             offset: const Offset(0, 2),
                           ),
@@ -2221,25 +2411,25 @@ out skel qt;
                       );
                     },
                     borderRadius: BorderRadius.circular(20),
-                    splashColor: Colors.black.withOpacity(0.1),
-                    highlightColor: Colors.black.withOpacity(0.05),
+                    splashColor: Colors.black.withAlpha((0.1 * 255).toInt()),
+                    highlightColor: Colors.black.withAlpha((0.05 * 255).toInt()),
                     child: Container(
                       width: 34,
                       height: 34,
                       decoration: BoxDecoration(
                         color: isDark 
-                            ? Colors.grey[800]?.withOpacity(0.8)
-                            : Colors.black.withOpacity(0.85),
+                            ? Colors.grey[800]?.withAlpha((0.8 * 255).toInt())
+                            : Colors.black.withAlpha((0.85 * 255).toInt()),
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
                           color: isDark 
-                              ? Colors.white.withOpacity(0.1)
-                              : Colors.white.withOpacity(0.2),
+                              ? Colors.white.withAlpha((0.1 * 255).toInt())
+                              : Colors.white.withAlpha((0.2 * 255).toInt()),
                           width: 1.5,
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.15),
+                            color: Colors.black.withAlpha((0.15 * 255).toInt()),
                             blurRadius: 8,
                             offset: const Offset(0, 2),
                           ),
@@ -2266,7 +2456,7 @@ out skel qt;
     showDialog(
       context: context,
       barrierDismissible: false,
-      barrierColor: Colors.black.withOpacity(0.7),
+      barrierColor: Colors.black.withAlpha((0.7 * 255).toInt()),
       builder: (context) => _VoiceSearchDialog(
         isDark: isDark,
         onResult: (String result) async {
@@ -2323,7 +2513,7 @@ out skel qt;
               useSafeArea: true,
               transitionAnimationController: AnimationController(
                 vsync: Navigator.of(context),
-                duration: const Duration(milliseconds: 450),
+                duration: const Duration(milliseconds: 200),
               )..forward(),
               builder: (context) => DraggableScrollableSheet(
                 initialChildSize: 0.65,
@@ -2335,8 +2525,8 @@ out skel qt;
                 shouldCloseOnMinExtent: true,
                 builder: (context, scrollController) => TweenAnimationBuilder<double>(
                   tween: Tween(begin: 0.0, end: 1.0),
-                  duration: const Duration(milliseconds: 500),
-                  curve: const Cubic(0.19, 1.0, 0.22, 1.0), // Silky smooth easing
+                  duration: const Duration(milliseconds: 200),
+                  curve: Curves.easeOutQuart, // Instant and buttery smooth
                   builder: (context, animValue, child) => Transform.translate(
                     offset: Offset(0, 100 * (1 - animValue)),
                     child: Transform.scale(
@@ -2353,12 +2543,12 @@ out skel qt;
                     color: isDark ? Colors.grey[900] : Colors.white,
                     borderRadius: BorderRadius.circular(32),
                     border: Border.all(
-                      color: AppColors.borderAdaptive(context).withOpacity(0.15),
+                      color: AppColors.borderAdaptive(context).withAlpha((0.15 * 255).toInt()),
                       width: 1,
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.3),
+                        color: Colors.black.withAlpha((0.3 * 255).toInt()),
                         blurRadius: 40,
                         offset: const Offset(0, -10),
                       ),
@@ -2387,7 +2577,7 @@ out skel qt;
                                   width: 36 + (8 * value),
                                   height: 5,
                                   decoration: BoxDecoration(
-                                    color: AppColors.grey.withOpacity(0.4 + (0.2 * value)),
+                                    color: AppColors.grey.withAlpha(((0.4 + (0.2 * value)) * 255).toInt()),
                                     borderRadius: BorderRadius.circular(3),
                                   ),
                                 );
@@ -2406,8 +2596,8 @@ out skel qt;
                               decoration: BoxDecoration(
                                 gradient: LinearGradient(
                                   colors: [
-                                    const Color(0xFF4CAF50).withOpacity(0.15),
-                                    const Color(0xFF2196F3).withOpacity(0.15),
+                                    const Color(0xFF4CAF50).withAlpha((0.15 * 255).toInt()),
+                                    const Color(0xFF2196F3).withAlpha((0.15 * 255).toInt()),
                                   ],
                                   begin: Alignment.topLeft,
                                   end: Alignment.bottomRight,
@@ -2504,8 +2694,8 @@ out skel qt;
 
     return TweenAnimationBuilder<double>(
       tween: Tween(begin: 0.0, end: 1.0),
-      duration: const Duration(milliseconds: 400),
-      curve: const Cubic(0.25, 0.8, 0.25, 1.0),
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOutQuart,
       builder: (context, value, child) {
         return Transform.translate(
           offset: Offset(0, 10 * (1 - value)),
@@ -2522,38 +2712,38 @@ out skel qt;
             setState(() {
               _mapStyle = style;
             });
-            Future.delayed(const Duration(milliseconds: 150), () {
+            Future.delayed(const Duration(milliseconds: 100), () {
               Navigator.pop(context);
             });
           },
-          splashColor: color.withOpacity(0.1),
-          highlightColor: color.withOpacity(0.05),
+          splashColor: color.withAlpha((0.1 * 255).toInt()),
+          highlightColor: color.withAlpha((0.05 * 255).toInt()),
           borderRadius: BorderRadius.circular(18),
           child: AnimatedContainer(
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeOutCubic,
+            duration: const Duration(milliseconds: 180),
+            curve: Curves.easeOutQuart,
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: isSelected
-                  ? color.withOpacity(0.12)
+                  ? color.withAlpha((0.12 * 255).toInt())
                   : (isDark ? Colors.grey[850] : AppColors.ash),
               borderRadius: BorderRadius.circular(18),
               border: Border.all(
                 color: isSelected
                     ? color
-                    : (isDark ? Colors.white.withOpacity(0.1) : Colors.black.withOpacity(0.05)),
+                    : (isDark ? Colors.white.withAlpha((0.1 * 255).toInt()) : Colors.black.withAlpha((0.05 * 255).toInt())),
                 width: isSelected ? 2 : 1,
               ),
               boxShadow: isSelected
                   ? [
                       BoxShadow(
-                        color: color.withOpacity(0.25),
+                        color: color.withAlpha((0.25 * 255).toInt()),
                         blurRadius: 20,
                         offset: const Offset(0, 4),
                         spreadRadius: 0,
                       ),
                       BoxShadow(
-                        color: color.withOpacity(0.1),
+                        color: color.withAlpha((0.1 * 255).toInt()),
                         blurRadius: 30,
                         offset: const Offset(0, 8),
                         spreadRadius: 2,
@@ -2567,10 +2757,10 @@ out skel qt;
                   width: 52,
                   height: 52,
                   decoration: BoxDecoration(
-                    color: color.withOpacity(0.15),
+                    color: color.withAlpha((0.15 * 255).toInt()),
                     borderRadius: BorderRadius.circular(14),
                     border: Border.all(
-                      color: color.withOpacity(0.3),
+                      color: color.withAlpha((0.3 * 255).toInt()),
                       width: 1.5,
                     ),
                   ),
@@ -2617,7 +2807,7 @@ out skel qt;
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: color.withOpacity(0.4),
+                          color: color.withAlpha((0.4 * 255).toInt()),
                           blurRadius: 8,
                         ),
                       ],
@@ -2748,18 +2938,18 @@ out skel qt;
           scale: 1.0 - (value * 0.02),
           child: Material(
             elevation: isSelected ? 6 : 2,
-            shadowColor: isSelected ? chipColor.withOpacity(0.4) : chipColor.withOpacity(0.15),
+            shadowColor: isSelected ? chipColor.withAlpha((0.4 * 255).toInt()) : chipColor.withAlpha((0.15 * 255).toInt()),
             borderRadius: BorderRadius.circular(24),
             color: isSelected 
                 ? chipColor 
-                : chipColor.withOpacity(0.15),
+                : chipColor.withAlpha((0.15 * 255).toInt()),
             child: Container(
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(24),
                 border: isSelected 
                     ? null 
                     : Border.all(
-                        color: chipColor.withOpacity(0.3),
+                        color: chipColor.withAlpha((0.3 * 255).toInt()),
                         width: 1.5,
                       ),
               ),
@@ -2770,8 +2960,8 @@ out skel qt;
                   });
                 },
                 borderRadius: BorderRadius.circular(24),
-                splashColor: chipColor.withOpacity(0.2),
-                highlightColor: chipColor.withOpacity(0.1),
+                splashColor: chipColor.withAlpha((0.2 * 255).toInt()),
+                highlightColor: chipColor.withAlpha((0.1 * 255).toInt()),
                 child: AnimatedPadding(
                   duration: const Duration(milliseconds: 280),
                   curve: Curves.easeOutQuart,
@@ -2807,6 +2997,315 @@ out skel qt;
     );
   }
 
+
+
+  Widget _buildModernControlButton({
+    required IconData icon,
+    required String label,
+    required bool isActive,
+    required VoidCallback onTap,
+    required bool isDark,
+  }) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      child: Material(
+        elevation: isActive ? 8 : 4,
+        shadowColor: isActive 
+          ? AppColors.primary.withAlpha(102) 
+          : Colors.black.withAlpha(isDark ? 77 : 38),
+        borderRadius: BorderRadius.circular(16),
+        color: isActive 
+          ? AppColors.primary 
+          : (isDark ? Colors.grey[900] : Colors.white),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: onTap,
+          child: Container(
+            width: 52,
+            height: 52,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: isActive
+                  ? Colors.transparent
+                  : (isDark ? Colors.white12 : Colors.black12),
+                width: 1,
+              ),
+            ),
+            child: Icon(
+              icon,
+              color: isActive 
+                ? Colors.white 
+                : (isDark ? Colors.white : AppColors.darkGrey),
+              size: 24,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showLayersSheet() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => Container(
+        margin: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: isDark ? Colors.grey[900] : Colors.white,
+          borderRadius: BorderRadius.circular(32),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withAlpha(isDark ? 128 : 51),
+              blurRadius: 40,
+              spreadRadius: 5,
+              offset: const Offset(0, -10),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Drag handle
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              child: Container(
+                width: 50,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: isDark ? Colors.white30 : Colors.black26,
+                  borderRadius: BorderRadius.circular(3),
+                ),
+              ),
+            ),
+            
+            // Header
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          AppColors.primary.withAlpha(38),
+                          AppColors.primary.withAlpha(26),
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Icon(
+                      Icons.layers_rounded,
+                      color: AppColors.primary,
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Text(
+                    'Map Styles',
+                    style: GoogleFonts.notoSans(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: isDark ? Colors.white : AppColors.darkGrey,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            
+            const SizedBox(height: 24),
+            
+            // Map style options with beautiful tiles
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Column(
+                children: [
+                  _buildMapStyleTile(
+                    'Standard',
+                    'Default map with roads and labels',
+                    Icons.map_rounded,
+                    _mapStyle == MapStyle.standard,
+                    AppColors.primary,
+                    () {
+                      setState(() => _mapStyle = MapStyle.standard);
+                      AppSettings.mapStyle.value = 'standard';
+                      Navigator.pop(context);
+                    },
+                    isDark,
+                  ),
+                  const SizedBox(height: 12),
+                  _buildMapStyleTile(
+                    'Satellite',
+                    'Aerial imagery from space',
+                    Icons.satellite_alt_rounded,
+                    _mapStyle == MapStyle.satellite,
+                    const Color(0xFF2196F3),
+                    () {
+                      setState(() => _mapStyle = MapStyle.satellite);
+                      AppSettings.mapStyle.value = 'satellite';
+                      Navigator.pop(context);
+                    },
+                    isDark,
+                  ),
+                  const SizedBox(height: 12),
+                  _buildMapStyleTile(
+                    'Terrain',
+                    'Topographic view with elevation',
+                    Icons.terrain_rounded,
+                    _mapStyle == MapStyle.topo,
+                    const Color(0xFF4CAF50),
+                    () {
+                      setState(() => _mapStyle = MapStyle.topo);
+                      AppSettings.mapStyle.value = 'terrain';
+                      Navigator.pop(context);
+                    },
+                    isDark,
+                  ),
+                ],
+              ),
+            ),
+            
+            const SizedBox(height: 32),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMapStyleTile(
+    String title,
+    String description,
+    IconData icon,
+    bool isSelected,
+    Color color,
+    VoidCallback onTap,
+    bool isDark,
+  ) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.0, end: 1.0),
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOutQuart,
+      builder: (context, value, child) {
+        return Transform.scale(
+          scale: 0.9 + (value * 0.1),
+          child: Opacity(
+            opacity: value,
+            child: child,
+          ),
+        );
+      },
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(20),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            curve: Curves.easeOutQuart,
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: isSelected
+                  ? color.withAlpha(26)
+                  : (isDark ? Colors.grey[850] : Colors.grey[100]),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: isSelected ? color : Colors.transparent,
+                width: 2,
+              ),
+              boxShadow: isSelected
+                  ? [
+                      BoxShadow(
+                        color: color.withAlpha(77),
+                        blurRadius: 20,
+                        offset: const Offset(0, 4),
+                      ),
+                    ]
+                  : [],
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 56,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: isSelected
+                          ? [color, color.withAlpha(204)]
+                          : [
+                              (isDark ? Colors.grey[800]! : Colors.grey[300]!),
+                              (isDark ? Colors.grey[700]! : Colors.grey[200]!),
+                            ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: isSelected
+                        ? [
+                            BoxShadow(
+                              color: color.withAlpha(102),
+                              blurRadius: 12,
+                            ),
+                          ]
+                        : [],
+                  ),
+                  child: Icon(
+                    icon,
+                    color: isSelected
+                        ? Colors.white
+                        : (isDark ? Colors.white54 : Colors.black54),
+                    size: 28,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: GoogleFonts.notoSans(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: isSelected
+                              ? color
+                              : (isDark ? Colors.white : AppColors.darkGrey),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        description,
+                        style: GoogleFonts.notoSans(
+                          fontSize: 13,
+                          color: isDark ? Colors.white60 : Colors.grey[600],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (isSelected)
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: color.withAlpha(38),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.check_rounded,
+                      color: color,
+                      size: 20,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildMyLocationButton() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final screenHeight = MediaQuery.of(context).size.height;
@@ -2823,7 +3322,7 @@ out skel qt;
           elevation: 6,
           shape: const CircleBorder(),
           color: AppColors.cardBackground(context),
-          shadowColor: Colors.black.withOpacity(isDark ? 0.5 : 0.15),
+          shadowColor: Colors.black.withAlpha(isDark ? (0.5 * 255).toInt() : (0.15 * 255).toInt()),
           child: InkWell(
             customBorder: const CircleBorder(),
             onTap: () {
@@ -2844,8 +3343,8 @@ out skel qt;
                 shape: BoxShape.circle,
                 border: Border.all(
                   color: isDark
-                      ? Colors.white.withOpacity(0.1)
-                      : Colors.black.withOpacity(0.08),
+                      ? Colors.white.withAlpha((0.1 * 255).toInt())
+                      : Colors.black.withAlpha((0.08 * 255).toInt()),
                   width: 1,
                 ),
               ),
@@ -2867,20 +3366,20 @@ out skel qt;
       bottom: centerOffset,
       right: 16,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 250),
-        curve: Curves.easeOutCubic,
+        duration: const Duration(milliseconds: 160),
+        curve: Curves.easeOutQuart,
         child: Material(
           elevation: isActive ? 8 : (isRotated ? 6 : 4),
           shape: const CircleBorder(),
           color: isActive
-              ? const Color(0xFFFF5722).withOpacity(0.15)
+              ? const Color(0xFFFF5722).withAlpha((0.15 * 255).toInt())
               : AppColors.cardBackground(context),
           child: InkWell(
             customBorder: const CircleBorder(),
             onTap: _isRecentering ? null : _recenterAndTilt3D,
             child: AnimatedContainer(
-              duration: const Duration(milliseconds: 250),
-              curve: Curves.easeOutCubic,
+              duration: const Duration(milliseconds: 160),
+              curve: Curves.easeOutQuart,
               width: 48,
               height: 48,
               padding: const EdgeInsets.all(8),
@@ -2932,7 +3431,7 @@ out skel qt;
                           shape: BoxShape.circle,
                           boxShadow: [
                             BoxShadow(
-                              color: const Color(0xFFFF5722).withOpacity(0.4),
+                              color: const Color(0xFFFF5722).withAlpha((0.4 * 255).toInt()),
                               blurRadius: 8,
                             ),
                           ],
@@ -3033,7 +3532,7 @@ out skel qt;
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => const EventsScreen(),
+              builder: (context) => const events_screen.EventsScreen(),
             ),
           );
         },
@@ -3401,12 +3900,12 @@ out skel qt;
             color: AppColors.cardBackground(context),
             borderRadius: BorderRadius.circular(32),
             border: Border.all(
-              color: AppColors.borderAdaptive(context).withOpacity(0.3),
+              color: AppColors.borderAdaptive(context).withAlpha((0.3 * 255).toInt()),
               width: 1,
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: isDark ? 0.5 : 0.15),
+                color: Colors.black.withAlpha(isDark ? (0.5 * 255).toInt() : (0.15 * 255).toInt()),
                 blurRadius: 24,
                 offset: const Offset(0, 8),
                 spreadRadius: 2,
@@ -3482,7 +3981,7 @@ out skel qt;
                       ? LinearGradient(
                           colors: [
                             AppColors.primary,
-                            AppColors.primary.withOpacity(0.85),
+                            AppColors.primary.withAlpha((0.85 * 255).toInt()),
                           ],
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
@@ -3493,7 +3992,7 @@ out skel qt;
                   boxShadow: selected
                       ? [
                           BoxShadow(
-                            color: AppColors.primary.withOpacity(0.3),
+                            color: AppColors.primary.withAlpha((0.3 * 255).toInt()),
                             blurRadius: 8,
                             offset: const Offset(0, 4),
                           ),
@@ -3678,22 +4177,40 @@ out skel qt;
       }
     });
     
-    // Move map to building location
-    _mapController.move(building.coordinates, 18.0);
-    
-    // Animate temporary marker if from search
+    // Smooth 3D animation to building location
     if (fromSearch) {
-      _tempMarkerController?.reset();
-      _tempMarkerController?.forward();
-      // Hide temporary marker after 3 seconds
-      Future.delayed(const Duration(seconds: 3), () {
+      // Animate map with smooth zoom and rotation
+      final startZoom = _mapController.camera.zoom;
+      final targetZoom = 18.5;
+      final startRotation = _mapRotation;
+      const steps = 30;
+      const duration = Duration(milliseconds: 800);
+      final stepDuration = duration.inMilliseconds ~/ steps;
+      
+      for (int i = 0; i <= steps; i++) {
+        final t = Curves.easeInOutCubic.transform(i / steps);
+        final zoom = startZoom + ((targetZoom - startZoom) * t);
+        final rotation = startRotation * (1 - t); // Smooth rotation to 0
+        
+        _mapController.move(building.coordinates, zoom);
+        _mapController.rotate(rotation);
+        
         if (mounted) {
           setState(() {
-            _showTempMarker = false;
-            _tempMarkerBuilding = null;
+            _currentZoom = zoom;
+            _mapRotation = rotation;
           });
         }
-      });
+        
+        await Future.delayed(Duration(milliseconds: stepDuration));
+      }
+      
+      // Animate temporary marker with bounce
+      _tempMarkerController?.reset();
+      _tempMarkerController?.forward();
+    } else {
+      // Standard move for non-search selections
+      _mapController.move(building.coordinates, 18.0);
     }
     
     showDialog(
@@ -3994,24 +4511,24 @@ class _SmoothLayersButtonState extends State<_SmoothLayersButton>
               height: 56,
               decoration: BoxDecoration(
                 color: widget.isDark
-                    ? Colors.grey[850]?.withOpacity(0.95)
-                    : Colors.white.withOpacity(0.95),
+                    ? Colors.grey[850]?.withAlpha((0.95 * 255).toInt())
+                    : Colors.white.withAlpha((0.95 * 255).toInt()),
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
                   color: widget.isDark
-                      ? Colors.white.withOpacity(0.12)
-                      : Colors.black.withOpacity(0.08),
+                      ? Colors.white.withAlpha((0.12 * 255).toInt())
+                      : Colors.black.withAlpha((0.08 * 255).toInt()),
                   width: 1,
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(widget.isDark ? 0.5 : 0.15),
+                    color: Colors.black.withAlpha(widget.isDark ? (0.5 * 255).toInt() : (0.15 * 255).toInt()),
                     blurRadius: 20 * _glowAnimation.value,
                     offset: const Offset(0, 4),
                     spreadRadius: 0,
                   ),
                   BoxShadow(
-                    color: Colors.black.withOpacity(widget.isDark ? 0.3 : 0.08),
+                    color: Colors.black.withAlpha(widget.isDark ? (0.3 * 255).toInt() : (0.08 * 255).toInt()),
                     blurRadius: 30 * _glowAnimation.value,
                     offset: const Offset(0, 8),
                     spreadRadius: -2,
@@ -4027,8 +4544,8 @@ class _SmoothLayersButtonState extends State<_SmoothLayersButton>
                     color: _isPressed
                         ? AppColors.primary
                         : (widget.isDark
-                            ? Colors.white.withOpacity(0.9)
-                            : Colors.black.withOpacity(0.8)),
+                            ? Colors.white.withAlpha(230)
+                            : Colors.black.withAlpha(204)),
                     size: 24,
                   ),
                 ),
@@ -4155,7 +4672,7 @@ class _VoiceSearchDialogState extends State<_VoiceSearchDialog>
 
   void _initializeSpeech() {
     try {
-      // Create web Speech Recognition instance
+      // Create web Speech Recognition instance (uses device microphone)
       _recognition = html.SpeechRecognition();
       
       if (_recognition == null) {
@@ -4171,15 +4688,16 @@ class _VoiceSearchDialogState extends State<_VoiceSearchDialog>
         return;
       }
       
-      // iOS Safari requires specific settings
-      // Set continuous to true for better speech detection
-      _recognition!.continuous = true;
-      _recognition!.interimResults = true;
+      // Configure for optimal device microphone usage
+      // continuous: false for single command (better for location search)
+      // interimResults: true for real-time feedback
+      _recognition!.continuous = false; // Single command mode
+      _recognition!.interimResults = true; // Show partial results
       _recognition!.lang = 'en-US';
       
-      // Set max alternatives for better recognition
+      // Set max alternatives for better recognition accuracy
       try {
-        _recognition!.maxAlternatives = 5;
+        _recognition!.maxAlternatives = 3;
       } catch (e) {
         debugPrint('maxAlternatives not supported: $e');
       }
@@ -4215,20 +4733,21 @@ class _VoiceSearchDialogState extends State<_VoiceSearchDialog>
               setState(() {
                 _spokenText = transcript!;
                 if (isFinal) {
-                  _listeningText = 'Processing...';
+                  _listeningText = 'Searching for "$transcript"...';
                   _isListening = false;
                 } else {
-                  _listeningText = 'Listening...';
+                  _listeningText = 'Listening: "$transcript"';
                 }
               });
               
-              // If final result, process it and stop recognition
+              // If final result, immediately search and animate to location
               if (isFinal) {
                 try {
                   _recognition?.stop();
                 } catch (e) {
                   debugPrint('Error stopping recognition: $e');
                 }
+                // Immediately trigger search with animation
                 _finalizeSpeech();
               }
             }
@@ -4238,7 +4757,7 @@ class _VoiceSearchDialogState extends State<_VoiceSearchDialog>
         }
       });
       
-      // Handle errors
+      // Handle errors with clear microphone permission prompts
       _recognition!.onError.listen((error) {
         debugPrint('Speech error: ${error.error}');
         
@@ -4253,21 +4772,23 @@ class _VoiceSearchDialogState extends State<_VoiceSearchDialog>
         if (mounted) {
           String message = 'Error occurred';
           if (error.error == 'not-allowed' || error.error == 'service-not-allowed') {
-            message = 'Please allow microphone access';
+            message = 'Microphone access denied.\n\nPlease enable microphone permissions in your browser settings to use voice search.';
           } else if (error.error == 'network') {
-            message = 'Network error';
+            message = 'Network error. Please check your connection.';
           } else if (error.error == 'no-speech') {
-            message = 'No speech detected - tap to try again';
+            message = 'No speech detected.\n\nTap the microphone to try again.';
           } else if (error.error == 'aborted') {
             // Don't show error for intentional abort
             return;
+          } else if (error.error == 'audio-capture') {
+            message = 'Microphone not found.\n\nPlease check your device microphone.';
           }
           setState(() {
             _listeningText = message;
             _isListening = false;
           });
           if (error.error != 'no-speech') {
-            Future.delayed(const Duration(seconds: 2), () {
+            Future.delayed(const Duration(seconds: 3), () {
               if (mounted) Navigator.pop(context);
             });
           }
@@ -4440,12 +4961,12 @@ class _VoiceSearchDialogState extends State<_VoiceSearchDialog>
             borderRadius: BorderRadius.circular(32),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.3),
+                color: Colors.black.withAlpha((0.3 * 255).toInt()),
                 blurRadius: 40,
                 offset: const Offset(0, 20),
               ),
               BoxShadow(
-                color: AppColors.primary.withOpacity(0.1),
+                color: AppColors.primary.withAlpha(25),
                 blurRadius: 20,
                 offset: const Offset(0, 10),
               ),
@@ -4468,8 +4989,8 @@ class _VoiceSearchDialogState extends State<_VoiceSearchDialog>
                           height: 140 * _pulseAnimation.value,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: AppColors.primary.withOpacity(
-                              0.1 / _pulseAnimation.value,
+                            color: AppColors.primary.withAlpha(
+                              (0.1 * 255 / _pulseAnimation.value).toInt(),
                             ),
                           ),
                         );
@@ -4483,8 +5004,8 @@ class _VoiceSearchDialogState extends State<_VoiceSearchDialog>
                           height: 110 * _pulseAnimation.value,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: AppColors.primary.withOpacity(
-                              0.15 / _pulseAnimation.value,
+                            color: AppColors.primary.withAlpha(
+                              (0.15 * 255 / _pulseAnimation.value).toInt(),
                             ),
                           ),
                         );
@@ -4511,7 +5032,7 @@ class _VoiceSearchDialogState extends State<_VoiceSearchDialog>
                                     ]
                                   : [
                                       AppColors.success,
-                                      AppColors.success.withOpacity(0.8),
+                                      AppColors.success.withAlpha(204),
                                     ],
                             ),
                             shape: BoxShape.circle,
@@ -4520,7 +5041,7 @@ class _VoiceSearchDialogState extends State<_VoiceSearchDialog>
                                 color: (_isListening
                                         ? AppColors.primary
                                         : AppColors.success)
-                                    .withOpacity(0.4),
+                                    .withAlpha(102),
                                 blurRadius: 20,
                                 offset: const Offset(0, 8),
                               ),
@@ -4578,7 +5099,7 @@ class _VoiceSearchDialogState extends State<_VoiceSearchDialog>
                           vertical: 12,
                         ),
                         decoration: BoxDecoration(
-                          color: AppColors.primary.withOpacity(0.1),
+                          color: AppColors.primary.withAlpha(25),
                           borderRadius: BorderRadius.circular(16),
                         ),
                         child: Text(
@@ -4610,7 +5131,7 @@ class _VoiceSearchDialogState extends State<_VoiceSearchDialog>
                     ),
                     decoration: BoxDecoration(
                       color: widget.isDark
-                          ? Colors.white.withOpacity(0.1)
+                          ? Colors.white.withAlpha(25)
                           : const Color(0xFFF2F2F7),
                       borderRadius: BorderRadius.circular(16),
                     ),
