@@ -2647,16 +2647,18 @@ out skel qt;
                 shouldCloseOnMinExtent: true,
                 builder: (context, scrollController) => TweenAnimationBuilder<double>(
                   tween: Tween(begin: 0.0, end: 1.0),
-                  duration: const Duration(milliseconds: 200),
-                  curve: Curves.easeOutQuart, // Instant and buttery smooth
-                  builder: (context, animValue, child) => Transform.translate(
-                    offset: Offset(0, 100 * (1 - animValue)),
-                    child: Transform.scale(
-                      scale: 0.90 + (0.10 * animValue),
-                      child: Opacity(
-                        opacity: animValue,
-                        child: child,
-                      ),
+                  duration: const Duration(milliseconds: 500),
+                  curve: const Cubic(0.175, 0.885, 0.32, 1.275), // Super smooth elastic
+                  builder: (context, animValue, child) => Transform(
+                    transform: Matrix4.identity()
+                      ..setEntry(3, 2, 0.003)
+                      ..translate(0.0, 100 * (1 - animValue), 0.0)
+                      ..rotateX(-0.2 * (1 - animValue))
+                      ..scale(0.85 + (0.15 * animValue)),
+                    alignment: Alignment.bottomCenter,
+                    child: Opacity(
+                      opacity: animValue,
+                      child: child,
                     ),
                   ),
                   child: Container(
@@ -2774,27 +2776,54 @@ out skel qt;
                         ),
                       ),
                       Expanded(
-                        child: ListView(
-                          controller: scrollController,
-                          physics: const BouncingScrollPhysics(
-                            parent: AlwaysScrollableScrollPhysics(),
+                        child: NotificationListener<ScrollNotification>(
+                          onNotification: (notification) {
+                            return false;
+                          },
+                          child: ListView.builder(
+                            controller: scrollController,
+                            physics: const BouncingScrollPhysics(
+                              parent: AlwaysScrollableScrollPhysics(),
+                            ),
+                            padding: const EdgeInsets.fromLTRB(20, 0, 20, 30),
+                            itemCount: 7,
+                            itemBuilder: (context, index) {
+                              final items = [
+                                (MapStyle.standard, 'Standard', 'Default street map', Icons.map_rounded, const Color(0xFF4CAF50)),
+                                (MapStyle.satellite, 'Satellite', 'High-res aerial view', Icons.satellite_alt_rounded, const Color(0xFF2196F3)),
+                                (MapStyle.satelliteHybrid, 'Satellite + Labels', 'Aerial with street names', Icons.layers_rounded, const Color(0xFF9C27B0)),
+                                (MapStyle.terrain3d, '3D Terrain', 'Elevation & landforms', Icons.view_in_ar_rounded, const Color(0xFFFF9800)),
+                                (MapStyle.topo, 'Topographic', 'Detailed contour lines', Icons.terrain_rounded, const Color(0xFF795548)),
+                                (MapStyle.dark, 'Dark Mode', 'Night-friendly map', Icons.dark_mode_rounded, const Color(0xFF424242)),
+                                (MapStyle.streetHD, 'Street HD', 'Ultra-clear street view', Icons.hd_rounded, const Color(0xFFE91E63)),
+                              ];
+                              final item = items[index];
+                              return TweenAnimationBuilder<double>(
+                                key: ValueKey(index),
+                                tween: Tween(begin: 0.0, end: 1.0),
+                                duration: Duration(milliseconds: 300 + (index * 50)),
+                                curve: Curves.easeOutCubic,
+                                builder: (context, animValue, child) {
+                                  return Transform(
+                                    transform: Matrix4.identity()
+                                      ..setEntry(3, 2, 0.001)
+                                      ..translate(0.0, 20 * (1 - animValue), 0.0)
+                                      ..rotateX(-0.1 * (1 - animValue)),
+                                    alignment: Alignment.center,
+                                    child: Opacity(
+                                      opacity: animValue,
+                                      child: Padding(
+                                        padding: EdgeInsets.only(bottom: index < 6 ? 12 : 0),
+                                        child: _buildMapStyleCard(
+                                          item.$1, item.$2, item.$3, item.$4, item.$5
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                },
+                              );
+                            },
                           ),
-                          padding: const EdgeInsets.fromLTRB(20, 0, 20, 30),
-                          children: [
-                            _buildMapStyleCard(MapStyle.standard, 'Standard', 'Default street map', Icons.map_rounded, const Color(0xFF4CAF50)),
-                            const SizedBox(height: 12),
-                            _buildMapStyleCard(MapStyle.satellite, 'Satellite', 'High-res aerial view', Icons.satellite_alt_rounded, const Color(0xFF2196F3)),
-                            const SizedBox(height: 12),
-                            _buildMapStyleCard(MapStyle.satelliteHybrid, 'Satellite + Labels', 'Aerial with street names', Icons.layers_rounded, const Color(0xFF9C27B0)),
-                            const SizedBox(height: 12),
-                            _buildMapStyleCard(MapStyle.terrain3d, '3D Terrain', 'Elevation & landforms', Icons.view_in_ar_rounded, const Color(0xFFFF9800)),
-                            const SizedBox(height: 12),
-                            _buildMapStyleCard(MapStyle.topo, 'Topographic', 'Detailed contour lines', Icons.terrain_rounded, const Color(0xFF795548)),
-                            const SizedBox(height: 12),
-                            _buildMapStyleCard(MapStyle.dark, 'Dark Mode', 'Night-friendly map', Icons.dark_mode_rounded, const Color(0xFF424242)),
-                            const SizedBox(height: 12),
-                            _buildMapStyleCard(MapStyle.streetHD, 'Street HD', 'Ultra-clear street view', Icons.hd_rounded, const Color(0xFFE91E63)),
-                          ],
                         ),
                       ),
                     ],
@@ -2835,6 +2864,15 @@ out skel qt;
             setState(() {
               _mapStyle = style;
             });
+            // Save preference
+            final prefValue = style == MapStyle.standard ? 'standard'
+                : style == MapStyle.satellite ? 'satellite'
+                : style == MapStyle.satelliteHybrid ? 'satelliteHybrid'
+                : style == MapStyle.terrain3d ? 'terrain3d'
+                : style == MapStyle.topo ? 'topo'
+                : style == MapStyle.dark ? 'dark'
+                : 'streetHD';
+            AppSettings.mapStyle.value = prefValue;
             Future.delayed(const Duration(milliseconds: 100), () {
               Navigator.pop(context);
             });
@@ -3040,8 +3078,8 @@ out skel qt;
         // Dark theme map from CartoDB
         return 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png';
       case MapStyle.streetHD:
-        // High-definition street map from Stadia
-        return 'https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}.png';
+        // High-definition street map from CartoDB Positron (free)
+        return 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png';
       case MapStyle.standard:
         // Standard OpenStreetMap
         return 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
@@ -4628,8 +4666,13 @@ class _SmoothLayersButtonState extends State<_SmoothLayersButton>
       child: AnimatedBuilder(
         animation: _controller,
         builder: (context, child) {
-          return Transform.scale(
-            scale: _scaleAnimation.value,
+          return Transform(
+            transform: Matrix4.identity()
+              ..setEntry(3, 2, 0.002)
+              ..rotateY(_controller.value * 0.3)
+              ..rotateZ(_controller.value * 0.1)
+              ..scale(_scaleAnimation.value),
+            alignment: Alignment.center,
             child: Container(
               width: 56,
               height: 56,
