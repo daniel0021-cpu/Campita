@@ -969,7 +969,23 @@ out geom;
           duration = _calculateRouteDuration(distance, _transportMode);
           print('Walking route found: ${routePoints.length} points, ${distance.toStringAsFixed(0)}m');
         } else {
-          throw Exception('No walkable route found.');
+          // FINAL FALLBACK: Create direct straight-line route
+          debugPrint('❌ Both footpath and mixed pedestrian routes failed');
+          debugPrint('🔄 Creating direct straight-line route as last resort');
+          routePoints = [start, destination.coordinates];
+          distance = const Distance().distance(start, destination.coordinates);
+          duration = _calculateRouteDuration(distance, _transportMode);
+          debugPrint('✅ Direct route created: ${distance.toStringAsFixed(0)}m');
+          
+          if (mounted) {
+            showAnimatedSuccess(
+              context,
+              'Using direct route - mapped paths unavailable',
+              icon: Icons.warning_rounded,
+              iconColor: AppColors.warning,
+              duration: const Duration(seconds: 3),
+            );
+          }
         }
       } else if (_transportMode == 'bicycle') {
         // STRICT: Bicycle-allowed ways only
