@@ -35,6 +35,7 @@ class _ProfileScreenRedesignedState extends State<ProfileScreenRedesigned> with 
   String _dorm = '';
   String _room = '';
   Uint8List? _avatarBytes;
+  bool _isPremium = false; // Premium subscription status
   
   bool _notifications = true;
   bool _locationServices = true;
@@ -52,6 +53,14 @@ class _ProfileScreenRedesignedState extends State<ProfileScreenRedesigned> with 
     )..forward();
     _loadUserData();
     _loadPreferences();
+    _checkPremiumStatus();
+  }
+  
+  Future<void> _checkPremiumStatus() async {
+    final isPremium = await _prefs.getBool('is_premium');
+    if (mounted) {
+      setState(() => _isPremium = isPremium ?? false);
+    }
   }
 
   @override
@@ -117,12 +126,17 @@ class _ProfileScreenRedesignedState extends State<ProfileScreenRedesigned> with 
             // Top Bar with Back Button
             _buildTopBar(isDark),
             
-            // Scrollable Content (NO PULL TO REFRESH)
+            // Scrollable Content (NO PULL TO REFRESH - prevents browser refresh on mobile)
             Expanded(
-              child: ListView(
-                controller: _scrollController,
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
-                physics: const ClampingScrollPhysics(), // NO BOUNCE - NO AUTO REFRESH
+              child: NotificationListener<OverscrollIndicatorNotification>(
+                onNotification: (notification) {
+                  notification.disallowIndicator(); // Prevent glow effect
+                  return true;
+                },
+                child: ListView(
+                  controller: _scrollController,
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
+                  physics: const ClampingScrollPhysics(), // NO BOUNCE - NO AUTO REFRESH
                 children: [
                   const SizedBox(height: 20),
                   
@@ -197,6 +211,7 @@ class _ProfileScreenRedesignedState extends State<ProfileScreenRedesigned> with 
                 ],
               ),
             ),
+          ),
           ],
         ),
       ),
@@ -259,18 +274,36 @@ class _ProfileScreenRedesignedState extends State<ProfileScreenRedesigned> with 
       ),
       child: Column(
         children: [
-          // Avatar
+          // Avatar with Premium Crown
           GestureDetector(
             onTap: _pickAvatar,
             child: Stack(
               children: [
+                // Glowing effect for premium users
+                if (_isPremium)
+                  Container(
+                    width: 110,
+                    height: 110,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFFFFD700).withAlpha(128),
+                          blurRadius: 20,
+                          spreadRadius: 5,
+                        ),
+                      ],
+                    ),
+                  ),
                 Container(
                   width: 100,
                   height: 100,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     gradient: LinearGradient(
-                      colors: [AppColors.primary, AppColors.primary.withAlpha(179)],
+                      colors: _isPremium
+                          ? [const Color(0xFFFFD700), const Color(0xFFFFA500)]
+                          : [AppColors.primary, AppColors.primary.withAlpha(179)],
                     ),
                   ),
                   child: Container(
@@ -290,17 +323,42 @@ class _ProfileScreenRedesignedState extends State<ProfileScreenRedesigned> with 
                         : null,
                   ),
                 ),
+                // Premium Crown
+                if (_isPremium)
+                  Positioned(
+                    top: -5,
+                    left: 0,
+                    right: 0,
+                    child: Center(
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFD700),
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFFFFD700).withAlpha(128),
+                              blurRadius: 10,
+                              spreadRadius: 2,
+                            ),
+                          ],
+                        ),
+                        child: const Text('👑', style: TextStyle(fontSize: 24)),
+                      ),
+                    ),
+                  ),
+                // Camera button
                 Positioned(
                   bottom: 0,
                   right: 0,
                   child: Container(
                     padding: const EdgeInsets.all(6),
                     decoration: BoxDecoration(
-                      color: AppColors.primary,
+                      color: _isPremium ? const Color(0xFFFFD700) : AppColors.primary,
                       shape: BoxShape.circle,
                       border: Border.all(color: isDark ? const Color(0xFF1E293B) : Colors.white, width: 2),
                     ),
-                    child: const Icon(Icons.camera_alt_rounded, color: Colors.white, size: 16),
+                    child: Icon(Icons.camera_alt_rounded, color: _isPremium ? Colors.black : Colors.white, size: 16),
                   ),
                 ),
               ],

@@ -411,6 +411,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
           'per year',
           [
             {'icon': Icons.savings_rounded, 'text': '₦4,000 saved vs monthly', 'color': const Color(0xFF4CAF50)},
+            {'icon': Icons.workspace_premium_rounded, 'text': '👑 Golden Crown Badge on Profile', 'color': const Color(0xFFFFD700)},
             {'icon': Icons.person_outline, 'text': 'Direct access to Founder/Developer', 'color': const Color(0xFFFFD700)},
             {'icon': Icons.emoji_events, 'text': 'Exclusive leaderboard badge', 'color': const Color(0xFFFFD700)},
             {'icon': Icons.view_in_ar_rounded, 'text': 'AR Navigation (3D arrows)', 'color': const Color(0xFF9C27B0)},

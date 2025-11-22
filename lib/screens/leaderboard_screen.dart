@@ -609,7 +609,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
     final otherUsers = _users.skip(3).toList();
 
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
+      margin: const EdgeInsets.only(left: 16, right: 16, top: 40), // Add top margin to prevent covering #1
       padding: const EdgeInsets.only(top: 16),
       decoration: BoxDecoration(
         color: Colors.white,
