@@ -7,38 +7,67 @@ class PrivacyPolicyScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
     return Scaffold(
-  backgroundColor: AppColors.ash,
-      appBar: AppBar(
-        title: Text(
-          'Privacy Policy',
-          style: AppTextStyles.heading2.copyWith(color: AppColors.white),
-        ),
-        centerTitle: true,
-        elevation: 0,
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildHeader(context),
-            const SizedBox(height: 24),
-            _buildBodyContent(context),
-            const SizedBox(height: 20),
-            Center(
-              child: Text(
-                'Last updated: November 2025',
-                style: GoogleFonts.notoSans(
-                  fontSize: 12,
-                  color: AppColors.grey,
-                  fontStyle: FontStyle.italic,
+      backgroundColor: isDark ? const Color(0xFF0F172A) : AppColors.ash,
+      body: CustomScrollView(
+        physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+        slivers: [
+          SliverAppBar(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            leading: Padding(
+              padding: const EdgeInsets.only(left: 8),
+              child: IconButton(
+                icon: Icon(
+                  Icons.arrow_back_ios_new_rounded,
+                  color: isDark ? Colors.white : Colors.black87,
+                  size: 20,
                 ),
+                onPressed: () => Navigator.pop(context),
               ),
             ),
-            const SizedBox(height: 40),
-          ],
-        ),
+            pinned: true,
+            expandedHeight: 0,
+            flexibleSpace: Container(
+              decoration: BoxDecoration(
+                color: (isDark ? const Color(0xFF0F172A) : AppColors.ash).withOpacity(0.95),
+              ),
+            ),
+            title: Text(
+              'Privacy Policy',
+              style: GoogleFonts.inter(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: isDark ? Colors.white : Colors.black87,
+              ),
+            ),
+            centerTitle: true,
+          ),
+          SliverPadding(
+            padding: const EdgeInsets.all(20),
+            sliver: SliverList(
+              delegate: SliverChildListDelegate([
+                _buildHeader(context),
+                const SizedBox(height: 24),
+                _buildBodyContent(context),
+                const SizedBox(height: 20),
+                Center(
+                  child: Text(
+                    'Last updated: November 2025',
+                    style: GoogleFonts.notoSans(
+                      fontSize: 12,
+                      color: AppColors.grey,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 40),
+              ]),
+            ),
+          ),
+        ],
       ),
     );
   }

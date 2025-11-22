@@ -11,6 +11,8 @@ import 'home_dashboard_screen.dart';
 import '../utils/preferences_service.dart';
 import '../utils/app_settings.dart';
 import '../utils/app_routes.dart';
+import 'video_tutorials_screen.dart';
+import 'tips_tricks_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -25,6 +27,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _darkMode = false;
   String _mapStyle = 'Standard';
   String _navigationMode = 'Walking';
+  String _userName = 'Guest User';
+  String _userEmail = '';
   final PreferencesService _prefs = PreferencesService();
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
@@ -54,6 +58,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _darkMode = (s[PreferencesKeys.darkMode] as bool?) ?? _darkMode;
       _mapStyle = (s[PreferencesKeys.mapStyle] as String?) ?? _mapStyle;
       _navigationMode = (s[PreferencesKeys.navigationMode] as String?) ?? _navigationMode;
+      _userName = (s[PreferencesKeys.userName] as String?) ?? 'Guest User';
+      _userEmail = _userName != 'Guest User' ? (s['email'] as String?) ?? '' : '';
     });
   }
 
@@ -67,6 +73,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         elevation: 0,
       ),
       body: ListView(
+        physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
         padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
         children: [
           _buildProfileHeader(),
@@ -373,22 +380,45 @@ class _SettingsScreenState extends State<SettingsScreen> {
             height: 72,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: AppColors.primary.withAlpha(31),
+              gradient: LinearGradient(
+                colors: [AppColors.primary, AppColors.primary.withOpacity(0.7)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.primary.withOpacity(0.3),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
-            child: const Icon(Icons.person, size: 40, color: AppColors.primary),
+            child: Center(
+              child: Text(
+                _userName.isNotEmpty ? _userName[0].toUpperCase() : 'G',
+                style: GoogleFonts.inter(
+                  fontSize: 32,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                ),
+              ),
+            ),
           ),
           const SizedBox(width: 22),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Guest User', style: GoogleFonts.notoSans(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.textPrimaryAdaptive(context))),
+                Text(_userName, style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.textPrimaryAdaptive(context))),
                 const SizedBox(height: 6),
-                Text('Igbinedion University', style: GoogleFonts.notoSans(fontSize: 13, color: AppColors.textSecondaryAdaptive(context))),
+                Text(
+                  _userEmail.isNotEmpty ? _userEmail : 'Igbinedion University',
+                  style: GoogleFonts.inter(fontSize: 13, color: AppColors.textSecondaryAdaptive(context)),
+                  overflow: TextOverflow.ellipsis,
+                ),
               ],
             ),
           ),
-          IconButton(onPressed: () {}, icon: const Icon(Icons.edit, color: AppColors.grey))
         ],
       ),
     );

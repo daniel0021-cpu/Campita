@@ -2,27 +2,56 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../theme/app_theme.dart';
+import 'video_tutorials_screen.dart';
+import 'tips_tricks_screen.dart';
 
 class HelpSupportScreen extends StatelessWidget {
   const HelpSupportScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
     return Scaffold(
-  backgroundColor: AppColors.ash,
-      appBar: AppBar(
-        title: Text(
-          'Help & Support',
-          style: AppTextStyles.heading2.copyWith(color: AppColors.white),
-        ),
-        centerTitle: true,
-        elevation: 0,
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+      backgroundColor: isDark ? const Color(0xFF0F172A) : AppColors.ash,
+      body: CustomScrollView(
+        physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+        slivers: [
+          SliverAppBar(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            leading: Padding(
+              padding: const EdgeInsets.only(left: 8),
+              child: IconButton(
+                icon: Icon(
+                  Icons.arrow_back_ios_new_rounded,
+                  color: isDark ? Colors.white : Colors.black87,
+                  size: 20,
+                ),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ),
+            pinned: true,
+            expandedHeight: 0,
+            flexibleSpace: Container(
+              decoration: BoxDecoration(
+                color: (isDark ? const Color(0xFF0F172A) : AppColors.ash).withOpacity(0.95),
+              ),
+            ),
+            title: Text(
+              'Help & Support',
+              style: GoogleFonts.inter(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: isDark ? Colors.white : Colors.black87,
+              ),
+            ),
+            centerTitle: true,
+          ),
+          SliverPadding(
+            padding: const EdgeInsets.all(16),
+            sliver: SliverList(
+              delegate: SliverChildListDelegate([
             _buildWelcomeCard(),
             const SizedBox(height: 24),
             
@@ -95,19 +124,21 @@ class HelpSupportScreen extends StatelessWidget {
               Icons.video_library,
               'Video Tutorials',
               'Watch step-by-step guides',
-              () {},
+              () => Navigator.push(context, MaterialPageRoute(builder: (_) => const VideoTutorialsScreen())),
             ),
             const SizedBox(height: 12),
             _buildResourceCard(
               Icons.tips_and_updates,
               'Tips & Tricks',
               'Get the most out of the app',
-              () {},
+              () => Navigator.push(context, MaterialPageRoute(builder: (_) => const TipsTricksScreen())),
             ),
             
             const SizedBox(height: 40),
-          ],
-        ),
+              ]),
+            ),
+          ),
+        ],
       ),
     );
   }

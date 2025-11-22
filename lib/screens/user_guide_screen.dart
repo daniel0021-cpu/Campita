@@ -7,36 +7,71 @@ class UserGuideScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
     return Scaffold(
-      backgroundColor: AppColors.ash,
-      appBar: AppBar(
-        title: Text('User Guide', style: AppTextStyles.heading2.copyWith(color: Colors.white)),
-        centerTitle: true,
-        elevation: 0,
-      ),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
-        children: [
-          _headerCard(context),
-          const SizedBox(height: 28),
-          _sectionLabel('Features'),
-          _featureCard(context, Icons.search, 'Search Buildings', 'Tap the search bar at the top of the map. Type any building name or category (e.g., "Admin", "Library") to instantly locate it.'),
-          _featureCard(context, Icons.directions, 'Get Directions', 'Select a building from search results, then tap "Directions". Choose your transport mode (walking, driving, transit) for optimized routes.'),
-          _featureCard(context, Icons.star, 'Save Favorites', 'Tap the star icon on any building card to add it to your Favorites. Access them quickly from the bottom nav bar.'),
-          _featureCard(context, Icons.my_location, 'Live Location', 'Grant location permissions to see your real-time position on the map. The app tracks you as you move.'),
-          _featureCard(context, Icons.map, 'Map Styles', 'Go to Settings > Map Style to switch between Standard, Satellite, and Terrain views.'),
-          _featureCard(context, Icons.layers, 'Navigation Modes', 'Settings > Navigation Mode lets you pick Walking, Driving, or Transit. Routes adapt based on your choice.'),
-          const SizedBox(height: 28),
-          _sectionLabel('Tips & Tricks'),
-          _tipCard(context, '💡', 'Pinch-to-Zoom', 'Use two fingers to zoom in/out. No zoom buttons clutter your view!'),
-          _tipCard(context, '🧭', 'Compass Button', 'Tap the compass icon to reorient the map to north or follow your heading in navigation mode.'),
-          _tipCard(context, '🌙', 'Dark Mode', 'Enable Dark Mode in Settings > Appearance to reduce eye strain at night.'),
-          _tipCard(context, '🚶', 'Entrance Routing', 'Walking mode snaps routes to building entrances (main entrance preferred) for accurate pedestrian guidance.'),
-          _tipCard(context, '🚗', 'Road Snapping', 'Driving and Transit modes use nearest roads. Entrance routing applies only to pedestrians.'),
-          _tipCard(context, '⚙️', 'Quick Settings', 'Access Settings from the Profile tab or bottom nav. Toggle notifications, location services, and more.'),
-          const SizedBox(height: 28),
-          _sectionLabel('Need More Help?'),
-          _linkCard(context, Icons.help_outline, 'Help & Support', 'Visit the Help & Support section for FAQs and contact options.', () {}),
+      backgroundColor: isDark ? const Color(0xFF0F172A) : AppColors.ash,
+      body: CustomScrollView(
+        physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+        slivers: [
+          SliverAppBar(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            leading: Padding(
+              padding: const EdgeInsets.only(left: 8),
+              child: IconButton(
+                icon: Icon(
+                  Icons.arrow_back_ios_new_rounded,
+                  color: isDark ? Colors.white : Colors.black87,
+                  size: 20,
+                ),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ),
+            pinned: true,
+            expandedHeight: 0,
+            flexibleSpace: Container(
+              decoration: BoxDecoration(
+                color: (isDark ? const Color(0xFF0F172A) : AppColors.ash).withOpacity(0.95),
+              ),
+            ),
+            title: Text(
+              'User Guide',
+              style: GoogleFonts.inter(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: isDark ? Colors.white : Colors.black87,
+              ),
+            ),
+            centerTitle: true,
+          ),
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
+            sliver: SliverList(
+              delegate: SliverChildListDelegate([
+                _headerCard(context),
+                const SizedBox(height: 28),
+                _sectionLabel('Features'),
+                _featureCard(context, Icons.search, 'Search Buildings', 'Tap the search bar at the top of the map. Type any building name or category (e.g., "Admin", "Library") to instantly locate it.'),
+                _featureCard(context, Icons.directions, 'Get Directions', 'Select a building from search results, then tap "Directions". Choose your transport mode (walking, driving, transit) for optimized routes.'),
+                _featureCard(context, Icons.star, 'Save Favorites', 'Tap the star icon on any building card to add it to your Favorites. Access them quickly from the bottom nav bar.'),
+                _featureCard(context, Icons.my_location, 'Live Location', 'Grant location permissions to see your real-time position on the map. The app tracks you as you move.'),
+                _featureCard(context, Icons.map, 'Map Styles', 'Go to Settings > Map Style to switch between Standard, Satellite, and Terrain views.'),
+                _featureCard(context, Icons.layers, 'Navigation Modes', 'Settings > Navigation Mode lets you pick Walking, Driving, or Transit. Routes adapt based on your choice.'),
+                const SizedBox(height: 28),
+                _sectionLabel('Tips & Tricks'),
+                _tipCard(context, '💡', 'Pinch-to-Zoom', 'Use two fingers to zoom in/out. No zoom buttons clutter your view!'),
+                _tipCard(context, '🧭', 'Compass Button', 'Tap the compass icon to reorient the map to north or follow your heading in navigation mode.'),
+                _tipCard(context, '🌙', 'Dark Mode', 'Enable Dark Mode in Settings > Appearance to reduce eye strain at night.'),
+                _tipCard(context, '🚶', 'Entrance Routing', 'Walking mode snaps routes to building entrances (main entrance preferred) for accurate pedestrian guidance.'),
+                _tipCard(context, '🚗', 'Road Snapping', 'Driving and Transit modes use nearest roads. Entrance routing applies only to pedestrians.'),
+                _tipCard(context, '⚙️', 'Quick Settings', 'Access Settings from the Profile tab or bottom nav. Toggle notifications, location services, and more.'),
+                const SizedBox(height: 28),
+                _sectionLabel('Need More Help?'),
+                _linkCard(context, Icons.help_outline, 'Help & Support', 'Visit the Help & Support section for FAQs and contact options.', () {}),
+              ]),
+            ),
+          ),
         ],
       ),
     );

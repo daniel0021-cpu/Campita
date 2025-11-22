@@ -7,88 +7,109 @@ class AboutScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
     return Scaffold(
-  backgroundColor: AppColors.ash,
-      appBar: AppBar(
-        title: Text(
-          'About',
-          style: AppTextStyles.heading2.copyWith(color: AppColors.white),
-        ),
-        centerTitle: true,
-        elevation: 0,
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Center(child: _buildAppCard(context)),
-            const SizedBox(height: 24),
-            
-            _buildSectionHeader('About Campus Navigation'),
-            _buildInfoCard(
-              context,
-              'Campus Navigation is an innovative mobile application designed to help students, staff, and visitors navigate Igbinedion University Okada campus with ease. The app provides real-time directions, building information, and interactive maps to ensure you never get lost on campus.',
-            ),
-            
-            const SizedBox(height: 24),
-            _buildSectionHeader('Features'),
-            _buildFeatureItem(context, Icons.map, 'Interactive Campus Map', 'Explore the entire campus with detailed, interactive maps'),
-            _buildFeatureItem(context, Icons.directions, 'Turn-by-Turn Directions', 'Get step-by-step navigation to any location'),
-            _buildFeatureItem(context, Icons.my_location, 'Real-Time Location', 'Track your position in real-time on campus'),
-            _buildFeatureItem(context, Icons.search, 'Smart Search', 'Quickly find buildings, departments, and facilities'),
-            _buildFeatureItem(context, Icons.star, 'Save Favorites', 'Bookmark frequently visited locations'),
-            _buildFeatureItem(context, Icons.layers, 'Multiple Map Styles', 'Choose from standard, satellite, or terrain views'),
-            // AR temporarily disabled
-            
-            const SizedBox(height: 24),
-            _buildSectionHeader('University Information'),
-            _buildUniversityCard(context),
-            
-            const SizedBox(height: 24),
-            _buildSectionHeader('Development Team'),
-            _buildDeveloperCard(context),
-            
-            const SizedBox(height: 24),
-            _buildSectionHeader('Version & Legal'),
-            _buildVersionCard(context),
-            
-            const SizedBox(height: 24),
-            _buildSectionHeader('Acknowledgments'),
-            _buildInfoCard(
-              context,
-              'We would like to thank Igbinedion University Okada for their support and all the students and staff who provided feedback during development. Special thanks to the open-source community for their amazing tools and libraries.',
-            ),
-            
-            const SizedBox(height: 40),
-            Center(
-              child: Text(
-                'Made with ❤️ for IUO',
-                style: GoogleFonts.notoSans(
-                  fontSize: 14,
-                  color: AppColors.grey,
-                  fontStyle: FontStyle.italic,
+      backgroundColor: isDark ? const Color(0xFF0F172A) : AppColors.ash,
+      body: CustomScrollView(
+        physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+        slivers: [
+          SliverAppBar(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            leading: Padding(
+              padding: const EdgeInsets.only(left: 8),
+              child: IconButton(
+                icon: Icon(
+                  Icons.arrow_back_ios_new_rounded,
+                  color: isDark ? Colors.white : Colors.black87,
+                  size: 20,
                 ),
+                onPressed: () => Navigator.pop(context),
               ),
             ),
-            const SizedBox(height: 12),
-            Center(
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withAlpha(20),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: AppColors.primary.withAlpha(77)),
-                ),
-                child: Text(
-                  'DEPLOY MARKER • ${DateTime.now().year}-${DateTime.now().month.toString().padLeft(2,'0')}-${DateTime.now().day.toString().padLeft(2,'0')} ${DateTime.now().hour.toString().padLeft(2,'0')}:${DateTime.now().minute.toString().padLeft(2,'0')}',
-                  style: GoogleFonts.notoSans(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.primary),
-                ),
+            pinned: true,
+            expandedHeight: 0,
+            flexibleSpace: Container(
+              decoration: BoxDecoration(
+                color: (isDark ? const Color(0xFF0F172A) : AppColors.ash).withOpacity(0.95),
               ),
             ),
-            const SizedBox(height: 20),
-          ],
-        ),
+            title: Text(
+              'About',
+              style: GoogleFonts.inter(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: isDark ? Colors.white : Colors.black87,
+              ),
+            ),
+            centerTitle: true,
+          ),
+          SliverPadding(
+            padding: const EdgeInsets.all(16),
+            sliver: SliverList(
+              delegate: SliverChildListDelegate([
+                Center(child: _buildAppCard(context)),
+                const SizedBox(height: 24),
+                _buildSectionHeader('About Campus Navigation'),
+                _buildInfoCard(
+                  context,
+                  'Campus Navigation is an innovative mobile application designed to help students, staff, and visitors navigate Igbinedion University Okada campus with ease. The app provides real-time directions, building information, and interactive maps to ensure you never get lost on campus.',
+                ),
+                const SizedBox(height: 24),
+                _buildSectionHeader('Features'),
+                _buildFeatureItem(context, Icons.map, 'Interactive Campus Map', 'Explore the entire campus with detailed, interactive maps'),
+                _buildFeatureItem(context, Icons.directions, 'Turn-by-Turn Directions', 'Get step-by-step navigation to any location'),
+                _buildFeatureItem(context, Icons.my_location, 'Real-Time Location', 'Track your position in real-time on campus'),
+                _buildFeatureItem(context, Icons.search, 'Smart Search', 'Quickly find buildings, departments, and facilities'),
+                _buildFeatureItem(context, Icons.star, 'Save Favorites', 'Bookmark frequently visited locations'),
+                _buildFeatureItem(context, Icons.layers, 'Multiple Map Styles', 'Choose from standard, satellite, or terrain views'),
+                const SizedBox(height: 24),
+                _buildSectionHeader('University Information'),
+                _buildUniversityCard(context),
+                const SizedBox(height: 24),
+                _buildSectionHeader('Development Team'),
+                _buildDeveloperCard(context),
+                const SizedBox(height: 24),
+                _buildSectionHeader('Version & Legal'),
+                _buildVersionCard(context),
+                const SizedBox(height: 24),
+                _buildSectionHeader('Acknowledgments'),
+                _buildInfoCard(
+                  context,
+                  'We would like to thank Igbinedion University Okada for their support and all the students and staff who provided feedback during development. Special thanks to the open-source community for their amazing tools and libraries.',
+                ),
+                const SizedBox(height: 40),
+                Center(
+                  child: Text(
+                    'Made with ❤️ for IUO',
+                    style: GoogleFonts.notoSans(
+                      fontSize: 14,
+                      color: AppColors.grey,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Center(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withAlpha(20),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: AppColors.primary.withAlpha(77)),
+                    ),
+                    child: Text(
+                      'DEPLOY MARKER • ${DateTime.now().year}-${DateTime.now().month.toString().padLeft(2,'0')}-${DateTime.now().day.toString().padLeft(2,'0')} ${DateTime.now().hour.toString().padLeft(2,'0')}:${DateTime.now().minute.toString().padLeft(2,'0')}',
+                      style: GoogleFonts.notoSans(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.primary),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+              ]),
+            ),
+          ),
+        ],
       ),
     );
   }
