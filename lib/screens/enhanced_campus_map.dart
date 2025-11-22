@@ -2784,11 +2784,10 @@ out skel qt;
                       ),
                     ],
                   ),
-                  ),
                 ),
               ),
             );
-          },
+            },
           ),
         ),
       ),
@@ -3145,6 +3144,7 @@ out skel qt;
                 ? Colors.white 
                 : (isDark ? Colors.white : AppColors.darkGrey),
               size: 24,
+              ),
             ),
           ),
         ),
@@ -5138,10 +5138,18 @@ class _VoiceSearchDialogState extends State<_VoiceSearchDialog>
                                       AppColors.primary,
                                       const Color(0xFF0052CC),
                                     ]
-                                  : [
-                                      AppColors.success,
-                                      AppColors.success.withAlpha(204),
-                                    ],
+                                  : (_listeningText.toLowerCase().contains('no speech') || 
+                                     _listeningText.toLowerCase().contains('error') ||
+                                     _listeningText.toLowerCase().contains('denied') ||
+                                     _listeningText.toLowerCase().contains('not found'))
+                                      ? [
+                                          const Color(0xFFFF3B30),
+                                          const Color(0xFFCC0000),
+                                        ]
+                                      : [
+                                          AppColors.success,
+                                          AppColors.success.withAlpha(204),
+                                        ],
                             ),
                             shape: BoxShape.circle,
                             boxShadow: [
@@ -5156,7 +5164,14 @@ class _VoiceSearchDialogState extends State<_VoiceSearchDialog>
                             ],
                           ),
                           child: Icon(
-                            _isListening ? Icons.mic_rounded : Icons.check_rounded,
+                            _isListening 
+                                ? Icons.mic_rounded 
+                                : (_listeningText.toLowerCase().contains('no speech') || 
+                                   _listeningText.toLowerCase().contains('error') ||
+                                   _listeningText.toLowerCase().contains('denied') ||
+                                   _listeningText.toLowerCase().contains('not found'))
+                                    ? Icons.error_outline_rounded
+                                    : Icons.check_rounded,
                             color: Colors.white,
                             size: 42,
                           ),

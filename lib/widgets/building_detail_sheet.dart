@@ -536,27 +536,40 @@ class _BuildingDetailSheetState extends State<BuildingDetailSheet>
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: List.generate(_buildingImages.length, (index) {
-              return AnimatedContainer(
-                duration: const Duration(milliseconds: 300),
-                curve: Curves.easeOutCubic,
-                margin: const EdgeInsets.symmetric(horizontal: 4),
-                width: _currentImageIndex == index ? 24 : 8,
-                height: 8,
-                decoration: BoxDecoration(
-                  color: _currentImageIndex == index
-                      ? Colors.white
-                      : Colors.white.withAlpha(102),
-                  borderRadius: BorderRadius.circular(4),
-                  boxShadow: _currentImageIndex == index
-                      ? [
-                          BoxShadow(
-                            color: Colors.black.withAlpha(77),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
-                          ),
-                        ]
-                      : null,
-                ),
+              return TweenAnimationBuilder<double>(
+                duration: const Duration(milliseconds: 400),
+                curve: Curves.easeInOutCubic,
+                tween: Tween(begin: 0.0, end: _currentImageIndex == index ? 1.0 : 0.0),
+                builder: (context, value, child) {
+                  return Transform(
+                    transform: Matrix4.identity()
+                      ..setEntry(3, 2, 0.001)
+                      ..scale(0.8 + (value * 0.4)),
+                    alignment: Alignment.center,
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 400),
+                      curve: Curves.easeOutCubic,
+                      margin: const EdgeInsets.symmetric(horizontal: 4),
+                      width: _currentImageIndex == index ? 24 : 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: _currentImageIndex == index
+                            ? Colors.white
+                            : Colors.white.withAlpha(102),
+                        borderRadius: BorderRadius.circular(4),
+                        boxShadow: _currentImageIndex == index
+                            ? [
+                                BoxShadow(
+                                  color: Colors.black.withAlpha(77),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ]
+                            : null,
+                      ),
+                    ),
+                  );
+                },
               );
             }),
           ),

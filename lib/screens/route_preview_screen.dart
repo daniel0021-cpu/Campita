@@ -1,3 +1,4 @@
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -264,6 +265,84 @@ class _RoutePreviewScreenState extends State<RoutePreviewScreen>
           subdomains: const ['a', 'b', 'c', 'd'],
           userAgentPackageName: 'com.example.campus_navigation',
           maxZoom: 19,
+        ),
+
+        // Building markers on map
+        MarkerLayer(
+          markers: [
+            // Start marker (current location)
+            Marker(
+              point: widget.start,
+              width: 40,
+              height: 40,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: const Color(0xFF007AFF),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 3),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF007AFF).withAlpha(128),
+                      blurRadius: 8,
+                      spreadRadius: 2,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            // Destination marker
+            Marker(
+              point: widget.end,
+              width: 44,
+              height: 54,
+              alignment: Alignment.topCenter,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  Positioned(
+                    bottom: 0,
+                    child: Container(
+                      width: 16,
+                      height: 6,
+                      decoration: BoxDecoration(
+                        color: Colors.black.withAlpha(77),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    top: 0,
+                    child: Column(
+                      children: [
+                        Container(
+                          width: 36,
+                          height: 36,
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFFFF3B30), Color(0xFFDC143C)],
+                            ),
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 3),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withAlpha(77),
+                                blurRadius: 8,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                        ),
+                        CustomPaint(
+                          size: const Size(8, 12),
+                          painter: _PinTailPainter(),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
 
         // Route line with modern styling
@@ -894,4 +973,24 @@ class _RoutePreviewScreenState extends State<RoutePreviewScreen>
       ],
     );
   }
+}
+
+class _PinTailPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = const Color(0xFFDC143C)
+      ..style = PaintingStyle.fill;
+
+    final uiPath = ui.Path();
+    uiPath.moveTo(size.width / 2, 0);
+    uiPath.lineTo(0, size.height);
+    uiPath.lineTo(size.width, size.height);
+    uiPath.close();
+
+    canvas.drawPath(uiPath, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
