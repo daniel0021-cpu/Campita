@@ -488,7 +488,6 @@ class _RoutePreviewScreenState extends State<RoutePreviewScreen>
                       ),
                     ),
                   ),
-                  ),
                 ),
               ),
 
@@ -501,27 +500,27 @@ class _RoutePreviewScreenState extends State<RoutePreviewScreen>
                     ),
                     padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
                     child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Route info header
-                      _buildRouteHeader(isDark),
-                      const SizedBox(height: 24),
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Route info header
+                        _buildRouteHeader(isDark),
+                        const SizedBox(height: 24),
 
-                      // Transport mode selector
-                      _buildTransportModeSelector(isDark),
-                      const SizedBox(height: 24),
+                        // Transport mode selector
+                        _buildTransportModeSelector(isDark),
+                        const SizedBox(height: 24),
 
-                      // Destination info (if available)
-                      if (widget.destination != null)
-                        _buildDestinationInfo(isDark),
+                        // Destination info (if available)
+                        if (widget.destination != null)
+                          _buildDestinationInfo(isDark),
 
-                      const SizedBox(height: 24),
+                        const SizedBox(height: 24),
 
-                      // Action buttons
-                      _buildActionButtons(),
-                    ],
+                        // Action buttons
+                        _buildActionButtons(),
+                      ],
+                    ),
                   ),
-                ),
                 ),
               ),
             ],
