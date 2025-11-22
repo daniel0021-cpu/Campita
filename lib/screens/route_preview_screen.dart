@@ -485,15 +485,15 @@ class _RoutePreviewScreenState extends State<RoutePreviewScreen>
                 ),
               ),
 
-              // Content
+              // Content - wrapped with ClipRect to prevent overflow
               Expanded(
-                child: SingleChildScrollView(
-                  physics: const BouncingScrollPhysics(
-                    parent: AlwaysScrollableScrollPhysics(),
-                  ),
-                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-                  clipBehavior: Clip.none,
-                  child: Column(
+                child: ClipRect(
+                  child: SingleChildScrollView(
+                    physics: const BouncingScrollPhysics(
+                      parent: AlwaysScrollableScrollPhysics(),
+                    ),
+                    padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+                    child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // Route info header
@@ -514,6 +514,7 @@ class _RoutePreviewScreenState extends State<RoutePreviewScreen>
                       _buildActionButtons(),
                     ],
                   ),
+                ),
                 ),
               ),
             ],
