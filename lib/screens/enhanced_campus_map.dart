@@ -2784,10 +2784,11 @@ out skel qt;
                       ),
                     ],
                   ),
+                  ),
                 ),
               ),
             );
-            },
+          },
           ),
         ),
       ),
@@ -3144,7 +3145,6 @@ out skel qt;
                 ? Colors.white 
                 : (isDark ? Colors.white : AppColors.darkGrey),
               size: 24,
-              ),
             ),
           ),
         ),
