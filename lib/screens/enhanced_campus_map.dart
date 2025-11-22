@@ -1201,14 +1201,27 @@ out skel qt;
             }
             return route;
           } else {
-            debugPrint('A* pathfinding returned no path between nodes');
+            debugPrint('❌ A* pathfinding returned no path between nodes - footpath network may be disconnected');
+            debugPrint('🔄 Falling back to mixed pedestrian route (roads + footpaths)...');
+            // FALLBACK: Try mixed pedestrian route which includes roads
+            return await _calculateMixedPedestrianRoute(start, end);
           }
         } else {
-          debugPrint('Could not find start or end node: start=$startNode, end=$endNode');
+          debugPrint('❌ Could not find start or end node: start=$startNode, end=$endNode');
+          debugPrint('🔄 Falling back to mixed pedestrian route (roads + footpaths)...');
+          // FALLBACK: Try mixed pedestrian route which includes roads
+          return await _calculateMixedPedestrianRoute(start, end);
         }
       }
     } catch (e) {
       print('Error calculating footpath route: $e');
+      debugPrint('🔄 Falling back to mixed pedestrian route after error...');
+      // FALLBACK: Try mixed pedestrian route on any error
+      try {
+        return await _calculateMixedPedestrianRoute(start, end);
+      } catch (fallbackError) {
+        print('Mixed pedestrian route also failed: $fallbackError');
+      }
     }
     
     return [];
