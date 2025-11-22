@@ -2608,9 +2608,24 @@ out skel qt;
         child: SizedBox(
           width: buttonSize,
           height: buttonSize,
-          child: _SmoothLayersButton(
-            isDark: isDark,
-            onTap: () {
+          child: TweenAnimationBuilder<double>(
+            key: ValueKey(_mapStyle),
+            tween: Tween(begin: 0.0, end: 1.0),
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.elasticOut,
+            builder: (context, animValue, child) {
+              return Transform(
+                transform: Matrix4.identity()
+                  ..setEntry(3, 2, 0.001)
+                  ..rotateZ(animValue * 0.5 * 3.14159 / 180)
+                  ..scale(0.85 + (animValue * 0.15)),
+                alignment: Alignment.center,
+                child: child,
+              );
+            },
+            child: _SmoothLayersButton(
+              isDark: isDark,
+              onTap: () {
             showModalBottomSheet(
               context: context,
               backgroundColor: Colors.transparent,
@@ -5022,7 +5037,7 @@ class _VoiceSearchDialogState extends State<_VoiceSearchDialog>
 
     HapticFeedback.lightImpact();
 
-    // Small delay for visual feedback
+    // 3D close animation with scale and rotation
     await Future.delayed(const Duration(milliseconds: 500));
     if (!mounted) return;
     

@@ -411,9 +411,10 @@ class _BuildingDetailSheetState extends State<BuildingDetailSheet>
                 ).animate(_animation),
                 child: Transform(
                   transform: Matrix4.identity()
-                    ..setEntry(3, 2, 0.001) // Perspective
-                    ..rotateX(-0.05 * (1 - _animation.value)) // Slight tilt during entrance
-                    ..translate(0.0, 0.0, 20.0 * (1 - _animation.value)), // Depth translation
+                    ..setEntry(3, 2, 0.002) // Enhanced perspective
+                    ..rotateX(-0.15 * (1 - _animation.value)) // More dramatic tilt
+                    ..scale(0.85 + (0.15 * _animation.value)) // Scale pop-out effect
+                    ..translate(0.0, 0.0, 50.0 * (1 - _animation.value)), // Deeper translation
                   alignment: Alignment.bottomCenter,
                   child: Container(
                     height: screenHeight * _dragPosition,
@@ -465,9 +466,29 @@ class _BuildingDetailSheetState extends State<BuildingDetailSheet>
                       ),
                       // Content
                       Expanded(
-                        child: SingleChildScrollView(
-                          physics: const BouncingScrollPhysics(),
-                          child: Column(
+                        child: NotificationListener<ScrollNotification>(
+                          onNotification: (scrollNotification) {
+                            if (scrollNotification is ScrollUpdateNotification) {
+                              setState(() {}); // Trigger rebuild for scroll animations
+                            }
+                            return false;
+                          },
+                          child: SingleChildScrollView(
+                            physics: const BouncingScrollPhysics(),
+                            child: TweenAnimationBuilder<double>(
+                              tween: Tween(begin: 0.0, end: 1.0),
+                              duration: const Duration(milliseconds: 400),
+                              curve: Curves.easeOutCubic,
+                              builder: (context, scrollAnim, child) {
+                                return Transform(
+                                  transform: Matrix4.identity()
+                                    ..setEntry(3, 2, 0.001)
+                                    ..rotateX(-0.02 * (1 - scrollAnim)),
+                                  alignment: Alignment.topCenter,
+                                  child: child,
+                                );
+                              },
+                              child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               _buildImageCarousel(screenWidth),
@@ -493,6 +514,8 @@ class _BuildingDetailSheetState extends State<BuildingDetailSheet>
                             ],
                           ),
                         ),
+                        ),
+                      ),
                       ),
                     ],
                   ),
