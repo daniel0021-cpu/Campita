@@ -943,11 +943,18 @@ out geom;
         print('Calculating walking route (footpaths preferred) from ${start.latitude},${start.longitude} to ${destination.coordinates.latitude},${destination.coordinates.longitude}');
         routePoints = await _calculateFootpathRoute(start, destination.coordinates);
 
+        // Check if footpath route found anything
         if (routePoints.isEmpty) {
           // Fallback: allow walk on accessible roads then append building entrance
-            print('Strict footpath route not found; falling back to mixed pedestrian route');
+          debugPrint('⚠️ Strict footpath route empty; falling back to mixed pedestrian route');
+          try {
             routePoints = await _calculateMixedPedestrianRoute(start, destination.coordinates);
+            debugPrint('✅ Mixed pedestrian route returned ${routePoints.length} points');
+          } catch (e) {
+            debugPrint('❌ Mixed pedestrian route failed: $e');
+          }
         }
+        
         if (routePoints.isNotEmpty) {
           // Do NOT append building centroid; keep last footpath/road node as entrance
           // If last point equals building centroid accidentally, replace with nearest footpath node
@@ -3411,11 +3418,12 @@ out skel qt;
   Widget _buildCompassButton() {
     final isRotated = _mapRotation.abs() > 0.1;
     final isActive = _is3DCompassMode;
-    final screenHeight = MediaQuery.of(context).size.height;
-    final centerOffset = screenHeight / 2 + 80;
+    final topPadding = MediaQuery.of(context).padding.top;
+    // Position below layers button with proper spacing (layers button + gap + this button)
+    final buttonTop = topPadding + 100 + 48 + 12 + 52 + 16; // Below layers button
     
     return Positioned(
-      bottom: centerOffset,
+      top: buttonTop,
       right: 16,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 160),
