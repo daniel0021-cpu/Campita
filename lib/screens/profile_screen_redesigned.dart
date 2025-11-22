@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -70,11 +69,14 @@ class _ProfileScreenRedesignedState extends State<ProfileScreenRedesigned> with 
       _level = data['level'] ?? '';
       _dorm = data['dorm'] ?? '';
       _room = data['room'] ?? '';
-      if (data['avatar'] != null && data['avatar'].isNotEmpty) {
-        try {
-          _avatarBytes = base64Decode(data['avatar']);
-        } catch (e) {
-          _avatarBytes = null;
+      if (data['avatar'] != null) {
+        final avatarData = data['avatar'] as String;
+        if (avatarData.isNotEmpty) {
+          try {
+            _avatarBytes = base64Decode(avatarData);
+          } catch (e) {
+            _avatarBytes = null;
+          }
         }
       }
     });
@@ -90,12 +92,12 @@ class _ProfileScreenRedesignedState extends State<ProfileScreenRedesigned> with 
     
     if (!mounted) return;
     setState(() {
-      _notifications = notif;
-      _locationServices = loc;
-      _darkMode = dark;
-      _hapticFeedback = haptic;
-      _mapStyle = mapStyle;
-      _transportMode = transport;
+      _notifications = notif ?? true;
+      _locationServices = loc ?? true;
+      _darkMode = dark ?? false;
+      _hapticFeedback = haptic ?? true;
+      _mapStyle = mapStyle ?? 'standard';
+      _transportMode = transport ?? 'foot';
     });
   }
 
@@ -195,7 +197,7 @@ class _ProfileScreenRedesignedState extends State<ProfileScreenRedesigned> with 
         color: isDark ? const Color(0xFF1E293B) : Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withAlpha(13),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -235,7 +237,7 @@ class _ProfileScreenRedesignedState extends State<ProfileScreenRedesigned> with 
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: AppColors.primary.withOpacity(0.1),
+            color: AppColors.primary.withAlpha(25),
             blurRadius: 20,
             offset: const Offset(0, 8),
           ),
@@ -254,7 +256,7 @@ class _ProfileScreenRedesignedState extends State<ProfileScreenRedesigned> with 
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     gradient: LinearGradient(
-                      colors: [AppColors.primary, AppColors.primary.withOpacity(0.7)],
+                      colors: [AppColors.primary, AppColors.primary.withAlpha(179)],
                     ),
                   ),
                   child: Container(
@@ -360,12 +362,12 @@ class _ProfileScreenRedesignedState extends State<ProfileScreenRedesigned> with 
           color: isDark ? const Color(0xFF1E293B) : Colors.white,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: isEmpty ? (isDark ? Colors.white10 : Colors.black.withOpacity(0.1)) : AppColors.primary.withOpacity(0.2),
+            color: isEmpty ? (isDark ? Colors.white10 : Colors.black.withAlpha(25)) : AppColors.primary.withAlpha(51),
             width: 1.5,
           ),
           boxShadow: [
             BoxShadow(
-              color: isEmpty ? Colors.transparent : AppColors.primary.withOpacity(0.05),
+              color: isEmpty ? Colors.transparent : AppColors.primary.withAlpha(13),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -376,7 +378,7 @@ class _ProfileScreenRedesignedState extends State<ProfileScreenRedesigned> with 
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: isEmpty ? (isDark ? Colors.white10 : Colors.black05) : AppColors.primary.withOpacity(0.1),
+                color: isEmpty ? (isDark ? Colors.white10 : Colors.black.withAlpha(12)) : AppColors.primary.withAlpha(25),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(
@@ -429,7 +431,7 @@ class _ProfileScreenRedesignedState extends State<ProfileScreenRedesigned> with 
         color: isDark ? const Color(0xFF1E293B) : Colors.white,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: value ? AppColors.primary.withOpacity(0.3) : (isDark ? Colors.white10 : Colors.black.withOpacity(0.1)),
+          color: value ? AppColors.primary.withAlpha(77) : (isDark ? Colors.white10 : Colors.black.withAlpha(25)),
           width: 1.5,
         ),
       ),
@@ -438,7 +440,7 @@ class _ProfileScreenRedesignedState extends State<ProfileScreenRedesigned> with 
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: value ? AppColors.primary.withOpacity(0.1) : (isDark ? Colors.white10 : Colors.black05),
+              color: value ? AppColors.primary.withAlpha(25) : (isDark ? Colors.white10 : Colors.black.withAlpha(12)),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(
@@ -482,7 +484,7 @@ class _ProfileScreenRedesignedState extends State<ProfileScreenRedesigned> with 
           color: isDark ? const Color(0xFF1E293B) : Colors.white,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: AppColors.primary.withOpacity(0.2),
+            color: AppColors.primary.withAlpha(51),
             width: 1.5,
           ),
         ),
@@ -491,7 +493,7 @@ class _ProfileScreenRedesignedState extends State<ProfileScreenRedesigned> with 
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: AppColors.primary.withOpacity(0.1),
+                color: AppColors.primary.withAlpha(25),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(
@@ -648,7 +650,7 @@ class _ProfileScreenRedesignedState extends State<ProfileScreenRedesigned> with 
                 leading: Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: isSelected ? AppColors.primary.withOpacity(0.1) : Colors.transparent,
+                    color: isSelected ? AppColors.primary.withAlpha(25) : Colors.transparent,
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Icon(
@@ -764,7 +766,7 @@ class _SmoothSwitch extends StatelessWidget {
           boxShadow: value
               ? [
                   BoxShadow(
-                    color: AppColors.primary.withOpacity(0.3),
+                    color: AppColors.primary.withAlpha(77),
                     blurRadius: 8,
                     offset: const Offset(0, 2),
                   ),
@@ -844,7 +846,7 @@ class _BeautifulEditSheetState extends State<_BeautifulEditSheet> {
         borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.2),
+            color: Colors.black.withAlpha(51),
             blurRadius: 20,
             offset: const Offset(0, -5),
           ),
@@ -875,7 +877,7 @@ class _BeautifulEditSheetState extends State<_BeautifulEditSheet> {
                     Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: AppColors.primary.withOpacity(0.1),
+                        color: AppColors.primary.withAlpha(25),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Icon(
@@ -904,7 +906,7 @@ class _BeautifulEditSheetState extends State<_BeautifulEditSheet> {
                     color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
-                      color: AppColors.primary.withOpacity(0.3),
+                      color: AppColors.primary.withAlpha(77),
                       width: 2,
                     ),
                   ),
@@ -975,12 +977,12 @@ class _BeautifulEditSheetState extends State<_BeautifulEditSheet> {
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           decoration: BoxDecoration(
                             gradient: LinearGradient(
-                              colors: [AppColors.primary, AppColors.primary.withOpacity(0.8)],
+                              colors: [AppColors.primary, AppColors.primary.withAlpha(204)],
                             ),
                             borderRadius: BorderRadius.circular(16),
                             boxShadow: [
                               BoxShadow(
-                                color: AppColors.primary.withOpacity(0.3),
+                                color: AppColors.primary.withAlpha(179),
                                 blurRadius: 12,
                                 offset: const Offset(0, 4),
                               ),

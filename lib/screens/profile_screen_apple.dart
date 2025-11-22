@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
@@ -8,8 +7,6 @@ import '../theme/app_theme.dart';
 import '../utils/preferences_service.dart';
 import '../utils/app_settings.dart';
 import '../widgets/modern_navbar.dart';
-import 'package:latlong2/latlong.dart';
-import '../models/campus_building.dart';
 import 'dart:html' as html;
 
 /// Apple-inspired Profile Screen with Modern Pill-shaped Designs
@@ -52,7 +49,7 @@ class _ProfileScreenAppleState extends State<ProfileScreenApple> with TickerProv
   bool _offlineMode = false;
   String _mapStyle = 'Standard';
   String _transportMode = 'Walking';
-  String _homeBuilding = 'Select Building';
+  final String _homeBuilding = 'Select Building';
   
   double _scrollOffset = 0.0;
 
@@ -282,10 +279,10 @@ class _ProfileScreenAppleState extends State<ProfileScreenApple> with TickerProv
       duration: const Duration(milliseconds: 200),
       height: 100,
       decoration: BoxDecoration(
-        color: (isDark ? AppColors.darkCard : Colors.white).withOpacity(topBarOpacity * 0.95),
+        color: (isDark ? AppColors.darkCard : Colors.white).withAlpha((topBarOpacity * 0.95 * 255).toInt()),
         border: Border(
           bottom: BorderSide(
-            color: (isDark ? Colors.white24 : Colors.black12).withOpacity(topBarOpacity),
+            color: (isDark ? Colors.white24 : Colors.black12).withAlpha((topBarOpacity * 255).toInt()),
             width: 0.5,
           ),
         ),
@@ -381,12 +378,12 @@ class _ProfileScreenAppleState extends State<ProfileScreenApple> with TickerProv
                         end: Alignment.bottomRight,
                         colors: [
                           AppColors.primary,
-                          AppColors.primary.withOpacity(0.7),
+                          AppColors.primary.withAlpha((0.7 * 255).toInt()),
                         ],
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: AppColors.primary.withOpacity(0.4),
+                          color: AppColors.primary.withAlpha((0.4 * 255).toInt()),
                           blurRadius: 30,
                           spreadRadius: 5,
                           offset: const Offset(0, 10),
@@ -409,7 +406,7 @@ class _ProfileScreenAppleState extends State<ProfileScreenApple> with TickerProv
                           ? Icon(
                               Icons.person_outline_rounded,
                               size: 60,
-                              color: AppColors.primary.withOpacity(0.5),
+                              color: AppColors.primary.withAlpha((0.5 * 255).toInt()),
                             )
                           : null,
                     ),
@@ -435,10 +432,10 @@ class _ProfileScreenAppleState extends State<ProfileScreenApple> with TickerProv
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.1),
+                  color: AppColors.primary.withAlpha((0.1 * 255).toInt()),
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(
-                    color: AppColors.primary.withOpacity(0.3),
+                    color: AppColors.primary.withAlpha((0.3 * 255).toInt()),
                     width: 1,
                   ),
                 ),
@@ -520,7 +517,7 @@ class _ProfileScreenAppleState extends State<ProfileScreenApple> with TickerProv
             width: 36,
             height: 36,
             decoration: BoxDecoration(
-              color: AppColors.primary.withOpacity(0.1),
+              color: AppColors.primary.withAlpha((0.1 * 255).toInt()),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(icon, size: 18, color: AppColors.primary),
@@ -556,7 +553,7 @@ class _ProfileScreenAppleState extends State<ProfileScreenApple> with TickerProv
           if (onTap != null)
             Icon(
               Icons.chevron_right_rounded,
-              color: (isDark ? Colors.white : Colors.black).withOpacity(0.3),
+              color: (isDark ? Colors.white : Colors.black).withAlpha((0.3 * 255).toInt()),
               size: 20,
             ),
         ],
@@ -573,13 +570,13 @@ class _ProfileScreenAppleState extends State<ProfileScreenApple> with TickerProv
             width: 36,
             height: 36,
             decoration: BoxDecoration(
-              color: value ? AppColors.primary.withOpacity(0.15) : (isDark ? Colors.white : Colors.black).withOpacity(0.05),
+              color: value ? AppColors.primary.withAlpha((0.15 * 255).toInt()) : (isDark ? Colors.white : Colors.black).withAlpha((0.05 * 255).toInt()),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(
               icon,
               size: 18,
-              color: value ? AppColors.primary : (isDark ? Colors.white : Colors.black).withOpacity(0.4),
+              color: value ? AppColors.primary : (isDark ? Colors.white : Colors.black).withAlpha((0.4 * 255).toInt()),
             ),
           ),
           const SizedBox(width: 14),
@@ -613,7 +610,7 @@ class _ProfileScreenAppleState extends State<ProfileScreenApple> with TickerProv
             width: 36,
             height: 36,
             decoration: BoxDecoration(
-              color: AppColors.primary.withOpacity(0.1),
+              color: AppColors.primary.withAlpha((0.1 * 255).toInt()),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(icon, size: 18, color: AppColors.primary),
@@ -646,7 +643,7 @@ class _ProfileScreenAppleState extends State<ProfileScreenApple> with TickerProv
           ),
           Icon(
             Icons.chevron_right_rounded,
-            color: (isDark ? Colors.white : Colors.black).withOpacity(0.3),
+            color: (isDark ? Colors.white : Colors.black).withAlpha((0.3 * 255).toInt()),
             size: 20,
           ),
         ],
@@ -658,7 +655,7 @@ class _ProfileScreenAppleState extends State<ProfileScreenApple> with TickerProv
     return _AnimatedPill(
       onTap: _signOut,
       isDark: isDark,
-      backgroundColor: Colors.red.withOpacity(0.1),
+      backgroundColor: Colors.red.withAlpha((0.1 * 255).toInt()),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
@@ -818,7 +815,7 @@ class _ProfileScreenAppleState extends State<ProfileScreenApple> with TickerProv
             controller: controller,
             decoration: InputDecoration(
               filled: true,
-              fillColor: (isDark ? Colors.white : Colors.black).withOpacity(0.05),
+              fillColor: (isDark ? Colors.white : Colors.black).withAlpha((0.05 * 255).toInt()),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide.none,
@@ -1004,13 +1001,13 @@ class _AnimatedPillState extends State<_AnimatedPill> with SingleTickerProviderS
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
                   color: widget.isDark 
-                      ? Colors.white.withOpacity(0.05)
-                      : Colors.black.withOpacity(0.05),
+                      ? Colors.white.withAlpha((0.05 * 255).toInt())
+                      : Colors.black.withAlpha((0.05 * 255).toInt()),
                   width: 1,
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(widget.isDark ? 0.3 : 0.05),
+                    color: Colors.black.withAlpha((widget.isDark ? 0.3 : 0.05 * 255).toInt()),
                     blurRadius: 12 + _elevationAnimation.value,
                     offset: Offset(0, 4 + _elevationAnimation.value * 0.5),
                   ),
@@ -1053,7 +1050,7 @@ class _ModernSwitch extends StatelessWidget {
             height: 31,
             decoration: BoxDecoration(
               color: Color.lerp(
-                Colors.grey.withOpacity(0.3),
+                Colors.grey.withAlpha((0.3 * 255).toInt()),
                 AppColors.primary,
                 animation,
               ),
@@ -1061,7 +1058,7 @@ class _ModernSwitch extends StatelessWidget {
               boxShadow: [
                 if (value)
                   BoxShadow(
-                    color: AppColors.primary.withOpacity(0.3),
+                    color: AppColors.primary.withAlpha((0.3 * 255).toInt()),
                     blurRadius: 8,
                     offset: const Offset(0, 2),
                   ),
@@ -1082,7 +1079,7 @@ class _ModernSwitch extends StatelessWidget {
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.2),
+                          color: Colors.black.withAlpha((0.2 * 255).toInt()),
                           blurRadius: 4,
                           offset: const Offset(0, 2),
                         ),
@@ -1138,7 +1135,7 @@ class _AnimatedIconButtonState extends State<_AnimatedIconButton> {
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                color: (widget.isDark ? Colors.white : Colors.black).withOpacity(_isPressed ? 0.15 : 0.05),
+                color: (widget.isDark ? Colors.white : Colors.black).withAlpha((_isPressed ? 0.15 : 0.05 * 255).toInt()),
                 shape: BoxShape.circle,
               ),
               child: Icon(
@@ -1186,7 +1183,7 @@ class _SelectionSheet extends StatelessWidget {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: (isDark ? Colors.white : Colors.black).withOpacity(0.2),
+                color: (isDark ? Colors.white : Colors.black).withAlpha((0.2 * 255).toInt()),
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -1218,7 +1215,7 @@ class _SelectionSheet extends StatelessWidget {
                   onSelect(option);
                 },
               );
-            }).toList(),
+            }),
             const SizedBox(height: 16),
           ],
         ),

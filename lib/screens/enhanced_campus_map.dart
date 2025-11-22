@@ -872,7 +872,7 @@ out geom;
           } catch (e) {
             retryCount++;
             if (retryCount < maxRetries) {
-              debugPrint('🟡 GPS retry ${retryCount}/$maxRetries after error: $e');
+              debugPrint('🟡 GPS retry $retryCount/$maxRetries after error: $e');
               await Future.delayed(Duration(seconds: 2));
             } else {
               throw TimeoutException('GPS took too long after $maxRetries attempts. Make sure location is enabled.');
@@ -953,7 +953,7 @@ out geom;
       if (_transportMode == 'foot') {
         debugPrint('🚶 Calculating footpath route...');
         // Prefer dedicated footpaths; fallback to mixed pedestrian (footpaths + safe roads)
-        print('Calculating walking route (footpaths preferred) from ${start.latitude},${start.longitude} to ${destination.coordinates.latitude},${destination.coordinates.longitude}');
+        debugPrint('Calculating walking route (footpaths preferred) from ${start.latitude},${start.longitude} to ${destination.coordinates.latitude},${destination.coordinates.longitude}');
         routePoints = await _calculateFootpathRoute(start, destination.coordinates);
 
         // Check if footpath route found anything
@@ -980,7 +980,7 @@ out geom;
           }
           distance = _calculateRouteDistance(routePoints);
           duration = _calculateRouteDuration(distance, _transportMode);
-          print('Walking route found: ${routePoints.length} points, ${distance.toStringAsFixed(0)}m');
+          debugPrint('Walking route found: ${routePoints.length} points, ${distance.toStringAsFixed(0)}m');
         } else {
           // FINAL FALLBACK: Create direct straight-line route
           debugPrint('❌ Both footpath and mixed pedestrian routes failed');
@@ -1002,19 +1002,19 @@ out geom;
         }
       } else if (_transportMode == 'bicycle') {
         // STRICT: Bicycle-allowed ways only
-        print('Calculating bicycle route from ${start.latitude},${start.longitude} to ${destination.coordinates.latitude},${destination.coordinates.longitude}');
+        debugPrint('Calculating bicycle route from ${start.latitude},${start.longitude} to ${destination.coordinates.latitude},${destination.coordinates.longitude}');
         routePoints = await _calculateBicycleRoute(start, destination.coordinates);
 
         if (routePoints.isNotEmpty) {
           distance = _calculateRouteDistance(routePoints);
           duration = _calculateRouteDuration(distance, _transportMode);
-          print('Bicycle route found: ${routePoints.length} points, ${distance.toStringAsFixed(0)}m');
+          debugPrint('Bicycle route found: ${routePoints.length} points, ${distance.toStringAsFixed(0)}m');
         } else {
           throw Exception('No bicycle-allowed route found.');
         }
       } else {
         // CAR/BUS: Use only roads from OSM, allow OSRM fallback
-        print('Calculating vehicle route from ${start.latitude},${start.longitude} to ${destination.coordinates.latitude},${destination.coordinates.longitude}');
+        debugPrint('Calculating vehicle route from ${start.latitude},${start.longitude} to ${destination.coordinates.latitude},${destination.coordinates.longitude}');
   routePoints = await _calculateRoadRoute(start, destination.coordinates);
         
             if (routePoints.isNotEmpty) {
@@ -1024,9 +1024,9 @@ out geom;
           }
           distance = _calculateRouteDistance(routePoints);
           duration = _calculateRouteDuration(distance, _transportMode);
-          print('Vehicle route found: ${routePoints.length} points, ${distance.toStringAsFixed(0)}m');
+          debugPrint('Vehicle route found: ${routePoints.length} points, ${distance.toStringAsFixed(0)}m');
         } else {
-          print('No road route found, trying OSRM fallback');
+          debugPrint('No road route found, trying OSRM fallback');
           
           // Fallback to OSRM for car/bus if OSM road routing fails
           String routingProfile;
@@ -1060,7 +1060,7 @@ out geom;
             }
             distance = (data['routes'][0]['distance'] as num).toDouble();
             duration = (data['routes'][0]['duration'] as num).toDouble();
-            print('OSRM fallback route found: ${routePoints.length} points');
+            debugPrint('OSRM fallback route found: ${routePoints.length} points');
           }
         }
       }
@@ -1121,7 +1121,7 @@ out geom;
         throw Exception(message);
       }
     } catch (e) {
-      print('Route calculation error: $e');
+      debugPrint('Route calculation error: $e');
       if (mounted) {
         showAnimatedSuccess(
           context,
@@ -1204,7 +1204,7 @@ out skel qt;
           }
         }
         
-        print('Pedestrian network: ${nodes.length} nodes, ${wayNodes.length} ways');
+        debugPrint('Pedestrian network: ${nodes.length} nodes, ${wayNodes.length} ways');
         
     // Prefer routing to a mapped entrance node, if available
     LatLng? entrance = await _fetchNearestEntrance(end);
@@ -1248,7 +1248,7 @@ out skel qt;
               debugPrint('Route ends at footpath node: ${route.last.latitude},${route.last.longitude}');
             }
             
-            print('Pedestrian route: ${route.length} points, ${entrance != null ? 'to building entrance' : 'to nearest footpath'}');
+            debugPrint('Pedestrian route: ${route.length} points, ${entrance != null ? 'to building entrance' : 'to nearest footpath'}');
             
             if (route.length >= 2) {
               final newBearing = _computeBearing(route[0], route[1]);
@@ -1270,13 +1270,13 @@ out skel qt;
         }
       }
     } catch (e) {
-      print('Error calculating footpath route: $e');
+      debugPrint('Error calculating footpath route: $e');
       debugPrint('🔄 Falling back to mixed pedestrian route after error...');
       // FALLBACK: Try mixed pedestrian route on any error
       try {
         return await _calculateMixedPedestrianRoute(start, end);
       } catch (fallbackError) {
-        print('Mixed pedestrian route also failed: $fallbackError');
+        debugPrint('Mixed pedestrian route also failed: $fallbackError');
       }
     }
     
@@ -1399,7 +1399,7 @@ out skel qt;
           }
         }
         
-        print('Mixed pedestrian network: ${nodes.length} nodes, ${wayNodes.length} ways');
+        debugPrint('Mixed pedestrian network: ${nodes.length} nodes, ${wayNodes.length} ways');
         
         // Find nearest nodes to start and end
         // For end node, require at least 15m from building to stay on footpath
@@ -1426,7 +1426,7 @@ out skel qt;
                 route.add(nodes[nodeId]!);
               }
             }
-            print('Mixed pedestrian route: ${route.length} points');
+            debugPrint('Mixed pedestrian route: ${route.length} points');
             if (route.length >= 2) {
               final newBearing = _computeBearing(route[0], route[1]);
               setState(() => _mapBearing = newBearing);
@@ -1437,7 +1437,7 @@ out skel qt;
         }
       }
     } catch (e) {
-      print('Error calculating mixed pedestrian route: $e');
+      debugPrint('Error calculating mixed pedestrian route: $e');
     }
     
     return [];
@@ -1483,7 +1483,7 @@ out skel qt;
           }
         }
 
-        print('Bicycle network: ${nodes.length} nodes, ${wayNodes.length} ways');
+        debugPrint('Bicycle network: ${nodes.length} nodes, ${wayNodes.length} ways');
 
         int? startNode = _findNearestNodeId(start, nodes);
         int? endNode = _findNearestNodeId(end, nodes);
@@ -1524,7 +1524,7 @@ out skel qt;
         }
       }
     } catch (e) {
-      print('Error calculating bicycle route: $e');
+      debugPrint('Error calculating bicycle route: $e');
     }
 
     return [];
@@ -1575,7 +1575,7 @@ out skel qt;
           }
         }
         
-        print('Road network: ${nodes.length} nodes, ${wayNodes.length} ways');
+        debugPrint('Road network: ${nodes.length} nodes, ${wayNodes.length} ways');
         
         // Find nearest nodes to start and end
         int? startNode = _findNearestNodeId(start, nodes);
@@ -1620,7 +1620,7 @@ out skel qt;
         }
       }
     } catch (e) {
-      print('Error calculating road route: $e');
+      debugPrint('Error calculating road route: $e');
     }
     
     return [];
@@ -1673,14 +1673,14 @@ out skel qt;
       wayId++;
     }
     
-    print('Graph built: ${graph.length} nodes, ${graph.values.fold(0, (sum, neighbors) => sum + neighbors.length)} edges');
+    debugPrint('Graph built: ${graph.length} nodes, ${graph.values.fold(0, (sum, neighbors) => sum + neighbors.length)} edges');
     
     if (!graph.containsKey(startNode)) {
-      print('Start node $startNode not in graph');
+      debugPrint('Start node $startNode not in graph');
       return null; 
     }
     if (!graph.containsKey(endNode)) {
-      print('End node $endNode not in graph');
+      debugPrint('End node $endNode not in graph');
       return null;
     }
     
@@ -1723,7 +1723,7 @@ out skel qt;
           path.insert(0, current);
         }
         double totalDist = gScore[endNode] ?? 0;
-        print('Path found: ${path.length} nodes, ${totalDist.toStringAsFixed(0)}m, $iterations iterations');
+        debugPrint('Path found: ${path.length} nodes, ${totalDist.toStringAsFixed(0)}m, $iterations iterations');
         return path;
       }
       
@@ -1758,7 +1758,7 @@ out skel qt;
       }
     }
     
-    print('No path found after $iterations iterations (checked ${closedSet.length} nodes)');
+    debugPrint('No path found after $iterations iterations (checked ${closedSet.length} nodes)');
     return null; // No path found
   }
 
@@ -3935,7 +3935,7 @@ out skel qt;
             setState(() => _showSearchResults = false);
           },
         );
-      }).toList(),
+      }),
     ];
   }
   

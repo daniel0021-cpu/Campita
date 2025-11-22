@@ -1,6 +1,5 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
 
@@ -698,7 +697,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
               borderRadius: BorderRadius.circular(12),
               boxShadow: [
                 BoxShadow(
-                  color: (user.isCurrentUser ? AppColors.primary : Colors.grey).withOpacity(0.3),
+                  color: (user.isCurrentUser ? AppColors.primary : Colors.grey).withAlpha((0.3 * 255).toInt()),
                   blurRadius: 8,
                   offset: const Offset(0, 2),
                 ),

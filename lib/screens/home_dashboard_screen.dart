@@ -152,14 +152,14 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [AppColors.primary, AppColors.primary.withOpacity(0.8)],
+          colors: [AppColors.primary, AppColors.primary.withAlpha((0.8 * 255).toInt())],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: AppColors.primary.withOpacity(0.3),
+            color: AppColors.primary.withAlpha((0.3 * 255).toInt()),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -184,7 +184,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                   'Explore Igbinedion University campus with ease',
                   style: GoogleFonts.notoSans(
                     fontSize: 14,
-                    color: Colors.white.withOpacity(0.9),
+                    color: Colors.white.withAlpha((0.9 * 255).toInt()),
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -245,7 +245,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFFFF6B6B).withOpacity(0.4),
+            color: const Color(0xFFFF6B6B).withAlpha((0.4 * 255).toInt()),
             blurRadius: 16,
             offset: const Offset(0, 8),
           ),
@@ -257,7 +257,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
             width: 48,
             height: 48,
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.25),
+              color: Colors.white.withAlpha((0.25 * 255).toInt()),
               borderRadius: BorderRadius.circular(12),
             ),
             child: const Icon(
@@ -276,7 +276,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.3),
+                        color: Colors.white.withAlpha((0.3 * 255).toInt()),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
@@ -318,7 +318,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                         event.venue,
                         style: GoogleFonts.openSans(
                           fontSize: 13,
-                          color: Colors.white.withOpacity(0.95),
+                          color: Colors.white.withAlpha((0.95 * 255).toInt()),
                           fontWeight: FontWeight.w600,
                         ),
                         maxLines: 1,
@@ -336,7 +336,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                       event.timeRangeFormatted,
                       style: GoogleFonts.openSans(
                         fontSize: 13,
-                        color: Colors.white.withOpacity(0.95),
+                        color: Colors.white.withAlpha((0.95 * 255).toInt()),
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -349,7 +349,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.25),
+              color: Colors.white.withAlpha((0.25 * 255).toInt()),
               borderRadius: BorderRadius.circular(10),
             ),
             child: const Icon(
@@ -397,7 +397,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
           gradient: LinearGradient(
             colors: [
               AppColors.primary,
-              AppColors.primary.withOpacity(0.8),
+              AppColors.primary.withAlpha((0.8 * 255).toInt()),
             ],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
@@ -405,7 +405,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: AppColors.primary.withOpacity(0.3),
+              color: AppColors.primary.withAlpha((0.3 * 255).toInt()),
               blurRadius: 20,
               offset: const Offset(0, 8),
             ),
@@ -416,7 +416,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
+                color: Colors.white.withAlpha((0.2 * 255).toInt()),
                 borderRadius: BorderRadius.circular(14),
               ),
               child: const Icon(
@@ -443,7 +443,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                     'Check out what\'s happening on campus',
                     style: GoogleFonts.notoSans(
                       fontSize: 13,
-                      color: Colors.white.withOpacity(0.9),
+                      color: Colors.white.withAlpha((0.9 * 255).toInt()),
                     ),
                   ),
                 ],
@@ -452,7 +452,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
+                color: Colors.white.withAlpha((0.2 * 255).toInt()),
                 shape: BoxShape.circle,
               ),
               child: const Icon(
@@ -508,7 +508,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withAlpha((0.05 * 255).toInt()),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -672,7 +672,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
             borderRadius: BorderRadius.circular(12),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.05),
+                color: Colors.black.withAlpha((0.05 * 255).toInt()),
                 blurRadius: 8,
                 offset: const Offset(0, 2),
               ),
@@ -682,7 +682,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
             leading: Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: AppColors.primary.withOpacity(0.1),
+                color: AppColors.primary.withAlpha((0.1 * 255).toInt()),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Icon(Icons.history, color: AppColors.primary),
@@ -864,7 +864,7 @@ class _PopularLocationCardState extends State<_PopularLocationCard> {
             borderRadius: BorderRadius.circular(12),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(_scale == 1.0 ? 0.05 : 0.15),
+                color: Colors.black.withAlpha(((_scale == 1.0 ? 0.05 : 0.15) * 255).toInt()),
                 blurRadius: _scale == 1.0 ? 8 : 12,
                 offset: Offset(0, _scale == 1.0 ? 2 : 4),
               ),
@@ -878,7 +878,7 @@ class _PopularLocationCardState extends State<_PopularLocationCard> {
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: widget.categoryColor.withOpacity(0.15),
+                    color: widget.categoryColor.withAlpha((0.15 * 255).toInt()),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(
@@ -972,7 +972,7 @@ class _QuickAccessButtonState extends State<_QuickAccessButton> {
               borderRadius: BorderRadius.circular(12),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(_depth == 0.0 ? 0.05 : 0.15),
+                  color: Colors.black.withAlpha(((_depth == 0.0 ? 0.05 : 0.15) * 255).toInt()),
                   blurRadius: _depth == 0.0 ? 8 : 12,
                   offset: Offset(0, _depth == 0.0 ? 2 : 4),
                 ),

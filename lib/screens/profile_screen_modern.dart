@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
@@ -8,8 +7,6 @@ import '../theme/app_theme.dart';
 import '../utils/preferences_service.dart';
 import '../utils/app_settings.dart';
 import '../widgets/modern_navbar.dart';
-import 'package:latlong2/latlong.dart';
-import '../models/campus_building.dart';
 import 'dart:html' as html;
 
 /// Ultra-Modern Profile Screen with Stunning UI/UX
@@ -95,11 +92,14 @@ class _ProfileScreenModernState extends State<ProfileScreenModern> with TickerPr
       _level = data['level'] ?? '';
       _dorm = data['dorm'] ?? '';
       _room = data['room'] ?? '';
-      if (data['avatar'] != null && data['avatar'].isNotEmpty) {
-        try {
-          _avatarBytes = base64Decode(data['avatar']);
-        } catch (e) {
-          _avatarBytes = null;
+      if (data['avatar'] != null) {
+        final avatarData = data['avatar'] as String;
+        if (avatarData.isNotEmpty) {
+          try {
+            _avatarBytes = base64Decode(avatarData);
+          } catch (e) {
+            _avatarBytes = null;
+          }
         }
       }
     });
@@ -115,12 +115,12 @@ class _ProfileScreenModernState extends State<ProfileScreenModern> with TickerPr
     
     if (!mounted) return;
     setState(() {
-      _notifications = notif;
-      _locationServices = loc;
-      _darkMode = dark;
-      _hapticFeedback = haptic;
-      _mapStyle = mapStyle;
-      _transportMode = transport;
+      _notifications = notif ?? true;
+      _locationServices = loc ?? true;
+      _darkMode = dark ?? false;
+      _hapticFeedback = haptic ?? true;
+      _mapStyle = mapStyle ?? 'standard';
+      _transportMode = transport ?? 'foot';
     });
   }
 
@@ -297,9 +297,9 @@ class _ProfileScreenModernState extends State<ProfileScreenModern> with TickerPr
                         begin: Alignment.centerLeft,
                         end: Alignment.centerRight,
                         colors: [
-                          Colors.white.withOpacity(0.0),
-                          Colors.white.withOpacity(0.2),
-                          Colors.white.withOpacity(0.0),
+                          Colors.white.withAlpha((0.0 * 255).toInt()),
+                          Colors.white.withAlpha((0.2 * 255).toInt()),
+                          Colors.white.withAlpha((0.0 * 255).toInt()),
                         ],
                       ),
                     ),
@@ -331,7 +331,7 @@ class _ProfileScreenModernState extends State<ProfileScreenModern> with TickerPr
                                 shape: BoxShape.circle,
                                 boxShadow: [
                                   BoxShadow(
-                                    color: Colors.white.withOpacity(0.3),
+                                    color: Colors.white.withAlpha((0.3 * 255).toInt()),
                                     blurRadius: 30 * pulse,
                                     spreadRadius: 10,
                                   ),
@@ -341,7 +341,7 @@ class _ProfileScreenModernState extends State<ProfileScreenModern> with TickerPr
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
                                   border: Border.all(color: Colors.white, width: 4),
-                                  color: Colors.white.withOpacity(0.9),
+                                  color: Colors.white.withAlpha((0.9 * 255).toInt()),
                                   image: _avatarBytes != null
                                       ? DecorationImage(
                                           image: MemoryImage(_avatarBytes!),
@@ -388,7 +388,7 @@ class _ProfileScreenModernState extends State<ProfileScreenModern> with TickerPr
                       style: GoogleFonts.inter(
                         fontSize: 16,
                         fontWeight: FontWeight.w500,
-                        color: Colors.white.withOpacity(0.9),
+                        color: Colors.white.withAlpha((0.9 * 255).toInt()),
                       ),
                     ),
                   ],
@@ -428,8 +428,8 @@ class _ProfileScreenModernState extends State<ProfileScreenModern> with TickerPr
           end: Alignment.bottomRight,
           colors: isDark
               ? [
-                  const Color(0xFF1E293B).withOpacity(0.6),
-                  const Color(0xFF334155).withOpacity(0.4),
+                  const Color(0xFF1E293B).withAlpha((0.6 * 255).toInt()),
+                  const Color(0xFF334155).withAlpha((0.4 * 255).toInt()),
                 ]
               : [
                   Colors.white,
@@ -438,11 +438,11 @@ class _ProfileScreenModernState extends State<ProfileScreenModern> with TickerPr
         ),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: isDark ? Colors.white.withOpacity(0.1) : Colors.black.withOpacity(0.05),
+          color: isDark ? Colors.white.withAlpha((0.1 * 255).toInt()) : Colors.black.withAlpha((0.05 * 255).toInt()),
         ),
         boxShadow: [
           BoxShadow(
-            color: isDark ? Colors.black.withOpacity(0.3) : Colors.black.withOpacity(0.05),
+            color: isDark ? Colors.black.withAlpha((0.3 * 255).toInt()) : Colors.black.withAlpha((0.05 * 255).toInt()),
             blurRadius: 20,
             offset: const Offset(0, 8),
           ),
@@ -484,21 +484,21 @@ class _ProfileScreenModernState extends State<ProfileScreenModern> with TickerPr
           end: Alignment.bottomRight,
           colors: isDark
               ? [
-                  const Color(0xFF1E293B).withOpacity(0.5),
-                  const Color(0xFF334155).withOpacity(0.3),
+                  const Color(0xFF1E293B).withAlpha((0.5 * 255).toInt()),
+                  const Color(0xFF334155).withAlpha((0.3 * 255).toInt()),
                 ]
               : [
-                  Colors.white.withOpacity(0.9),
-                  const Color(0xFFF8FAFC).withOpacity(0.8),
+                  Colors.white.withAlpha((0.9 * 255).toInt()),
+                  const Color(0xFFF8FAFC).withAlpha((0.8 * 255).toInt()),
                 ],
         ),
         borderRadius: BorderRadius.circular(24),
         border: Border.all(
-          color: isDark ? Colors.white.withOpacity(0.1) : Colors.black.withOpacity(0.05),
+          color: isDark ? Colors.white.withAlpha((0.1 * 255).toInt()) : Colors.black.withAlpha((0.05 * 255).toInt()),
         ),
         boxShadow: [
           BoxShadow(
-            color: isDark ? Colors.black.withOpacity(0.3) : Colors.black.withOpacity(0.06),
+            color: isDark ? Colors.black.withAlpha((0.3 * 255).toInt()) : Colors.black.withAlpha((0.06 * 255).toInt()),
             blurRadius: 24,
             offset: const Offset(0, 10),
           ),
@@ -515,7 +515,7 @@ class _ProfileScreenModernState extends State<ProfileScreenModern> with TickerPr
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      colors: [AppColors.primary, AppColors.primary.withOpacity(0.7)],
+                      colors: [AppColors.primary, AppColors.primary.withAlpha((0.7 * 255).toInt())],
                     ),
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -551,7 +551,7 @@ class _ProfileScreenModernState extends State<ProfileScreenModern> with TickerPr
         decoration: BoxDecoration(
           border: Border(
             top: BorderSide(
-              color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05),
+              color: isDark ? Colors.white.withAlpha((0.05 * 255).toInt()) : Colors.black.withAlpha((0.05 * 255).toInt()),
             ),
           ),
         ),
@@ -560,7 +560,7 @@ class _ProfileScreenModernState extends State<ProfileScreenModern> with TickerPr
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: (isDark ? Colors.white : Colors.black).withOpacity(0.05),
+                color: (isDark ? Colors.white : Colors.black).withAlpha((0.05 * 255).toInt()),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Icon(icon, color: isEmpty ? Colors.grey : AppColors.primary, size: 20),
@@ -607,7 +607,7 @@ class _ProfileScreenModernState extends State<ProfileScreenModern> with TickerPr
       decoration: BoxDecoration(
         border: Border(
           top: BorderSide(
-            color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05),
+            color: isDark ? Colors.white.withAlpha((0.05 * 255).toInt()) : Colors.black.withAlpha((0.05 * 255).toInt()),
           ),
         ),
       ),
@@ -616,7 +616,7 @@ class _ProfileScreenModernState extends State<ProfileScreenModern> with TickerPr
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: (isDark ? Colors.white : Colors.black).withOpacity(0.05),
+              color: (isDark ? Colors.white : Colors.black).withAlpha((0.05 * 255).toInt()),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(icon, color: AppColors.primary, size: 20),
@@ -655,7 +655,7 @@ class _ProfileScreenModernState extends State<ProfileScreenModern> with TickerPr
         decoration: BoxDecoration(
           border: Border(
             top: BorderSide(
-              color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05),
+              color: isDark ? Colors.white.withAlpha((0.05 * 255).toInt()) : Colors.black.withAlpha((0.05 * 255).toInt()),
             ),
           ),
         ),
@@ -664,7 +664,7 @@ class _ProfileScreenModernState extends State<ProfileScreenModern> with TickerPr
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: (isDark ? Colors.white : Colors.black).withOpacity(0.05),
+                color: (isDark ? Colors.white : Colors.black).withAlpha((0.05 * 255).toInt()),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Icon(icon, color: AppColors.primary, size: 20),
@@ -715,15 +715,15 @@ class _ProfileScreenModernState extends State<ProfileScreenModern> with TickerPr
         width: 44,
         height: 44,
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(isDark ? 0.2 : 0.95),
+          color: Colors.white.withAlpha(((isDark ? 0.2 : 0.95) * 255).toInt()),
           shape: BoxShape.circle,
           border: Border.all(
-            color: Colors.white.withOpacity(isDark ? 0.3 : 1.0),
+            color: Colors.white.withAlpha(((isDark ? 0.3 : 1.0) * 255).toInt()),
             width: 1.5,
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.2),
+              color: Colors.black.withAlpha((0.2 * 255).toInt()),
               blurRadius: 12,
               offset: const Offset(0, 4),
             ),
@@ -752,12 +752,12 @@ class _ProfileScreenModernState extends State<ProfileScreenModern> with TickerPr
                   colors: [Colors.red.shade400, Colors.red.shade600],
                 )
               : LinearGradient(
-                  colors: [AppColors.primary, AppColors.primary.withOpacity(0.8)],
+                  colors: [AppColors.primary, AppColors.primary.withAlpha((0.8 * 255).toInt())],
                 ),
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: (isDestructive ? Colors.red : AppColors.primary).withOpacity(0.3),
+              color: (isDestructive ? Colors.red : AppColors.primary).withAlpha((0.3 * 255).toInt()),
               blurRadius: 20,
               offset: const Offset(0, 8),
             ),
@@ -956,7 +956,7 @@ class _ModernSwitch extends StatelessWidget {
         height: 30,
         decoration: BoxDecoration(
           gradient: value
-              ? LinearGradient(colors: [AppColors.primary, AppColors.primary.withOpacity(0.8)])
+              ? LinearGradient(colors: [AppColors.primary, AppColors.primary.withAlpha((0.8 * 255).toInt())])
               : null,
           color: value ? null : Colors.grey.shade300,
           borderRadius: BorderRadius.circular(15),
@@ -1059,7 +1059,7 @@ class _EditProfileModalState extends State<_EditProfileModal> with SingleTickerP
             borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.3),
+                color: Colors.black.withAlpha((0.3 * 255).toInt()),
                 blurRadius: 30,
                 offset: const Offset(0, -10),
               ),
@@ -1091,7 +1091,7 @@ class _EditProfileModalState extends State<_EditProfileModal> with SingleTickerP
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
                             gradient: LinearGradient(
-                              colors: [AppColors.primary, AppColors.primary.withOpacity(0.7)],
+                              colors: [AppColors.primary, AppColors.primary.withAlpha((0.7 * 255).toInt())],
                             ),
                             borderRadius: BorderRadius.circular(16),
                           ),
@@ -1121,12 +1121,12 @@ class _EditProfileModalState extends State<_EditProfileModal> with SingleTickerP
                         ),
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
-                          color: AppColors.primary.withOpacity(0.3),
+                          color: AppColors.primary.withAlpha((0.3 * 255).toInt()),
                           width: 2,
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: AppColors.primary.withOpacity(0.1),
+                            color: AppColors.primary.withAlpha((0.1 * 255).toInt()),
                             blurRadius: 20,
                             offset: const Offset(0, 8),
                           ),
@@ -1170,7 +1170,7 @@ class _EditProfileModalState extends State<_EditProfileModal> with SingleTickerP
                             child: Container(
                               padding: const EdgeInsets.symmetric(vertical: 16),
                               decoration: BoxDecoration(
-                                color: isDark ? Colors.white10 : Colors.black05,
+                                color: isDark ? Colors.white10 : Colors.black.withAlpha(12),
                                 borderRadius: BorderRadius.circular(16),
                               ),
                               child: Center(
@@ -1199,12 +1199,12 @@ class _EditProfileModalState extends State<_EditProfileModal> with SingleTickerP
                               padding: const EdgeInsets.symmetric(vertical: 16),
                               decoration: BoxDecoration(
                                 gradient: LinearGradient(
-                                  colors: [AppColors.primary, AppColors.primary.withOpacity(0.8)],
+                                  colors: [AppColors.primary, AppColors.primary.withAlpha((0.8 * 255).toInt())],
                                 ),
                                 borderRadius: BorderRadius.circular(16),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: AppColors.primary.withOpacity(0.4),
+                                    color: AppColors.primary.withAlpha((0.4 * 255).toInt()),
                                     blurRadius: 20,
                                     offset: const Offset(0, 8),
                                   ),
