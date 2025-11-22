@@ -5,6 +5,7 @@ import 'dart:html' as html;
 import '../theme/app_theme.dart';
 import '../models/campus_building.dart';
 import '../screens/premium_profile_screen.dart';
+import '../utils/recent_searches_service.dart';
 
 class SearchScreen extends StatefulWidget {
   const SearchScreen({super.key});
@@ -16,8 +17,26 @@ class SearchScreen extends StatefulWidget {
 class _SearchScreenState extends State<SearchScreen> {
   final TextEditingController _searchController = TextEditingController();
   List<CampusBuilding> _searchResults = [];
-  final List<String> _recentSearches = [];
+  List<SearchRecord> _recentSearchRecords = [];
   bool _isSearching = false;
+  
+  @override
+  void initState() {
+    super.initState();
+    _loadRecentSearches();
+    _searchController.addListener(_onSearchChanged);
+  }
+  
+  Future<void> _loadRecentSearches() async {
+    final recent = await RecentSearchesService.filterSearches('');
+    setState(() => _recentSearchRecords = recent);
+  }
+  
+  void _onSearchChanged() async {
+    final query = _searchController.text.trim();
+    final filtered = await RecentSearchesService.filterSearches(query);
+    setState(() => _recentSearchRecords = filtered);
+  }
 
   @override
   void dispose() {
@@ -36,18 +55,11 @@ class _SearchScreenState extends State<SearchScreen> {
 
     setState(() {
       _isSearching = true;
-      final source = campusBuildings; // could be replaced by OSM list via injection
+      final source = campusBuildings;
       _searchResults = source
           .where((b) => b.name.toLowerCase().contains(query.toLowerCase()))
           .toList()
-        ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase())); // Sort alphabetically
-
-      if (!_recentSearches.contains(query)) {
-        _recentSearches.insert(0, query);
-        if (_recentSearches.length > 10) {
-          _recentSearches.removeLast();
-        }
-      }
+        ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
     });
   }
 
@@ -290,9 +302,9 @@ class _SearchScreenState extends State<SearchScreen> {
             ),
           ),
           const SizedBox(height: 24),
-          if (_recentSearches.isNotEmpty) ...[
+          if (_recentSearchRecords.isNotEmpty) ...[
             _buildSectionHeader('Recent Searches'),
-            ..._recentSearches.map((search) => _buildRecentSearchItem(search)),
+            ..._recentSearchRecords.map((record) => _buildRecentSearchItem(record)),
             const SizedBox(height: 24),
           ] else ...[
             _buildEmptyRecentSearches(),
@@ -426,9 +438,9 @@ class _SearchScreenState extends State<SearchScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (_recentSearches.isNotEmpty) ...[
+          if (_recentSearchRecords.isNotEmpty) ...[
             _buildSectionHeader('Recent Searches'),
-            ..._recentSearches.take(3).map((search) => _buildRecentSearchItem(search)),
+            ..._recentSearchRecords.take(3).map((record) => _buildRecentSearchItem(record)),
             const SizedBox(height: 16),
             _buildSectionHeader('Results'),
             const SizedBox(height: 4),
@@ -525,7 +537,7 @@ class _SearchScreenState extends State<SearchScreen> {
     );
   }
 
-  Widget _buildRecentSearchItem(String search) {
+  Widget _buildRecentSearchItem(SearchRecord record) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
@@ -543,24 +555,32 @@ class _SearchScreenState extends State<SearchScreen> {
       child: ListTile(
         leading: Icon(Icons.history_rounded, color: isDark ? Colors.white70 : AppColors.grey),
         title: Text(
-          search,
+          record.query,
           style: GoogleFonts.notoSans(
             fontSize: 14,
             color: isDark ? Colors.white : AppColors.darkGrey,
           ),
         ),
+        subtitle: record.frequency > 1 ? Text(
+          '${record.frequency}× searched',
+          style: GoogleFonts.notoSans(
+            fontSize: 11,
+            color: AppColors.grey,
+          ),
+        ) : null,
         trailing: IconButton(
           icon: Icon(Icons.close_rounded, color: isDark ? Colors.white54 : AppColors.grey, size: 18),
-          onPressed: () {
-            setState(() {
-              _recentSearches.remove(search);
-            });
+          onPressed: () async {
+            await RecentSearchesService.removeSearch(record.query);
+            _loadRecentSearches();
           },
           splashRadius: 20,
         ),
-        onTap: () {
-          _searchController.text = search;
-          _performSearch(search);
+        onTap: () async {
+          // Save search when tapped (increment frequency)
+          await RecentSearchesService.saveSearch(record.query);
+          _searchController.text = record.query;
+          _performSearch(record.query);
         },
       ),
     );
@@ -784,7 +804,9 @@ class _SearchScreenState extends State<SearchScreen> {
             ],
           ),
           child: InkWell(
-            onTap: () {
+            onTap: () async {
+              // ✅ Save search when user selects a building result
+              await RecentSearchesService.saveSearch(building.name);
               Navigator.pop(context, building);
             },
             borderRadius: BorderRadius.circular(16),

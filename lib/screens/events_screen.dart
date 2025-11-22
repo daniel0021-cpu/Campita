@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
 import 'package:intl/intl.dart';
@@ -113,13 +114,53 @@ class _EventsScreenState extends State<EventsScreen> with SingleTickerProviderSt
   }
 
   Widget _buildRefreshableEventsList(List<CampusEvent> events, {required String eventType}) {
-    return RefreshIndicator(
-      onRefresh: () async {
-        await Future.delayed(const Duration(milliseconds: 1200));
-        if (mounted) setState(() {});
-      },
-      color: AppColors.primary,
-      child: _buildEventsList(events, eventType: eventType),
+    if (events.isEmpty) {
+      return CustomScrollView(
+        physics: const BouncingScrollPhysics(
+          parent: AlwaysScrollableScrollPhysics(),
+        ),
+        slivers: [
+          CupertinoSliverRefreshControl(
+            onRefresh: () async {
+              await Future.delayed(const Duration(milliseconds: 1200));
+              if (mounted) setState(() {});
+            },
+          ),
+          SliverFillRemaining(
+            child: _buildEmptyState(eventType),
+          ),
+        ],
+      );
+    }
+    
+    return CustomScrollView(
+      physics: const BouncingScrollPhysics(
+        parent: AlwaysScrollableScrollPhysics(),
+      ),
+      slivers: [
+        CupertinoSliverRefreshControl(
+          onRefresh: () async {
+            await Future.delayed(const Duration(milliseconds: 1200));
+            if (mounted) setState(() {});
+          },
+        ),
+        SliverPadding(
+          padding: const EdgeInsets.all(16),
+          sliver: SliverList(
+            delegate: SliverChildBuilderDelegate(
+              (context, index) {
+                final event = events[index];
+                return _AnimatedEventCard(
+                  event: event,
+                  eventType: eventType,
+                  index: index,
+                );
+              },
+              childCount: events.length,
+            ),
+          ),
+        ),
+      ],
     );
   }
 

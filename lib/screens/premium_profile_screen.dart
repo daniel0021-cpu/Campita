@@ -179,28 +179,27 @@ class _PremiumProfileScreenState extends State<PremiumProfileScreen>
       body: Stack(
         children: [
           // Main scrollable content
-          RefreshIndicator(
-            onRefresh: _refreshProfile,
-            color: AppColors.primary,
-            backgroundColor: Colors.white,
-            strokeWidth: 2.5,
-            child: CustomScrollView(
-              controller: _scrollController,
-              physics: const BouncingScrollPhysics(
-                parent: AlwaysScrollableScrollPhysics(),
-              ),
-              slivers: [
-                // Animated gradient header
-                SliverToBoxAdapter(
-                  child: _buildGradientHeader(headerHeight),
-                ),
-                
-                // Wavy profile sheet
-                SliverToBoxAdapter(
-                  child: _buildWavyProfileSheet(),
-                ),
-              ],
+          CustomScrollView(
+            controller: _scrollController,
+            physics: const BouncingScrollPhysics(
+              parent: AlwaysScrollableScrollPhysics(),
             ),
+            slivers: [
+              // iOS-style pull-to-refresh
+              CupertinoSliverRefreshControl(
+                onRefresh: _refreshProfile,
+              ),
+              
+              // Animated gradient header
+              SliverToBoxAdapter(
+                child: _buildGradientHeader(headerHeight),
+              ),
+              
+              // Wavy profile sheet
+              SliverToBoxAdapter(
+                child: _buildWavyProfileSheet(),
+              ),
+            ],
           ),
         ],
       ),

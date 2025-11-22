@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
 import '../models/campus_building.dart';
@@ -167,20 +168,33 @@ class _FavoritesScreenState extends State<FavoritesScreen> with SingleTickerProv
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.ash,
-      body: RefreshIndicator(
-        onRefresh: () async {
-          await Future.delayed(const Duration(milliseconds: 1200));
-          await _loadFavorites();
-        },
-        color: AppColors.primary,
-        child: _favorites.isEmpty
-            ? _buildEmptyState()
-            : Column(
-                children: [
-                  _buildCurvedHeaderCard(),
-                  Expanded(child: _buildFavoritesList()),
-                ],
+      body: CustomScrollView(
+        physics: const BouncingScrollPhysics(
+          parent: AlwaysScrollableScrollPhysics(),
+        ),
+        slivers: [
+          CupertinoSliverRefreshControl(
+            onRefresh: () async {
+              await Future.delayed(const Duration(milliseconds: 1200));
+              await _loadFavorites();
+            },
+          ),
+          _favorites.isEmpty
+            ? SliverFillRemaining(
+                child: _buildEmptyState(),
+              )
+            : SliverToBoxAdapter(
+                child: Column(
+                  children: [
+                    _buildCurvedHeaderCard(),
+                    SizedBox(
+                      height: MediaQuery.of(context).size.height - 250,
+                      child: _buildFavoritesList(),
+                    ),
+                  ],
+                ),
               ),
+        ],
       ),
       bottomNavigationBar: const ModernNavBar(currentIndex: 1),
     );

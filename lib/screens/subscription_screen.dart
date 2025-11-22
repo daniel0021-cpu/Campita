@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../theme/app_theme.dart';
 import '../widgets/modern_navbar.dart';
 import '../widgets/animated_success_card.dart';
+import 'leaderboard_screen.dart';
 
 class SubscriptionScreen extends StatefulWidget {
   const SubscriptionScreen({super.key});
@@ -12,8 +14,66 @@ class SubscriptionScreen extends StatefulWidget {
   State<SubscriptionScreen> createState() => _SubscriptionScreenState();
 }
 
-class _SubscriptionScreenState extends State<SubscriptionScreen> {
+class _SubscriptionScreenState extends State<SubscriptionScreen> 
+    with TickerProviderStateMixin {
   static const String email = 'admin@dmanapp.com';
+  
+  late AnimationController _crownController;
+  late AnimationController _characterController;
+  late AnimationController _pulseController;
+  late AnimationController _shineController;
+  late Animation<double> _crownRotation;
+  late Animation<double> _characterFloat;
+
+  @override
+  void initState() {
+    super.initState();
+    
+    _crownController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 3),
+    )..repeat(reverse: true);
+    
+    _characterController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    )..repeat(reverse: true);
+    
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    )..repeat(reverse: true);
+    
+    _shineController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    )..repeat();
+    
+    _crownRotation = Tween<double>(
+      begin: -0.1,
+      end: 0.1,
+    ).animate(CurvedAnimation(
+      parent: _crownController,
+      curve: Curves.easeInOut,
+    ));
+    
+    _characterFloat = Tween<double>(
+      begin: -8,
+      end: 8,
+    ).animate(CurvedAnimation(
+      parent: _characterController,
+      curve: Curves.easeInOut,
+    ));
+  }
+  
+  @override
+  void dispose() {
+    _crownController.dispose();
+    _characterController.dispose();
+    _pulseController.dispose();
+    _shineController.dispose();
+    super.dispose();
+  }
 
   Future<void> _contactSupport() async {
     final uri = Uri(scheme: 'mailto', path: email, queryParameters: {
@@ -29,34 +89,38 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     return Scaffold(
       backgroundColor: AppColors.ash,
       body: SafeArea(
-        child: RefreshIndicator(
-          onRefresh: () async {
-            await Future.delayed(const Duration(milliseconds: 1200));
-          },
-          color: AppColors.primary,
-          child: SingleChildScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildHeader(),
-                const SizedBox(height: 16),
-                _buildPlanCards(context),
-                const SizedBox(height: 24),
-                _buildBenefits(),
-                const SizedBox(height: 24),
-                Center(
-                  child: TextButton.icon(
-                    onPressed: _contactSupport,
-                    icon: const Icon(Icons.email, color: AppColors.primary),
-                    label: Text('Questions? Email $email', style: GoogleFonts.notoSans(color: AppColors.primary)),
-                  ),
-                ),
-                const SizedBox(height: 16),
-              ],
-            ),
+        child: CustomScrollView(
+          physics: const BouncingScrollPhysics(
+            parent: AlwaysScrollableScrollPhysics(),
           ),
+          slivers: [
+            CupertinoSliverRefreshControl(
+              onRefresh: () async {
+                await Future.delayed(const Duration(milliseconds: 1200));
+              },
+            ),
+            SliverPadding(
+              padding: const EdgeInsets.all(16),
+              sliver: SliverList(
+                delegate: SliverChildListDelegate([
+                  _buildHeader(),
+                  const SizedBox(height: 16),
+                  _buildPlanCards(context),
+                  const SizedBox(height: 24),
+                  _buildBenefits(),
+                  const SizedBox(height: 24),
+                  Center(
+                    child: TextButton.icon(
+                      onPressed: _contactSupport,
+                      icon: const Icon(Icons.email, color: AppColors.primary),
+                      label: Text('Questions? Email $email', style: GoogleFonts.notoSans(color: AppColors.primary)),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ]),
+              ),
+            ),
+          ],
         ),
       ),
       bottomNavigationBar: const ModernNavBar(currentIndex: 2),
@@ -65,58 +129,261 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
 
   Widget _buildHeader() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: AppColors.primary.withAlpha(77),
-          width: 2,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primary.withAlpha(26),
-            blurRadius: 20,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withAlpha(31),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(Icons.diamond_rounded, color: AppColors.primary, size: 28),
-              ),
-              const SizedBox(width: 12),
-              Text(
-                'Campus Pro',
-                style: GoogleFonts.poppins(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimaryAdaptive(context),
-                ),
+    return AnimatedBuilder(
+      animation: Listenable.merge([_pulseController, _shineController]),
+      builder: (context, child) {
+        return Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                isDark ? const Color(0xFF1E1E1E) : Colors.white,
+                isDark ? const Color(0xFF2A2A2A) : const Color(0xFFF8F9FA),
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: AppColors.primary.withAlpha((77 + _pulseController.value * 51).round()),
+              width: 2.5,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.primary.withAlpha((51 + _pulseController.value * 51).round()),
+                blurRadius: 25,
+                offset: const Offset(0, 8),
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          Text(
-            'Unlock the full campus experience with AR directions, AI-powered recommendations, and advanced navigation features.',
-            style: GoogleFonts.notoSans(
-              fontSize: 15,
-              color: AppColors.textSecondaryAdaptive(context),
-              height: 1.5,
-            ),
+          child: Stack(
+            children: [
+              // Shine effect
+              Positioned(
+                left: -100 + (_shineController.value * MediaQuery.of(context).size.width),
+                top: 0,
+                bottom: 0,
+                child: Container(
+                  width: 100,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        Colors.white.withAlpha(0),
+                        Colors.white.withAlpha(51),
+                        Colors.white.withAlpha(0),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              
+              Column(
+                children: [
+                  // Animated Character with Crown
+                  AnimatedBuilder(
+                    animation: Listenable.merge([_characterController, _crownController]),
+                    builder: (context, child) {
+                      return Transform.translate(
+                        offset: Offset(0, _characterFloat.value),
+                        child: Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            // Glow effect
+                            Container(
+                              width: 140,
+                              height: 140,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                gradient: RadialGradient(
+                                  colors: [
+                                    const Color(0xFFFFD700).withAlpha(77),
+                                    const Color(0xFFFFD700).withAlpha(26),
+                                    Colors.transparent,
+                                  ],
+                                ),
+                              ),
+                            ),
+                            
+                            // Character container with blue outline
+                            Container(
+                              width: 120,
+                              height: 120,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                gradient: const LinearGradient(
+                                  colors: [
+                                    Color(0xFFFFD700),
+                                    Color(0xFFFFA500),
+                                  ],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                                border: Border.all(
+                                  color: AppColors.primary,
+                                  width: 4,
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: AppColors.primary.withAlpha(128),
+                                    blurRadius: 20,
+                                    offset: const Offset(0, 8),
+                                  ),
+                                ],
+                              ),
+                              child: Center(
+                                child: Text(
+                                  '🚀',
+                                  style: TextStyle(
+                                    fontSize: 60,
+                                    shadows: [
+                                      Shadow(
+                                        color: Colors.black.withAlpha(77),
+                                        blurRadius: 10,
+                                        offset: const Offset(0, 4),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                            
+                            // Floating crown
+                            Positioned(
+                              top: -5,
+                              child: Transform.rotate(
+                                angle: _crownRotation.value,
+                                child: const Text(
+                                  '👑',
+                                  style: TextStyle(fontSize: 40),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                  
+                  const SizedBox(height: 20),
+                  
+                  // Campus King/Pro Title
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFFFFD700), Color(0xFFFFA500)],
+                      ),
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFFFFD700).withAlpha(77),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Text(
+                      'CAMPUS KING',
+                      style: GoogleFonts.poppins(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w900,
+                        color: Colors.white,
+                        letterSpacing: 2.0,
+                      ),
+                    ),
+                  ),
+                  
+                  const SizedBox(height: 16),
+                  
+                  Text(
+                    'Become a Campus Pro',
+                    style: GoogleFonts.poppins(
+                      fontSize: 26,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.textPrimaryAdaptive(context),
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  
+                  const SizedBox(height: 12),
+                  
+                  Text(
+                    '🔥 Join the Elite Navigators 🔥',
+                    style: GoogleFonts.poppins(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.orange,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  
+                  const SizedBox(height: 12),
+                  
+                  Text(
+                    'Unlock premium features, climb the leaderboard, and dominate campus navigation!',
+                    style: GoogleFonts.notoSans(
+                      fontSize: 15,
+                      color: AppColors.textSecondaryAdaptive(context),
+                      height: 1.6,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  
+                  const SizedBox(height: 20),
+                  
+                  // Leaderboard button
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        CupertinoPageRoute(
+                          builder: (context) => const LeaderboardScreen(),
+                        ),
+                      );
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            AppColors.primary,
+                            AppColors.primary.withAlpha(204),
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.primary.withAlpha(77),
+                            blurRadius: 15,
+                            offset: const Offset(0, 6),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.emoji_events, color: Colors.white, size: 22),
+                          const SizedBox(width: 10),
+                          Text(
+                            'View Leaderboard',
+                            style: GoogleFonts.poppins(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          const Icon(Icons.arrow_forward, color: Colors.white, size: 18),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -134,6 +401,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
             {'icon': Icons.favorite_rounded, 'text': 'Favorites sync', 'color': const Color(0xFFE91E63)},
             {'icon': Icons.support_agent_rounded, 'text': 'Priority support', 'color': const Color(0xFFFF9800)},
           ],
+          showComingSoon: true,
         ),
         const SizedBox(height: 16),
         _planCard(
@@ -143,12 +411,15 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
           'per year',
           [
             {'icon': Icons.savings_rounded, 'text': '₦4,000 saved vs monthly', 'color': const Color(0xFF4CAF50)},
+            {'icon': Icons.person_outline, 'text': 'Direct access to Founder/Developer', 'color': const Color(0xFFFFD700)},
+            {'icon': Icons.emoji_events, 'text': 'Exclusive leaderboard badge', 'color': const Color(0xFFFFD700)},
             {'icon': Icons.view_in_ar_rounded, 'text': 'AR Navigation (3D arrows)', 'color': const Color(0xFF9C27B0)},
             {'icon': Icons.auto_awesome_rounded, 'text': 'AI-powered suggestions', 'color': const Color(0xFFFF5722)},
             {'icon': Icons.offline_bolt_rounded, 'text': 'Offline maps', 'color': const Color(0xFF00BCD4)},
             {'icon': Icons.stars_rounded, 'text': 'Early access to features', 'color': const Color(0xFFFFC107)},
           ],
           recommended: true,
+          showComingSoon: true,
         ),
       ],
     );
@@ -161,6 +432,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     String period,
     List<Map<String, Object>> features, {
     bool recommended = false,
+    bool showComingSoon = false,
   }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
@@ -195,38 +467,70 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                   ),
                 ),
               ),
-              if (recommended)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFFFFD700), Color(0xFFFFA500)],
-                    ),
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFFFFD700).withAlpha(102),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  if (showComingSoon)
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 6),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFFFF6B6B), Color(0xFFEE5A6F)],
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFFFF6B6B).withAlpha(77),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.star_rounded, color: Colors.white, size: 14),
-                      const SizedBox(width: 4),
-                      Text(
-                        'Recommended',
+                      child: Text(
+                        'COMING SOON',
                         style: GoogleFonts.poppins(
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
+                          fontSize: 9,
+                          fontWeight: FontWeight.w900,
                           color: Colors.white,
+                          letterSpacing: 0.8,
                         ),
                       ),
-                    ],
-                  ),
-                ),
+                    ),
+                  if (recommended)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFFFFD700), Color(0xFFFFA500)],
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFFFFD700).withAlpha(102),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.star_rounded, color: Colors.white, size: 14),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Recommended',
+                            style: GoogleFonts.poppins(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
             ],
           ),
           const SizedBox(height: 16),

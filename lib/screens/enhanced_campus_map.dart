@@ -27,6 +27,7 @@ import 'events_screen.dart' as events_screen;
  import '../models/campus_event.dart';
  import '../utils/favorites_service.dart';
  import '../utils/app_settings.dart';
+ import '../utils/recent_searches_service.dart';
  import 'search_screen.dart';
  import 'subscription_screen.dart';
  import 'profile_screen.dart';
@@ -82,7 +83,7 @@ class _EnhancedCampusMapState extends State<EnhancedCampusMap> with TickerProvid
   List<List<LatLng>> _footpaths = [];
   List<CampusBuilding> _osmBuildings = [];
   bool _loadingOSMData = true;
-  final List<CampusBuilding> _recentSearches = [];
+  List<SearchRecord> _recentSearchRecords = [];
   double _mapBearing = 0.0;
   final LiveEventsService _eventsService = LiveEventsService();
   List<CampusEvent> _liveEvents = [];
@@ -536,16 +537,23 @@ out geom;
     }
   }
 
-  void _onSearchChanged() {
-    final query = _searchController.text.toLowerCase();
+  void _onSearchChanged() async {
+    final query = _searchController.text.trim();
+    
+    // Load filtered recent searches dynamically as user types
+    final recentMatches = await RecentSearchesService.filterSearches(query);
+    
     setState(() {
+      _recentSearchRecords = recentMatches;
+      
       if (query.isEmpty) {
         _filteredBuildings = [];
-        _showSearchResults = _recentSearches.isNotEmpty;
+        _showSearchResults = recentMatches.isNotEmpty;
       } else {
+        // Filter buildings for autocomplete
         final buildingsToSearch = _osmBuildings.isNotEmpty ? _osmBuildings : campusBuildings;
         _filteredBuildings = buildingsToSearch
-            .where((b) => b.name.toLowerCase().contains(query))
+            .where((b) => b.name.toLowerCase().contains(query.toLowerCase()))
             .toList();
         _showSearchResults = true;
       }
@@ -1058,7 +1066,8 @@ out geom;
       }
       
       if (routePoints.isNotEmpty) {
-        _addToRecent(destination);
+        // Save to recent searches when route is calculated
+        RecentSearchesService.saveSearch(destination.name);
         setState(() {
           _routePolyline = routePoints;
           _routeDistance = distance;
@@ -1811,21 +1820,8 @@ out skel qt;
     ));
   }
 
-  // Legacy _selectBuilding replaced by _showBuildingSheet; kept commented for reference
-  // Removed to reduce unused code warnings.
-
-  void _addToRecent(CampusBuilding building) {
-    setState(() {
-      // Deduplicate by name
-      _recentSearches.removeWhere((b) => b.name == building.name);
-      _recentSearches.insert(0, building);
-      if (_recentSearches.length > 10) {
-        _recentSearches.removeRange(10, _recentSearches.length);
-      }
-    });
-    // Persist recent search names
-    _prefs.saveRecentSearches(_recentSearches.map((b) => b.name).toList());
-  }
+  // Legacy _addToRecent removed - now using RecentSearchesService
+  // Search records are saved automatically when user selects a building
 
   void _clearRoute() {
     setState(() {
@@ -1851,9 +1847,10 @@ out skel qt;
     
     // Optimize: only show markers at appropriate zoom level
     // Use _currentZoom state variable instead of mapController to avoid accessing before render
-    final showAllMarkers = _currentZoom >= 15.5;
+    final showAllMarkers = _currentZoom >= 14.0; // Lower threshold so markers show earlier
+    final showLabels = _currentZoom >= 15.0; // Show labels at slightly higher zoom
     
-    // Add building markers
+    // Add building markers with labels
     for (final building in buildingsToDisplay) {
       // Filter by category if selected
       if (_selectedCategory != null && building.category != _selectedCategory) {
@@ -1868,34 +1865,71 @@ out skel qt;
       markers.add(
         Marker(
           point: building.coordinates,
-          width: isSelected ? 36 : 28,
-          height: isSelected ? 36 : 28,
+          width: showLabels ? 120 : (isSelected ? 36 : 28),
+          height: showLabels ? 60 : (isSelected ? 36 : 28),
           child: GestureDetector(
             onTap: () => _showBuildingSheet(building),
-            // replaced by bottom sheet interaction
-            child: Container(
-              decoration: BoxDecoration(
-                color: _getCategoryColor(building.category),
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: Colors.white,
-                  width: isSelected ? 3 : 2,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Icon marker
+                Container(
+                  width: isSelected ? 36 : 28,
+                  height: isSelected ? 36 : 28,
+                  decoration: BoxDecoration(
+                    color: _getCategoryColor(building.category),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: Colors.white,
+                      width: isSelected ? 3 : 2,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.2),
+                        blurRadius: isSelected ? 8 : 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Center(
+                    child: Text(
+                      building.categoryIcon, // Use emoji from building model
+                      style: TextStyle(
+                        fontSize: isSelected ? 18 : 16,
+                      ),
+                    ),
+                  ),
                 ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.2),
-                    blurRadius: isSelected ? 8 : 4,
-                    offset: const Offset(0, 2),
+                // Building name label (only at higher zoom)
+                if (showLabels || isSelected) ...[
+                  const SizedBox(height: 4),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.15),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Text(
+                      building.name,
+                      style: GoogleFonts.notoSans(
+                        fontSize: 11,
+                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                        color: _getCategoryColor(building.category),
+                      ),
+                      maxLines: 2,
+                      textAlign: TextAlign.center,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
                 ],
-              ),
-              child: Center(
-                child: Icon(
-                  _getCategoryIcon(building.category),
-                  size: isSelected ? 18 : 16,
-                  color: Colors.white,
-                ),
-              ),
+              ],
             ),
           ),
         ),
@@ -3751,10 +3785,15 @@ out skel qt;
   }
 
   Widget _buildSearchResults() {
-    final bool showingRecents = _searchController.text.isEmpty;
-    final List<CampusBuilding> list = showingRecents ? _recentSearches : _filteredBuildings;
+    final bool showingRecents = _searchController.text.trim().isEmpty;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    if (list.isEmpty) return const SizedBox.shrink();
+    
+    // Show recent searches OR filtered buildings
+    final hasRecents = _recentSearchRecords.isNotEmpty;
+    final hasBuildings = _filteredBuildings.isNotEmpty;
+    
+    if (!showingRecents && !hasBuildings) return const SizedBox.shrink();
+    if (showingRecents && !hasRecents) return const SizedBox.shrink();
 
     return Positioned(
       top: MediaQuery.of(context).padding.top + 140,
@@ -3762,7 +3801,7 @@ out skel qt;
       right: 16,
       child: Container(
         constraints: BoxConstraints(
-          maxHeight: MediaQuery.of(context).size.height * 0.35,
+          maxHeight: MediaQuery.of(context).size.height * 0.4,
         ),
         decoration: BoxDecoration(
           color: AppColors.cardBackground(context),
@@ -3770,119 +3809,209 @@ out skel qt;
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.1),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
             ),
           ],
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
+        child: ListView(
+          shrinkWrap: true,
+          padding: const EdgeInsets.symmetric(vertical: 8),
           children: [
-            if (showingRecents)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                child: Row(
-                  children: [
-                    const Icon(Icons.history, size: 16, color: AppColors.grey),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'Recent searches',
-                        style: GoogleFonts.notoSans(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.darkGrey,
-                        ),
-                      ),
-                    ),
-                    TextButton(
-                      onPressed: () {
-                        setState(() {
-                          _recentSearches.clear();
-                          _showSearchResults = false;
-                        });
-                      },
-                      child: const Text('Clear', style: TextStyle(fontSize: 12)),
-                    ),
-                  ],
+            // Recent searches section
+            if (showingRecents && hasRecents) ..._buildRecentSearchItems(isDark),
+            
+            // Building results section
+            if (!showingRecents && hasBuildings) ..._buildBuildingResultItems(isDark),
+          ],
+        ),
+      ),
+    );
+  }
+  
+  List<Widget> _buildRecentSearchItems(bool isDark) {
+    return [
+      Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
+        child: Row(
+          children: [
+            Icon(Icons.history_rounded, size: 18, color: AppColors.grey),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Recent Searches',
+                style: GoogleFonts.poppins(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: isDark ? Colors.white70 : AppColors.darkGrey,
                 ),
               ),
-            Flexible(
-              child: ListView.separated(
-                shrinkWrap: true,
-                padding: const EdgeInsets.all(4),
-                itemCount: list.length,
-                separatorBuilder: (context, index) => const Divider(height: 1),
-                itemBuilder: (context, index) {
-                  final building = list[index];
-                  final distance = _currentLocation != null
-                      ? const Distance().distance(_currentLocation!, building.coordinates)
-                      : null;
-                  
-                  return ListTile(
-                    dense: true,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                    leading: Container(
-                      width: 32,
-                      height: 32,
-                      decoration: BoxDecoration(
-                        color: _getCategoryColor(building.category).withValues(alpha: 0.1),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Center(
-                        child: Icon(
-                          _getCategoryIcon(building.category),
-                          size: 16,
-                          color: _getCategoryColor(building.category),
-                        ),
-                      ),
-                    ),
-                    title: Text(
-                      building.name,
-                      style: GoogleFonts.notoSans(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 13,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    subtitle: Row(
-                      children: [
-                        Flexible(
-                          child: Text(
-                            building.categoryName,
-                            style: GoogleFonts.notoSans(
-                              fontSize: 11,
-                              color: AppColors.grey,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        if (distance != null) ...[
-                          const Text(' • ', style: TextStyle(color: AppColors.grey, fontSize: 11)),
-                          Text(
-                            _formatDistance(distance),
-                            style: GoogleFonts.notoSans(
-                              fontSize: 11,
-                              color: AppColors.primary,
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                    onTap: () {
-                      setState(() => _showSearchResults = false);
-                      _showBuildingSheet(building, fromSearch: true);
-                    },
-                  );
-                },
+            ),
+            TextButton(
+              onPressed: () async {
+                await RecentSearchesService.clearAll();
+                setState(() {
+                  _recentSearchRecords = [];
+                  _showSearchResults = false;
+                });
+              },
+              child: Text(
+                'Clear All',
+                style: GoogleFonts.notoSans(
+                  fontSize: 12,
+                  color: AppColors.primary,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
           ],
         ),
       ),
-    );
+      ..._recentSearchRecords.map((record) {
+        // Find matching building
+        final buildingsToSearch = _osmBuildings.isNotEmpty ? _osmBuildings : campusBuildings;
+        final matchingBuilding = buildingsToSearch.cast<CampusBuilding?>().firstWhere(
+          (b) => b!.name.toLowerCase() == record.query.toLowerCase(),
+          orElse: () => null,
+        );
+        
+        return ListTile(
+          dense: true,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          leading: Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.history_rounded,
+              size: 18,
+              color: AppColors.primary,
+            ),
+          ),
+          title: Text(
+            record.query,
+            style: GoogleFonts.notoSans(
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              color: isDark ? Colors.white : AppColors.darkGrey,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          subtitle: record.frequency > 1
+              ? Text(
+                  '${record.frequency}× searched',
+                  style: GoogleFonts.notoSans(
+                    fontSize: 11,
+                    color: AppColors.grey,
+                  ),
+                )
+              : null,
+          trailing: IconButton(
+            icon: Icon(Icons.close_rounded, size: 18, color: AppColors.grey),
+            onPressed: () async {
+              await RecentSearchesService.removeSearch(record.query);
+              final updated = await RecentSearchesService.filterSearches(_searchController.text.trim());
+              setState(() => _recentSearchRecords = updated);
+            },
+          ),
+          onTap: () async {
+            // Save the search (increment frequency)
+            await RecentSearchesService.saveSearch(record.query);
+            
+            // If we have a matching building, show it
+            if (matchingBuilding != null) {
+              _searchController.text = matchingBuilding.name;
+              _mapController.move(matchingBuilding.coordinates, 18);
+              await Future.delayed(const Duration(milliseconds: 300));
+              if (mounted) _showBuildingSheet(matchingBuilding, fromSearch: true);
+            } else {
+              // Fill search bar and trigger filter
+              _searchController.text = record.query;
+            }
+            setState(() => _showSearchResults = false);
+          },
+        );
+      }).toList(),
+    ];
+  }
+  
+  List<Widget> _buildBuildingResultItems(bool isDark) {
+    return _filteredBuildings.map((building) {
+      final distance = _currentLocation != null
+          ? const Distance().distance(_currentLocation!, building.coordinates)
+          : null;
+                  
+      return ListTile(
+        dense: true,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+        leading: Container(
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(
+            color: _getCategoryColor(building.category).withValues(alpha: 0.15),
+            shape: BoxShape.circle,
+          ),
+          child: Center(
+            child: Text(
+              building.categoryIcon,
+              style: const TextStyle(fontSize: 18),
+            ),
+          ),
+        ),
+        title: Text(
+          building.name,
+          style: GoogleFonts.notoSans(
+            fontWeight: FontWeight.w600,
+            fontSize: 14,
+            color: isDark ? Colors.white : AppColors.darkGrey,
+          ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        subtitle: Row(
+          children: [
+            Flexible(
+              child: Text(
+                building.categoryName,
+                style: GoogleFonts.notoSans(
+                  fontSize: 11,
+                  color: AppColors.grey,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            if (distance != null) ...[
+              const Text(' • ', style: TextStyle(color: AppColors.grey, fontSize: 11)),
+              Text(
+                _formatDistance(distance),
+                style: GoogleFonts.notoSans(
+                  fontSize: 11,
+                  color: AppColors.primary,
+                ),
+              ),
+            ],
+          ],
+        ),
+        onTap: () async {
+          // ✅ ONLY save full query when user SELECTS a result
+          await RecentSearchesService.saveSearch(building.name);
+          
+          setState(() {
+            _selectedBuilding = building;
+            _showSearchResults = false;
+            _searchController.text = building.name;
+          });
+          _mapController.move(building.coordinates, 18);
+          await Future.delayed(const Duration(milliseconds: 300));
+          if (mounted) _showBuildingSheet(building, fromSearch: true);
+        },
+      );
+    }).toList();
   }
 
   Widget _buildBuildingInfo() {
@@ -4330,7 +4459,8 @@ out skel qt;
   }
 
   void _showBuildingSheet(CampusBuilding building, {bool fromSearch = false}) async {
-    _addToRecent(building);
+    // Save to recent searches when building sheet is shown
+    RecentSearchesService.saveSearch(building.name);
     setState(() {
       _selectedBuilding = building;
       if (fromSearch) {
