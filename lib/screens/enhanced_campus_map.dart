@@ -2626,7 +2626,7 @@ out skel qt;
             child: _SmoothLayersButton(
               isDark: isDark,
               onTap: () {
-            showModalBottomSheet(
+                showModalBottomSheet(
               context: context,
               backgroundColor: Colors.transparent,
               isScrollControlled: true,
@@ -2803,7 +2803,8 @@ out skel qt;
                 ),
               ),
             );
-          },
+              },
+            ),
           ),
         ),
       ),
