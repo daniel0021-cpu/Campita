@@ -7,6 +7,10 @@ import '../utils/preferences_service.dart';
 import '../utils/app_settings.dart';
 import '../widgets/modern_navbar.dart';
 import 'dart:html' as html;
+import 'settings_screen.dart';
+import 'about_screen.dart';
+import 'help_support_screen.dart';
+import 'user_guide_screen.dart';
 
 /// Completely Redesigned Profile Screen - Modern, Clean, User-Friendly
 /// NO glass morphism, NO auto-refresh, Beautiful pill shapes
@@ -156,25 +160,35 @@ class _ProfileScreenRedesignedState extends State<ProfileScreenRedesigned> with 
                   
                   const SizedBox(height: 24),
                   
-                  // Settings Section
-                  _buildSectionTitle('App Settings', Icons.settings_rounded, isDark),
+                  // Quick Actions
+                  _buildSectionTitle('Quick Actions', Icons.bolt_rounded, isDark),
+                  const SizedBox(height: 12),
+                  _buildNavigationPill('Settings', 'App preferences & privacy', Icons.settings_rounded, isDark, () {
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen()));
+                  }),
+                  const SizedBox(height: 10),
+                  _buildNavigationPill('About Campus', 'Learn about IUO', Icons.info_rounded, isDark, () {
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => const AboutScreen()));
+                  }),
+                  const SizedBox(height: 10),
+                  _buildNavigationPill('Help & Support', 'Get help with the app', Icons.help_rounded, isDark, () {
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => const HelpSupportScreen()));
+                  }),
+                  const SizedBox(height: 10),
+                  _buildNavigationPill('User Guide', 'Learn how to use features', Icons.menu_book_rounded, isDark, () {
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => const UserGuideScreen()));
+                  }),
+                  
+                  const SizedBox(height: 24),
+                  
+                  // Quick Settings
+                  _buildSectionTitle('Quick Settings', Icons.tune_rounded, isDark),
                   const SizedBox(height: 12),
                   _buildTogglePill('Notifications', _notifications, Icons.notifications_active_rounded, isDark, (val) => _updatePref('notifications', val)),
                   const SizedBox(height: 10),
                   _buildTogglePill('Location Services', _locationServices, Icons.location_on_rounded, isDark, (val) => _updatePref('location', val)),
                   const SizedBox(height: 10),
                   _buildTogglePill('Dark Mode', _darkMode, Icons.dark_mode_rounded, isDark, (val) => _updatePref('darkMode', val)),
-                  const SizedBox(height: 10),
-                  _buildTogglePill('Haptic Feedback', _hapticFeedback, Icons.vibration_rounded, isDark, (val) => _updatePref('haptic', val)),
-                  
-                  const SizedBox(height: 24),
-                  
-                  // Navigation Preferences
-                  _buildSectionTitle('Navigation', Icons.explore_rounded, isDark),
-                  const SizedBox(height: 12),
-                  _buildSelectionPill('Map Style', _mapStyle, Icons.map_rounded, isDark, ['Standard', 'Satellite', 'Terrain'], (val) => _updateSelection('mapStyle', val)),
-                  const SizedBox(height: 10),
-                  _buildSelectionPill('Transport Mode', _transportMode, Icons.directions_walk_rounded, isDark, ['Walking', 'Bicycle', 'Car', 'Bus'], (val) => _updateSelection('transport', val)),
                   
                   const SizedBox(height: 32),
                   
@@ -523,6 +537,74 @@ class _ProfileScreenRedesignedState extends State<ProfileScreenRedesigned> with 
                       fontSize: 15,
                       fontWeight: FontWeight.w600,
                       color: isDark ? Colors.white : Colors.black87,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.arrow_forward_ios_rounded,
+              color: isDark ? Colors.white24 : Colors.black26,
+              size: 16,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNavigationPill(String title, String subtitle, IconData icon, bool isDark, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.lightImpact();
+        onTap();
+      },
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF1E293B) : Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isDark ? Colors.white10 : Colors.black.withAlpha(25),
+            width: 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withAlpha(isDark ? 25 : 13),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withAlpha(25),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, color: AppColors.primary, size: 20),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: GoogleFonts.inter(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: isDark ? Colors.white : Colors.black87,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: GoogleFonts.inter(
+                      fontSize: 12,
+                      color: isDark ? Colors.white54 : Colors.black45,
                     ),
                   ),
                 ],

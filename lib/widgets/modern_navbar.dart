@@ -3,7 +3,7 @@ import '../theme/app_theme.dart';
 import '../screens/enhanced_campus_map.dart';
 import '../screens/favorites_screen.dart';
 import '../screens/subscription_screen.dart';
-import '../screens/premium_profile_screen.dart';
+import '../screens/profile_screen_redesigned.dart';
 
 class ModernNavBar extends StatelessWidget {
   final int currentIndex;
@@ -88,7 +88,7 @@ class ModernNavBar extends StatelessWidget {
               destination = const SubscriptionScreen();
               break;
             case 3:
-              destination = const PremiumProfileScreen();
+              destination = const ProfileScreenRedesigned();
               break;
             default:
               return;
